@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "incremental": true,
+    "baseUrl": ".",
+    "paths": {
+      "cryptoandcoffee/akash-jsdk-core": ["./packages/core/src"],
+      "cryptoandcoffee/akash-jsdk-react": ["./packages/react/src"],
+      "cryptoandcoffee/akash-jsdk-cli": ["./packages/cli/src"],
+      "cryptoandcoffee/akash-jsdk-protobuf": ["./packages/protobuf/src"]
+    }
+  },
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/react" },
+    { "path": "./packages/cli" },
+    { "path": "./packages/protobuf" }
+  ]
+}
