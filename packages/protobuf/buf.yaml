@@ -1,0 +1,11 @@
+version: v1
+name: buf.build/cryptoandcoffee/akash-jsdk
+deps:
+  - buf.build/cosmos/cosmos-sdk
+  - buf.build/cosmos/ibc
+breaking:
+  use:
+    - FILE
+lint:
+  use:
+    - DEFAULT
