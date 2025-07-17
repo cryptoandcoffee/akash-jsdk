@@ -48,20 +48,10 @@ importers:
         specifier: ^5.4.19
         version: 5.4.19(@types/node@24.0.14)
 
-  examples/vanilla-js:
-    dependencies:
-      '@cryptoandcoffee/akash-jsdk-core':
-        specifier: workspace:*
-        version: link:../../packages/core
-    devDependencies:
-      vite:
-        specifier: ^5.1.0
-        version: 5.4.19(@types/node@24.0.14)
-
   packages/cli:
     dependencies:
       '@cryptoandcoffee/akash-jsdk-core':
-        specifier: file:../core
+        specifier: workspace:*
         version: link:../core
       chalk:
         specifier: ^5.3.0
@@ -107,7 +97,7 @@ importers:
         specifier: ^0.32.2
         version: 0.32.4
       '@cryptoandcoffee/akash-jsdk-protobuf':
-        specifier: file:../protobuf
+        specifier: workspace:*
         version: link:../protobuf
     devDependencies:
       '@types/js-yaml':
@@ -166,7 +156,7 @@ importers:
   packages/react:
     dependencies:
       '@cryptoandcoffee/akash-jsdk-core':
-        specifier: file:../core
+        specifier: workspace:*
         version: link:../core
     devDependencies:
       '@testing-library/jest-dom':

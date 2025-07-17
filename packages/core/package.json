@@ -46,7 +46,7 @@
     "@cosmjs/encoding": "^0.32.2",
     "@cosmjs/proto-signing": "^0.32.2",
     "@cosmjs/stargate": "^0.32.2",
-    "@cryptoandcoffee/akash-jsdk-protobuf": "1.0.0"
+    "@cryptoandcoffee/akash-jsdk-protobuf": "workspace:*"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",

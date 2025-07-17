@@ -28,7 +28,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@cryptoandcoffee/akash-jsdk-core": "1.0.0"
+    "@cryptoandcoffee/akash-jsdk-core": "workspace:*"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.2.0",
