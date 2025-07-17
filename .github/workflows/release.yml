@@ -14,7 +14,7 @@ env:
 jobs:
   release:
     name: Release Packages
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, akash, linux, x64, cryptoandcoffee]
     permissions:
       contents: write
       issues: write
@@ -136,7 +136,7 @@ jobs:
 
   post-release:
     name: Post-Release Tasks
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, akash, linux, x64, cryptoandcoffee]
     needs: release
     if: needs.release.outputs.published == 'true'
 

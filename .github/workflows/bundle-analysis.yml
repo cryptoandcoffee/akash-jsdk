@@ -15,7 +15,7 @@ on:
 jobs:
   bundle-analysis:
     name: Bundle Size Analysis
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, akash, linux, x64, cryptoandcoffee]
 
     steps:
       - name: Checkout repository
@@ -122,7 +122,7 @@ jobs:
 
   performance-benchmark:
     name: Performance Benchmarks
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, akash, linux, x64, cryptoandcoffee]
 
     steps:
       - name: Checkout repository

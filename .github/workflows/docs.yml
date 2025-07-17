@@ -29,7 +29,7 @@ concurrency:
 jobs:
   build-docs:
     name: Build Documentation
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, akash, linux, x64, cryptoandcoffee]
 
     steps:
       - name: Checkout repository
@@ -205,7 +205,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, akash, linux, x64, cryptoandcoffee]
     needs: build-docs
     if: github.ref == 'refs/heads/main'
 

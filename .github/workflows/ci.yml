@@ -16,7 +16,7 @@ env:
 jobs:
   changes:
     name: Detect Changes
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, akash, linux, x64, cryptoandcoffee]
     outputs:
       core: ${{ steps.changes.outputs.core }}
       cli: ${{ steps.changes.outputs.cli }}
@@ -168,7 +168,7 @@ jobs:
 
   lint:
     name: Lint and Format
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, akash, linux, x64, cryptoandcoffee]
     needs: changes
     if: needs.changes.outputs.any == 'true'
 
@@ -211,7 +211,7 @@ jobs:
 
   security:
     name: Security Audit
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, akash, linux, x64, cryptoandcoffee]
     needs: changes
     if: needs.changes.outputs.any == 'true'
 
@@ -242,7 +242,7 @@ jobs:
 
   build-examples:
     name: Build Examples
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, akash, linux, x64, cryptoandcoffee]
     needs: [test, lint]
     if: always() && (needs.test.result == 'success' && needs.lint.result == 'success')
 
@@ -288,7 +288,7 @@ jobs:
 
   coverage-report:
     name: Coverage Report
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, akash, linux, x64, cryptoandcoffee]
     needs: test
     if: always() && needs.test.result == 'success'
 
