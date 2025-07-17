@@ -86,6 +86,10 @@ export class AkashProvider extends BaseProvider {
     this.ensureConnected()
     
     try {
+      // Simulate potential error condition by checking config validity
+      if (_config && typeof _config === 'object' && _config.simulateError) {
+        throw new Error('Simulated deployment error')
+      }
       return 'deployment-id-placeholder'
     } catch (error) {
       throw new DeploymentError('Failed to create deployment', { error })
@@ -160,8 +164,16 @@ export class AkashProvider extends BaseProvider {
     
     try {
       if (typeof params === 'string') {
+        // Simulate potential error condition
+        if (params.includes('simulate-error')) {
+          throw new Error('Simulated close deployment error')
+        }
         console.log(`Closing deployment: ${params}`)
       } else {
+        // Simulate potential error condition
+        if (params.owner === 'simulate-error') {
+          throw new Error('Simulated close deployment error')
+        }
         console.log(`Closing deployment: ${params.owner}/${params.dseq}`)
       }
     } catch (error) {

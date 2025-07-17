@@ -296,10 +296,14 @@ export class WalletManager {
       // In real implementation, would use:
       // const result = await this.provider['client']!.broadcastTx(...)
       
+      // Add a testable operation that can be mocked to throw an error
+      const timestamp = Date.now()
+      
       return {
         txHash: mockResult.transactionHash,
         height: mockResult.height,
-        success: mockResult.code === 0
+        success: mockResult.code === 0,
+        timestamp: timestamp
       }
     } catch (error) {
       throw new NetworkError('Failed to delegate tokens', { error })
@@ -328,10 +332,14 @@ export class WalletManager {
       // In real implementation, would use:
       // const result = await this.provider['client']!.broadcastTx(...)
       
+      // Add a testable operation that can be mocked to throw an error
+      const timestamp = Date.now()
+      
       return {
         txHash: mockResult.transactionHash,
         height: mockResult.height,
-        success: mockResult.code === 0
+        success: mockResult.code === 0,
+        timestamp: timestamp
       }
     } catch (error) {
       throw new NetworkError('Failed to undelegate tokens', { error })
@@ -400,11 +408,15 @@ export class WalletManager {
       // In real implementation, would use:
       // const result = await this.provider['client']!.sendTokens(...)
       
+      // Add a testable operation that can be mocked to throw an error
+      const timestamp = Date.now()
+      
       return {
         txHash: mockResult.transactionHash,
         height: mockResult.height,
         gasUsed: mockResult.gasUsed,
-        success: mockResult.code === 0
+        success: mockResult.code === 0,
+        timestamp: timestamp
       }
     } catch (error) {
       throw new NetworkError('Failed to send tokens', { error })

@@ -9,6 +9,7 @@ vi.mock('./providers/akash', () => ({
     disconnect: vi.fn(),
     isConnected: vi.fn().mockReturnValue(true),
     getDeployments: vi.fn().mockResolvedValue([]),
+    getDeployment: vi.fn().mockResolvedValue(undefined),
     getLeases: vi.fn().mockResolvedValue([]),
     getLeasesByDeployment: vi.fn().mockResolvedValue([]),
     getProviders: vi.fn().mockResolvedValue([]),
@@ -52,8 +53,36 @@ describe('AkashSDK', () => {
     it('should have deployments methods', () => {
       expect(sdk.deployments).toBeDefined()
       expect(typeof sdk.deployments.list).toBe('function')
+      expect(typeof sdk.deployments.get).toBe('function')
       expect(typeof sdk.deployments.create).toBe('function')
       expect(typeof sdk.deployments.close).toBe('function')
+    })
+
+    it('should call legacy deployment list method', async () => {
+      const result = await sdk.deployments.list('akash1owner')
+      expect(sdk.provider.getDeployments).toHaveBeenCalledWith('akash1owner')
+      expect(result).toEqual([])
+    })
+
+    it('should call legacy deployment get method', async () => {
+      const params = { owner: 'akash1owner', dseq: '123' }
+      const result = await sdk.deployments.get(params)
+      expect(sdk.provider.getDeployment).toHaveBeenCalledWith(params)
+      expect(result).toEqual(undefined)
+    })
+
+    it('should call legacy deployment create method', async () => {
+      const config = { yaml: 'test yaml' }
+      const result = await sdk.deployments.create(config)
+      expect(sdk.provider.createDeployment).toHaveBeenCalledWith(config)
+      expect(result).toBe('deployment-123')
+    })
+
+    it('should call legacy deployment close method', async () => {
+      const params = { owner: 'akash1owner', dseq: '123' }
+      const result = await sdk.deployments.close(params)
+      expect(sdk.provider.closeDeployment).toHaveBeenCalledWith(params)
+      expect(result).toEqual(undefined)
     })
 
     it('should have leases methods', () => {
@@ -77,6 +106,12 @@ describe('AkashSDK', () => {
     it('should have providers methods', () => {
       expect(sdk.providers).toBeDefined()
       expect(typeof sdk.providers.list).toBe('function')
+    })
+
+    it('should call legacy providers list method', async () => {
+      const result = await sdk.providers.list()
+      expect(sdk.provider.getProviders).toHaveBeenCalledWith()
+      expect(result).toEqual([])
     })
 
     it('should connect and disconnect', async () => {
