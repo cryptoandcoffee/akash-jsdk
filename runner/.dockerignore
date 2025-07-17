@@ -1,0 +1,28 @@
+# Documentation
+README.md
+*.md
+
+# Git
+.git
+.gitignore
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temporary files
+*.tmp
+*.temp
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Akash deployment files (not needed in container)
+deploy.yaml

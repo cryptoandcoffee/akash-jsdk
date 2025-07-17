@@ -1,3 +1,6 @@
+CLAUDE.md
+FINAL_COVERAGE_REPORT.md
+
 # Dependencies
 node_modules/
 npm-debug.log*
@@ -75,3 +78,4 @@ pnpm-lock.yaml
 .fusebox/
 .dynamodb/
 .tern-port
+.turbo

@@ -1,4 +1,4 @@
-import { AkashSDK } from 'cryptoandcoffee/akash-jsdk-core'
+import { AkashSDK } from '@cryptoandcoffee/akash-jsdk-core'
 
 const config = {
   rpcEndpoint: 'https://rpc.akashedge.com:443',

@@ -3,7 +3,10 @@
   "globalDependencies": [
     "**/.env.*local"
   ],
-  "pipeline": {
+  "globalPassThroughEnv": [
+    "NODE_ENV"
+  ],
+  "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**"],

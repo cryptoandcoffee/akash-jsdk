@@ -25,6 +25,9 @@
     "test:watch": "vitest",
     "dev": "npm run build -- --watch",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint src/**/*.{ts,tsx} --fix",
+    "format": "prettier --write src/**/*.{ts,tsx}",
+    "format:check": "prettier --check src/**/*.{ts,tsx}",
     "clean": "rm -rf dist generated proto-downloaded"
   },
   "dependencies": {

@@ -1,0 +1,75 @@
+---
+version: "2.0"
+
+services:
+  github-runner:
+    # Use the custom GitHub runner image for cryptoandcoffee
+    image: cryptoandcoffee/github-runner:latest
+    
+    # Environment variables for runner configuration
+    env:
+      # REQUIRED: Set these in Akash Console or via CLI
+      - GITHUB_REPOSITORY=cryptoandcoffee/akash-jsdk
+      # - GITHUB_ACCESS_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx  # Set via Akash Console
+      
+      # OPTIONAL: Customize runner behavior
+      - RUNNER_NAME_PREFIX=cryptoandcoffee-akash
+      - RUNNER_LABELS=self-hosted,akash,linux,x64,cryptoandcoffee
+      - EPHEMERAL=true
+      - RUNNER_GROUP=default
+    
+    # No exposed ports needed (runner connects outbound to GitHub)
+    expose: []
+
+profiles:
+  compute:
+    github-runner:
+      resources:
+        cpu:
+          units: 2.0  # 2 vCPU cores for parallel builds
+        memory:
+          size: 4Gi   # 4GB RAM for Node.js builds and Docker
+        storage:
+          - size: 20Gi  # 20GB for code, dependencies, and Docker images
+            attributes:
+              persistent: false  # Ephemeral storage for security
+        
+        # Optional: Add GPU support for future ML/AI workloads
+        # gpu:
+        #   units: 0
+
+  placement:
+    akash-providers:
+      # Target reliable Akash providers with good uptime
+      attributes:
+        # Prefer providers with SSD storage
+        - key: storage-class
+          value: ssd
+        # Prefer providers in North America/Europe for lower latency
+        - key: region
+          value: us-west
+      
+      # Signed providers only for security
+      signedBy:
+        anyOf:
+          - akash1365yvmc4s7awdyj3n2sav7xfx76adc6dnmlx63  # Akash official
+          - akash18qa2a2ltfyvkyj0ggj3hkvuj6twzyumuaru9s4  # Cloudmos
+      
+      # Pricing in uAKT (micro AKT tokens)
+      pricing:
+        github-runner:
+          denom: uakt
+          amount: 100  # ~$0.50-1.00/month depending on AKT price
+
+deployment:
+  github-runner:
+    akash-providers:
+      profile: github-runner
+      count: 1  # Single runner instance (can scale if needed)
+
+# Akash Network deployment notes:
+# 1. Set GITHUB_ACCESS_TOKEN via Akash Console environment variables
+# 2. Ensure your GitHub PAT has 'repo' and 'admin:org' scopes
+# 3. Monitor logs for runner registration status
+# 4. Estimated cost: $0.50-2.00/month depending on usage and AKT price
+# 5. Runner will auto-register and appear in GitHub repo settings

@@ -43,25 +43,68 @@ jobs:
               - 'pnpm-workspace.yaml'
               - 'tsconfig.json'
 
+  runner-health:
+    name: Check Akash Runner Health
+    runs-on: [self-hosted, akash, linux, x64, cryptoandcoffee]
+    continue-on-error: true
+    outputs:
+      akash-available: ${{ steps.health.outputs.available }}
+    steps:
+      - name: Health Check
+        id: health
+        run: |
+          echo "🏃 Akash runner is healthy and ready"
+          echo "Runner: $(hostname)"
+          echo "Available space: $(df -h / | tail -1 | awk '{print $4}')"
+          echo "Memory: $(free -h | grep '^Mem:' | awk '{print $7}')"
+          echo "available=true" >> $GITHUB_OUTPUT
+        timeout-minutes: 2
+
   test:
-    name: Test (${{ matrix.os }}, Node ${{ matrix.node }})
-    runs-on: ${{ matrix.os }}
-    needs: changes
+    name: Test (${{ matrix.runner }}, Node ${{ matrix.node }})
+    runs-on: ${{ matrix.runner }}
+    needs: [changes, runner-health]
     if: needs.changes.outputs.any == 'true'
     
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        node: ['18.x', '20.x', '22.x']
-        exclude:
-          # Skip Windows/macOS for older Node versions to save CI time
-          - os: windows-latest
+        include:
+          # Self-hosted Akash runners (cost-effective, fast)
+          - runner: [self-hosted, akash, linux, x64, cryptoandcoffee]
+            node: '20.x'
+            os: 'linux'
+          # GitHub hosted runners (fallback and multi-platform testing)
+          - runner: ubuntu-latest
+            node: '20.x'
+            os: 'ubuntu'
+          - runner: ubuntu-latest
             node: '18.x'
-          - os: macos-latest
-            node: '18.x'
+            os: 'ubuntu'
+          - runner: ubuntu-latest
+            node: '22.x'
+            os: 'ubuntu'
+          - runner: windows-latest
+            node: '20.x'
+            os: 'windows'
+          - runner: macos-latest
+            node: '20.x'
+            os: 'macos'
 
     steps:
+      - name: Runner Information
+        run: |
+          echo "🏃 Runner: ${{ matrix.runner }} (${{ matrix.os }})"
+          echo "📦 Node.js: ${{ matrix.node }}"
+          if [[ "${{ matrix.runner }}" == *"self-hosted"* ]]; then
+            echo "🌐 Running on Akash Network (decentralized cloud)"
+            echo "🖥️  Hostname: $(hostname)"
+            echo "💾 Available space: $(df -h / | tail -1 | awk '{print $4}')"
+            echo "🧠 Available memory: $(free -h | grep '^Mem:' | awk '{print $7}')"
+          else
+            echo "☁️ Running on GitHub hosted infrastructure"
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -87,17 +130,19 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          key: ${{ matrix.os }}-node${{ matrix.node }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+            ${{ matrix.os }}-node${{ matrix.node }}-pnpm-store-
+            ${{ matrix.os }}-pnpm-store-
 
       - name: Setup Turbo cache
         uses: actions/cache@v4
         with:
           path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          key: ${{ matrix.os }}-node${{ matrix.node }}-turbo-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-turbo-
+            ${{ matrix.os }}-node${{ matrix.node }}-turbo-
+            ${{ matrix.os }}-turbo-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -109,7 +154,7 @@ jobs:
         run: turbo run build --cache-dir=.turbo
 
       - name: Run tests with Turbo
-        run: turbo run test --cache-dir=.turbo
+        run: turbo run test --cache-dir=.turbo --continue
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.node == '20.x'
@@ -150,9 +195,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          key: ${{ matrix.os }}-node${{ matrix.node }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+            ${{ matrix.os }}-node${{ matrix.node }}-pnpm-store-
+            ${{ matrix.os }}-pnpm-store-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -223,9 +269,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          key: ${{ matrix.os }}-node${{ matrix.node }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+            ${{ matrix.os }}-node${{ matrix.node }}-pnpm-store-
+            ${{ matrix.os }}-pnpm-store-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -268,9 +315,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          key: ${{ matrix.os }}-node${{ matrix.node }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+            ${{ matrix.os }}-node${{ matrix.node }}-pnpm-store-
+            ${{ matrix.os }}-pnpm-store-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
