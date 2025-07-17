@@ -1,5 +1,9 @@
 # @cryptoandcoffee/akash-jsdk
 
+[![CI](https://github.com/cryptoandcoffee/akash-jsdk/actions/workflows/ci.yml/badge.svg)](https://github.com/cryptoandcoffee/akash-jsdk/actions/workflows/ci.yml)
+[![Release](https://github.com/cryptoandcoffee/akash-jsdk/actions/workflows/release.yml/badge.svg)](https://github.com/cryptoandcoffee/akash-jsdk/actions/workflows/release.yml)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
 A modern, fully-featured JavaScript SDK for Akash Network built from scratch with cutting-edge frameworks and enterprise-grade quality.
 
 ## 🚀 Features
@@ -16,10 +20,10 @@ A modern, fully-featured JavaScript SDK for Akash Network built from scratch wit
 
 | Package | Description | Version |
 |---------|-------------|---------|
-| `@cryptoandcoffee/akash-jsdk-core` | Core SDK with deployment, market, provider, and wallet management | 1.0.0 |
-| `@cryptoandcoffee/akash-jsdk-react` | React hooks and context provider for seamless integration | 1.0.0 |
-| `@cryptoandcoffee/akash-jsdk-cli` | Command-line tools for project initialization and deployment | 1.0.0 |
-| `@cryptoandcoffee/akash-jsdk-protobuf` | Custom protobuf definitions with TypeScript support | 1.0.0 |
+| `@cryptoandcoffee/akash-jsdk-core` | Core SDK with deployment, market, provider, and wallet management | [![npm](https://img.shields.io/npm/v/@cryptoandcoffee/akash-jsdk-core)](https://www.npmjs.com/package/@cryptoandcoffee/akash-jsdk-core) |
+| `@cryptoandcoffee/akash-jsdk-react` | React hooks and context provider for seamless integration | [![npm](https://img.shields.io/npm/v/@cryptoandcoffee/akash-jsdk-react)](https://www.npmjs.com/package/@cryptoandcoffee/akash-jsdk-react) |
+| `@cryptoandcoffee/akash-jsdk-cli` | Command-line tools for project initialization and deployment | [![npm](https://img.shields.io/npm/v/@cryptoandcoffee/akash-jsdk-cli)](https://www.npmjs.com/package/@cryptoandcoffee/akash-jsdk-cli) |
+| `@cryptoandcoffee/akash-jsdk-protobuf` | Custom protobuf definitions with TypeScript support | [![npm](https://img.shields.io/npm/v/@cryptoandcoffee/akash-jsdk-protobuf)](https://www.npmjs.com/package/@cryptoandcoffee/akash-jsdk-protobuf) |
 
 ## 🔧 Installation
 
