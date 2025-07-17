@@ -1,0 +1,126 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:base",
+    "config:recommended",
+    "group:monorepos",
+    "group:recommended",
+    "workarounds:all"
+  ],
+  "timezone": "UTC",
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "commitMessagePrefix": "chore:",
+  "semanticCommits": "enabled",
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "🤖 Dependency Dashboard",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": [
+      "before 6am on monday"
+    ]
+  },
+  "packageRules": [
+    {
+      "groupName": "TypeScript and ESLint",
+      "matchPackagePatterns": [
+        "^typescript$",
+        "^@typescript-eslint/",
+        "^eslint"
+      ]
+    },
+    {
+      "groupName": "Vite ecosystem",
+      "matchPackagePatterns": [
+        "^vite",
+        "^vitest",
+        "^@vitest/"
+      ]
+    },
+    {
+      "groupName": "React ecosystem",
+      "matchPackagePatterns": [
+        "^react",
+        "^@types/react"
+      ]
+    },
+    {
+      "groupName": "Cosmos SDK",
+      "matchPackagePatterns": [
+        "^@cosmjs/"
+      ]
+    },
+    {
+      "groupName": "CLI dependencies",
+      "matchPackagePatterns": [
+        "^commander$",
+        "^inquirer$",
+        "^chalk$",
+        "^ora$"
+      ]
+    },
+    {
+      "groupName": "Build tools",
+      "matchPackagePatterns": [
+        "^turbo$",
+        "^@changesets/"
+      ]
+    },
+    {
+      "matchDepTypes": [
+        "devDependencies"
+      ],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "merge-commit",
+      "requiredStatusChecks": null
+    },
+    {
+      "matchDepTypes": [
+        "dependencies"
+      ],
+      "reviewersFromCodeOwners": true,
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "labels": [
+        "dependencies",
+        "major-update"
+      ],
+      "reviewersFromCodeOwners": true,
+      "prPriority": 1
+    },
+    {
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "labels": [
+        "dependencies",
+        "minor-update"
+      ],
+      "automerge": false
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": [
+      "security",
+      "dependencies"
+    ],
+    "assignees": [
+      "@cryptoandcoffee"
+    ],
+    "prPriority": 10
+  },
+  "prConcurrentLimit": 3,
+  "prHourlyLimit": 2,
+  "rebaseWhen": "conflicted"
+}

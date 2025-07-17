@@ -1,0 +1,191 @@
+name: Bundle Analysis
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'packages/*/src/**'
+      - 'packages/*/package.json'
+  push:
+    branches: [main]
+    paths:
+      - 'packages/*/src/**'
+      - 'packages/*/package.json'
+
+jobs:
+  bundle-analysis:
+    name: Bundle Size Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: latest
+          run_install: false
+
+      - name: Get pnpm store directory
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: turbo run build
+
+      - name: Analyze bundle sizes
+        run: |
+          npm install -g bundlesize2
+          
+          # Create bundlesize config for each package
+          cat > .bundlesizerc << 'EOF'
+          {
+            "files": [
+              {
+                "path": "packages/core/dist/index.js",
+                "maxSize": "100kb",
+                "compression": "gzip"
+              },
+              {
+                "path": "packages/react/dist/index.js", 
+                "maxSize": "50kb",
+                "compression": "gzip"
+              },
+              {
+                "path": "packages/cli/dist/index.js",
+                "maxSize": "200kb",
+                "compression": "gzip"
+              },
+              {
+                "path": "packages/protobuf/dist/index.js",
+                "maxSize": "150kb",
+                "compression": "gzip"
+              }
+            ]
+          }
+          EOF
+          
+          # Run bundle size analysis
+          bundlesize2
+
+      - name: Comment Bundle Analysis
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Get bundle sizes
+            const packages = ['core', 'react', 'cli', 'protobuf'];
+            let comment = '## 📦 Bundle Size Analysis\n\n';
+            comment += '| Package | Size (gzipped) | Status |\n';
+            comment += '|---------|----------------|--------|\n';
+            
+            for (const pkg of packages) {
+              const bundlePath = `packages/${pkg}/dist/index.js`;
+              try {
+                const stats = fs.statSync(bundlePath);
+                const sizeKb = (stats.size / 1024).toFixed(2);
+                const status = stats.size < 100 * 1024 ? '✅' : '⚠️';
+                comment += `| @cryptoandcoffee/akash-jsdk-${pkg} | ${sizeKb}kb | ${status} |\n`;
+              } catch (e) {
+                comment += `| @cryptoandcoffee/akash-jsdk-${pkg} | N/A | ❌ |\n`;
+              }
+            }
+            
+            comment += '\n---\n*Bundle size analysis completed*';
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  performance-benchmark:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: latest
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: turbo run build
+
+      - name: Run performance benchmarks
+        run: |
+          # Create a simple benchmark script
+          cat > benchmark.js << 'EOF'
+          const { performance } = require('perf_hooks');
+          
+          async function runBenchmarks() {
+            console.log('🏃 Running SDK Performance Benchmarks\n');
+            
+            // Benchmark package import times
+            const importTests = [
+              { name: 'Core SDK Import', module: '@cryptoandcoffee/akash-jsdk-core' },
+              { name: 'React Hooks Import', module: '@cryptoandcoffee/akash-jsdk-react' },
+              { name: 'CLI Utils Import', module: '@cryptoandcoffee/akash-jsdk-cli' },
+              { name: 'Protobuf Types Import', module: '@cryptoandcoffee/akash-jsdk-protobuf' }
+            ];
+            
+            for (const test of importTests) {
+              const start = performance.now();
+              try {
+                await import(`./packages/${test.module.split('-').pop()}/dist/index.js`);
+                const end = performance.now();
+                console.log(`✅ ${test.name}: ${(end - start).toFixed(2)}ms`);
+              } catch (e) {
+                console.log(`❌ ${test.name}: Failed to import`);
+              }
+            }
+            
+            console.log('\n📊 Benchmark completed successfully');
+          }
+          
+          runBenchmarks().catch(console.error);
+          EOF
+          
+          node benchmark.js
+
+      - name: Upload performance artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-benchmarks
+          path: |
+            benchmark.js
+            packages/*/dist/
+          retention-days: 7

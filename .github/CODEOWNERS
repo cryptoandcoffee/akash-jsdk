@@ -1,0 +1,34 @@
+# Global owners
+* @cryptoandcoffee
+
+# Core package
+/packages/core/ @cryptoandcoffee
+
+# React package
+/packages/react/ @cryptoandcoffee
+
+# CLI package  
+/packages/cli/ @cryptoandcoffee
+
+# Protobuf package
+/packages/protobuf/ @cryptoandcoffee
+
+# Documentation
+/docs/ @cryptoandcoffee
+*.md @cryptoandcoffee
+
+# CI/CD and configuration
+/.github/ @cryptoandcoffee
+/.changeset/ @cryptoandcoffee
+/turbo.json @cryptoandcoffee
+/eslint.config.js @cryptoandcoffee
+/.prettierrc @cryptoandcoffee
+
+# Package manifests
+package.json @cryptoandcoffee
+/packages/*/package.json @cryptoandcoffee
+pnpm-workspace.yaml @cryptoandcoffee
+
+# TypeScript configuration
+tsconfig.json @cryptoandcoffee
+/packages/*/tsconfig.json @cryptoandcoffee

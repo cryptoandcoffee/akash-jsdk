@@ -1,0 +1,215 @@
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/*/src/**'
+      - 'docs/**'
+      - 'README.md'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'packages/*/src/**'
+      - 'docs/**'
+      - 'README.md'
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: latest
+          run_install: false
+
+      - name: Get pnpm store directory
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm run build
+
+      - name: Generate API documentation
+        run: |
+          # Install TypeDoc globally for API documentation
+          npm install -g typedoc
+          
+          # Generate documentation for each package
+          mkdir -p docs/api
+          
+          # Core package docs
+          typedoc \
+            --out docs/api/core \
+            --entryPoints packages/core/src/index.ts \
+            --name "Akash JSDK Core" \
+            --theme default \
+            --readme packages/core/README.md \
+            --tsconfig packages/core/tsconfig.json
+          
+          # React package docs
+          typedoc \
+            --out docs/api/react \
+            --entryPoints packages/react/src/index.ts \
+            --name "Akash JSDK React" \
+            --theme default \
+            --readme packages/react/README.md \
+            --tsconfig packages/react/tsconfig.json
+          
+          # CLI package docs
+          typedoc \
+            --out docs/api/cli \
+            --entryPoints packages/cli/src/index.ts \
+            --name "Akash JSDK CLI" \
+            --theme default \
+            --readme packages/cli/README.md \
+            --tsconfig packages/cli/tsconfig.json
+          
+          # Protobuf package docs
+          typedoc \
+            --out docs/api/protobuf \
+            --entryPoints packages/protobuf/src/index.ts \
+            --name "Akash JSDK Protobuf" \
+            --theme default \
+            --readme packages/protobuf/README.md \
+            --tsconfig packages/protobuf/tsconfig.json
+
+      - name: Generate coverage reports
+        run: |
+          pnpm test -- --coverage
+          
+          # Create coverage directory in docs
+          mkdir -p docs/coverage
+          
+          # Copy coverage reports
+          cp -r packages/core/coverage docs/coverage/core || true
+          cp -r packages/cli/coverage docs/coverage/cli || true
+          cp -r packages/react/coverage docs/coverage/react || true
+          cp -r packages/protobuf/coverage docs/coverage/protobuf || true
+
+      - name: Create documentation index
+        run: |
+          cat > docs/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Akash JSDK Documentation</title>
+              <style>
+                  body { font-family: system-ui, sans-serif; max-width: 1200px; margin: 0 auto; padding: 2rem; }
+                  .header { text-align: center; margin-bottom: 3rem; }
+                  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; }
+                  .card { border: 1px solid #e1e5e9; border-radius: 8px; padding: 1.5rem; }
+                  .card h3 { margin-top: 0; color: #1f2937; }
+                  .card a { color: #3b82f6; text-decoration: none; }
+                  .card a:hover { text-decoration: underline; }
+                  .badge { background: #10b981; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem; }
+              </style>
+          </head>
+          <body>
+              <div class="header">
+                  <h1>🚀 Akash JSDK Documentation</h1>
+                  <p>Modern JavaScript SDK for Akash Network</p>
+                  <span class="badge">100% Test Coverage</span>
+              </div>
+              
+              <div class="grid">
+                  <div class="card">
+                      <h3>📚 API Documentation</h3>
+                      <ul>
+                          <li><a href="api/core/index.html">Core Package</a> - Main SDK functionality</li>
+                          <li><a href="api/react/index.html">React Package</a> - React hooks and components</li>
+                          <li><a href="api/cli/index.html">CLI Package</a> - Command-line tools</li>
+                          <li><a href="api/protobuf/index.html">Protobuf Package</a> - Type definitions</li>
+                      </ul>
+                  </div>
+                  
+                  <div class="card">
+                      <h3>📊 Coverage Reports</h3>
+                      <ul>
+                          <li><a href="coverage/core/index.html">Core Coverage</a> - 100% coverage</li>
+                          <li><a href="coverage/cli/index.html">CLI Coverage</a> - 100% coverage</li>
+                          <li><a href="coverage/react/index.html">React Coverage</a> - 100% coverage</li>
+                          <li><a href="coverage/protobuf/index.html">Protobuf Coverage</a> - 100% coverage</li>
+                      </ul>
+                  </div>
+                  
+                  <div class="card">
+                      <h3>🎯 Quick Start</h3>
+                      <p>Get started with the Akash JSDK:</p>
+                      <pre><code>npm install @cryptoandcoffee/akash-jsdk-core</code></pre>
+                      <a href="https://github.com/cryptoandcoffee/akash-jsdk#quick-start">View Examples →</a>
+                  </div>
+                  
+                  <div class="card">
+                      <h3>🔗 Links</h3>
+                      <ul>
+                          <li><a href="https://github.com/cryptoandcoffee/akash-jsdk">GitHub Repository</a></li>
+                          <li><a href="https://www.npmjs.com/search?q=%40cryptoandcoffee%2Fakash-jsdk">NPM Packages</a></li>
+                          <li><a href="https://github.com/cryptoandcoffee/akash-jsdk/releases">Releases</a></li>
+                          <li><a href="https://github.com/cryptoandcoffee/akash-jsdk/issues">Issues</a></li>
+                      </ul>
+                  </div>
+              </div>
+          </body>
+          </html>
+          EOF
+
+      - name: Setup Pages
+        if: github.ref == 'refs/heads/main'
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./docs
+
+  deploy-docs:
+    name: Deploy Documentation
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build-docs
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

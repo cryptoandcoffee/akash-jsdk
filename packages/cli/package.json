@@ -3,6 +3,21 @@
   "version": "1.0.0",
   "description": "Command-line tools for Akash Network SDK",
   "type": "module",
+  "keywords": ["akash", "network", "cli", "blockchain", "cosmos", "deployment"],
+  "homepage": "https://github.com/cryptoandcoffee/akash-jsdk#readme",
+  "repository": {
+    "type": "git", 
+    "url": "https://github.com/cryptoandcoffee/akash-jsdk.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/cryptoandcoffee/akash-jsdk/issues"
+  },
+  "license": "Apache-2.0",
+  "author": {
+    "name": "CryptoAndCoffee",
+    "url": "https://github.com/cryptoandcoffee"
+  },
   "bin": {
     "akash-cli": "./dist/cli.js"
   },
@@ -25,6 +40,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint src/**/*.{ts,tsx} --fix",
+    "format": "prettier --write src/**/*.{ts,tsx}",
+    "format:check": "prettier --check src/**/*.{ts,tsx}",
     "clean": "rm -rf dist"
   },
   "dependencies": {

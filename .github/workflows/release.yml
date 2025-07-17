@@ -1,0 +1,182 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_OPTIONS: --max-old-space-size=8192
+
+jobs:
+  release:
+    name: Release Packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write # for npm provenance
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # This makes Actions fetch all Git history so changesets can generate proper changelogs
+          fetch-depth: 0
+          # Specify token for pushing tags and creating releases
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: latest
+          run_install: false
+
+      - name: Get pnpm store directory
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm run build
+
+      - name: Run tests
+        run: pnpm test -- --coverage
+
+      - name: Create Release Pull Request or Publish to npm
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          # This expects you to have a script called release which does a build for your packages and calls changeset publish
+          publish: pnpm run release
+          title: 'chore: release packages'
+          commit: 'chore: release packages'
+          createGithubReleases: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish to GitHub Packages
+        if: steps.changesets.outputs.published == 'true'
+        run: |
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> ~/.npmrc
+          echo "@cryptoandcoffee:registry=https://npm.pkg.github.com" >> ~/.npmrc
+          pnpm publish -r --no-git-checks --registry https://npm.pkg.github.com
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        if: steps.changesets.outputs.published == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.changesets.outputs.publishedPackages[0].version }}
+          name: Release ${{ steps.changesets.outputs.publishedPackages[0].version }}
+          body: |
+            ## Changes
+            
+            ${{ steps.changesets.outputs.changesetSummary }}
+            
+            ## Published Packages
+            
+            ${{ steps.changesets.outputs.publishedPackages }}
+            
+            ## Installation
+            
+            ```bash
+            npm install @cryptoandcoffee/akash-jsdk-core@${{ steps.changesets.outputs.publishedPackages[0].version }}
+            ```
+          files: |
+            packages/*/dist/**
+            packages/*/README.md
+            packages/*/package.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Send Slack notification
+        if: steps.changesets.outputs.published == 'true'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              "text": "🚀 New Akash JSDK release published!",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Akash JSDK Release* 📦\n\n*Version:* ${{ steps.changesets.outputs.publishedPackages[0].version }}\n*Packages:* ${{ steps.changesets.outputs.publishedPackages.length }}\n\n<https://github.com/${{ github.repository }}/releases|View Release>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  post-release:
+    name: Post-Release Tasks
+    runs-on: ubuntu-latest
+    needs: release
+    if: needs.release.outputs.published == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: latest
+          run_install: false
+
+      - name: Update package download badges
+        run: |
+          # Update README badges with latest version info
+          echo "Updating package badges..."
+
+      - name: Verify published packages
+        run: |
+          # Wait a bit for npm to propagate
+          sleep 30
+          
+          # Verify each package is available
+          packages=("core" "cli" "react" "protobuf")
+          for pkg in "${packages[@]}"; do
+            if npm view "@cryptoandcoffee/akash-jsdk-$pkg" version; then
+              echo "✅ @cryptoandcoffee/akash-jsdk-$pkg published successfully"
+            else
+              echo "❌ @cryptoandcoffee/akash-jsdk-$pkg not found on npm"
+              exit 1
+            fi
+          done
+
+      - name: Update documentation
+        run: |
+          echo "Documentation update would happen here"
+          # This could trigger a docs deployment or update

@@ -3,6 +3,21 @@
   "version": "1.0.0",
   "description": "Core SDK for Akash Network",
   "type": "module",
+  "keywords": ["akash", "network", "blockchain", "cosmos", "sdk", "typescript"],
+  "homepage": "https://github.com/cryptoandcoffee/akash-jsdk#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cryptoandcoffee/akash-jsdk.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/cryptoandcoffee/akash-jsdk/issues"
+  },
+  "license": "Apache-2.0",
+  "author": {
+    "name": "CryptoAndCoffee",
+    "url": "https://github.com/cryptoandcoffee"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -22,6 +37,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint src/**/*.{ts,tsx} --fix",
+    "format": "prettier --write src/**/*.{ts,tsx}",
+    "format:check": "prettier --check src/**/*.{ts,tsx}",
     "clean": "rm -rf dist"
   },
   "dependencies": {
