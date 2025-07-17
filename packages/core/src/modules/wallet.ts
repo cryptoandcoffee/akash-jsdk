@@ -302,8 +302,7 @@ export class WalletManager {
       return {
         txHash: mockResult.transactionHash,
         height: mockResult.height,
-        success: mockResult.code === 0,
-        timestamp: timestamp
+        success: mockResult.code === 0
       }
     } catch (error) {
       throw new NetworkError('Failed to delegate tokens', { error })
@@ -338,8 +337,7 @@ export class WalletManager {
       return {
         txHash: mockResult.transactionHash,
         height: mockResult.height,
-        success: mockResult.code === 0,
-        timestamp: timestamp
+        success: mockResult.code === 0
       }
     } catch (error) {
       throw new NetworkError('Failed to undelegate tokens', { error })
@@ -415,8 +413,7 @@ export class WalletManager {
         txHash: mockResult.transactionHash,
         height: mockResult.height,
         gasUsed: mockResult.gasUsed,
-        success: mockResult.code === 0,
-        timestamp: timestamp
+        success: mockResult.code === 0
       }
     } catch (error) {
       throw new NetworkError('Failed to send tokens', { error })
