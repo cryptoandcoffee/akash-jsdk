@@ -72,24 +72,14 @@ jobs:
         include:
           # Self-hosted Akash runners (cost-effective, fast)
           - runner: [self-hosted, akash, linux, x64, cryptoandcoffee]
+            node: '18.x'
+            os: 'linux'
+          - runner: [self-hosted, akash, linux, x64, cryptoandcoffee]
             node: '20.x'
             os: 'linux'
-          # GitHub hosted runners (fallback and multi-platform testing)
-          - runner: ubuntu-latest
-            node: '20.x'
-            os: 'ubuntu'
-          - runner: ubuntu-latest
-            node: '18.x'
-            os: 'ubuntu'
-          - runner: ubuntu-latest
+          - runner: [self-hosted, akash, linux, x64, cryptoandcoffee]
             node: '22.x'
-            os: 'ubuntu'
-          - runner: windows-latest
-            node: '20.x'
-            os: 'windows'
-          - runner: macos-latest
-            node: '20.x'
-            os: 'macos'
+            os: 'linux'
 
     steps:
       - name: Runner Information
