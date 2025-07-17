@@ -58,9 +58,8 @@ logs
 tmp/
 temp/
 
-# Package manager lockfiles (keep package-lock.json but ignore others)
+# Package manager lockfiles (keep package-lock.json and pnpm-lock.yaml)
 yarn.lock
-pnpm-lock.yaml
 
 # TypeScript
 *.d.ts.map
