@@ -78,7 +78,6 @@ jobs:
             --entryPoints packages/core/src/index.ts \
             --name "Akash JSDK Core" \
             --theme default \
-            --readme packages/core/README.md \
             --tsconfig packages/core/tsconfig.json
           
           # React package docs
@@ -87,7 +86,6 @@ jobs:
             --entryPoints packages/react/src/index.ts \
             --name "Akash JSDK React" \
             --theme default \
-            --readme packages/react/README.md \
             --tsconfig packages/react/tsconfig.json
           
           # CLI package docs
@@ -96,7 +94,6 @@ jobs:
             --entryPoints packages/cli/src/index.ts \
             --name "Akash JSDK CLI" \
             --theme default \
-            --readme packages/cli/README.md \
             --tsconfig packages/cli/tsconfig.json
           
           # Protobuf package docs
@@ -105,7 +102,6 @@ jobs:
             --entryPoints packages/protobuf/src/index.ts \
             --name "Akash JSDK Protobuf" \
             --theme default \
-            --readme packages/protobuf/README.md \
             --tsconfig packages/protobuf/tsconfig.json
 
       - name: Generate coverage reports
