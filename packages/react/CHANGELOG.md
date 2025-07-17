@@ -1,5 +1,20 @@
 # @cryptoandcoffee/akash-jsdk-react
 
+## 3.0.1
+
+### Patch Changes
+
+- a3dd101: Test fully automatic release system
+
+  This patch release tests the new fully automatic release workflow:
+
+  - Auto-merge functionality enabled
+  - Zero manual intervention required
+  - Complete hands-off release process
+
+- Updated dependencies [a3dd101]
+  - @cryptoandcoffee/akash-jsdk-core@3.0.1
+
 ## 3.0.0
 
 ### Major Changes
