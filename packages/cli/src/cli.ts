@@ -29,8 +29,17 @@ export function createCLI() {
   program.on('command:*', () => {
     console.error(chalk.red(`Invalid command: ${program.args.join(' ')}`))
     console.log(chalk.yellow('See --help for available commands'))
-    process.exit(1)
+    if (process.env.NODE_ENV !== 'test') {
+      process.exit(1)
+    }
   })
+
+  // In test environment, override Commander's exit behavior to prevent unhandled rejections
+  if (process.env.NODE_ENV === 'test') {
+    program.exitOverride((err) => {
+      throw err
+    })
+  }
 
   return program
 }
@@ -40,11 +49,23 @@ export async function runMainExecution() {
   const program = createCLI()
   return program.parseAsync(process.argv).catch((error) => {
     console.error(chalk.red('CLI Error:'), error.message)
-    process.exit(1)
+    if (process.env.NODE_ENV !== 'test') {
+      process.exit(1)
+    }
+    throw error
   })
+}
+
+// Main module error handler - extracted for testing
+export function handleMainModuleError(error: Error) {
+  if (process.env.NODE_ENV !== 'test') {
+    console.error(chalk.red('Unhandled CLI Error:'), error.message)
+    process.exit(1)
+  }
+  // In test environment, we don't re-throw to prevent unhandled rejections
 }
 
 // Run CLI if this is the main module
 if (import.meta.url === `file://${process.argv[1]}`) {
-  runMainExecution()
+  runMainExecution().catch(handleMainModuleError)
 }

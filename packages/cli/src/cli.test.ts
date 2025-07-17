@@ -92,23 +92,31 @@ describe('CLI', () => {
       throw new Error('process.exit called')
     })
     
-    // Test the error handler by directly creating a CLI and simulating the event  
-    const cli = createCLI()
-    cli.args = ['invalid-command']
+    // Temporarily set NODE_ENV to something other than 'test' to test process.exit behavior
+    const originalNodeEnv = process.env.NODE_ENV
+    process.env.NODE_ENV = 'production'
     
-    // Test that the event handler exists and would work correctly
-    const listeners = cli.listeners('command:*')
-    expect(listeners.length).toBeGreaterThan(0)
-    
-    // Directly call the event handler function to test the covered lines
-    const eventHandler = listeners[0]
-    expect(() => {
-      eventHandler()
-    }).toThrow('process.exit called')
-    
-    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid command: invalid-command'))
-    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('See --help for available commands'))
-    expect(processExitSpy).toHaveBeenCalledWith(1)
+    try {
+      // Test the error handler by directly creating a CLI and simulating the event  
+      const cli = createCLI()
+      cli.args = ['invalid-command']
+      
+      // Test that the event handler exists and would work correctly
+      const listeners = cli.listeners('command:*')
+      expect(listeners.length).toBeGreaterThan(0)
+      
+      // Directly call the event handler function to test the covered lines
+      const eventHandler = listeners[0]
+      expect(() => {
+        eventHandler()
+      }).toThrow('process.exit called')
+      
+      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid command: invalid-command'))
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('See --help for available commands'))
+      expect(processExitSpy).toHaveBeenCalledWith(1)
+    } finally {
+      process.env.NODE_ENV = originalNodeEnv
+    }
     
     consoleErrorSpy.mockRestore()
     consoleLogSpy.mockRestore()

@@ -29,7 +29,7 @@ describe('Main Module Direct Execution - Final Coverage Push', () => {
       child.on('close', (code) => {
         // The CLI should exit with code 0 for --help
         // This confirms the main module execution block was hit
-        expect(code).toBeOneOf([0, 1]) // Either success or help exit
+        expect([0, 1]).toContain(code) // Either success or help exit
         expect(stdout.includes('CLI for Akash Network JavaScript SDK') || stderr.includes('CLI for Akash Network JavaScript SDK')).toBe(true)
         resolve()
       })

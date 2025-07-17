@@ -464,6 +464,29 @@ describe('WalletManager', () => {
 
       simulateTransactionSpy.mockRestore()
     })
+
+    it('should handle errors in simulateTransaction method catch block', async () => {
+      const request = {
+        from: 'akash1sender',
+        msgs: [{ test: 'message' }]
+      }
+
+      // Override Math.ceil to throw an error in the simulateTransaction method
+      const originalMathCeil = Math.ceil
+      Math.ceil = vi.fn().mockImplementation(() => {
+        throw new Error('Simulated error in Math.ceil() call')
+      })
+
+      try {
+        await expect(walletManager.simulateTransaction(request))
+          .rejects.toThrow(NetworkError)
+        await expect(walletManager.simulateTransaction(request))
+          .rejects.toThrow('Failed to simulate transaction')
+      } finally {
+        // Restore original Math.ceil
+        Math.ceil = originalMathCeil
+      }
+    })
   })
 
   describe('isWalletConnected', () => {
@@ -579,6 +602,30 @@ describe('WalletManager', () => {
 
       delegateSpy.mockRestore()
     })
+
+    it('should handle errors in delegate method catch block', async () => {
+      const delegateParams = {
+        delegatorAddress: 'akash1delegator',
+        validatorAddress: 'akashvaloper1validator',
+        amount: { denom: 'uakt', amount: '1000000' }
+      }
+
+      // Override Date.now to throw an error in the delegate method
+      const originalDateNow = Date.now
+      Date.now = vi.fn().mockImplementation(() => {
+        throw new Error('Simulated error in Date.now() call')
+      })
+
+      try {
+        await expect(walletManager.delegate(delegateParams))
+          .rejects.toThrow(NetworkError)
+        await expect(walletManager.delegate(delegateParams))
+          .rejects.toThrow('Failed to delegate tokens')
+      } finally {
+        // Restore original Date.now
+        Date.now = originalDateNow
+      }
+    })
   })
 
   describe('undelegate', () => {
@@ -631,6 +678,30 @@ describe('WalletManager', () => {
         .rejects.toThrow('Failed to undelegate tokens')
 
       undelegateSpy.mockRestore()
+    })
+
+    it('should handle errors in undelegate method catch block', async () => {
+      const undelegateParams = {
+        delegatorAddress: 'akash1delegator',
+        validatorAddress: 'akashvaloper1validator',
+        amount: { denom: 'uakt', amount: '500000' }
+      }
+
+      // Override Date.now to throw an error in the undelegate method
+      const originalDateNow = Date.now
+      Date.now = vi.fn().mockImplementation(() => {
+        throw new Error('Simulated error in Date.now() call')
+      })
+
+      try {
+        await expect(walletManager.undelegate(undelegateParams))
+          .rejects.toThrow(NetworkError)
+        await expect(walletManager.undelegate(undelegateParams))
+          .rejects.toThrow('Failed to undelegate tokens')
+      } finally {
+        // Restore original Date.now
+        Date.now = originalDateNow
+      }
     })
   })
 
@@ -910,6 +981,67 @@ describe('WalletManager', () => {
 
       // Restore
       Object.getPrototypeOf(errorWalletManager).estimateGas = originalEstimateGas
+    })
+
+    it('should handle errors in send method catch block at lines 413-414', async () => {
+      const sendParams = {
+        fromAddress: 'akash1sender',
+        toAddress: 'akash1receiver',
+        amount: { denom: 'uakt', amount: '1000000' }
+      }
+
+      // Mock getBalance to return sufficient balance
+      vi.mocked(mockProvider['client']!.getBalance).mockResolvedValue({
+        denom: 'uakt',
+        amount: '10000000'
+      })
+
+      // Override Date.now to throw an error in the send method
+      const originalDateNow = Date.now
+      Date.now = vi.fn().mockImplementation(() => {
+        throw new Error('Simulated error in Date.now() call')
+      })
+
+      try {
+        await expect(walletManager.send(sendParams))
+          .rejects.toThrow(NetworkError)
+        await expect(walletManager.send(sendParams))
+          .rejects.toThrow('Failed to send tokens')
+      } finally {
+        // Restore original Date.now
+        Date.now = originalDateNow
+      }
+    })
+
+    it('should handle errors in estimateGas method catch block at lines 436-437', async () => {
+      const estimateParams = {
+        fromAddress: 'akash1sender',
+        toAddress: 'akash1receiver',
+        amount: { denom: 'uakt', amount: '1000000' }
+      }
+
+      // Override Math.ceil to throw an error when called in estimateGas
+      const originalMathCeil = Math.ceil
+      const mathError = new Error('Simulated error in estimateGas method try block')
+      
+      // Override Math.ceil to throw error
+      Math.ceil = vi.fn().mockImplementation((value) => {
+        if (typeof value === 'number' && value > 1000) {
+          // This should catch the Math.ceil calculation in estimateGas
+          throw mathError
+        }
+        return originalMathCeil(value)
+      })
+
+      try {
+        await expect(walletManager.estimateGas(estimateParams))
+          .rejects.toThrow(NetworkError)
+        await expect(walletManager.estimateGas(estimateParams))
+          .rejects.toThrow('Failed to estimate gas')
+      } finally {
+        // Restore original Math.ceil
+        Math.ceil = originalMathCeil
+      }
     })
   })
 
@@ -1304,5 +1436,6 @@ describe('CosmostationWallet', () => {
       
       expect(cosmostationWallet.isConnected()).toBe(true)
     })
+
   })
 })

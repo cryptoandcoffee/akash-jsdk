@@ -229,26 +229,9 @@ describe('AkashProvider', () => {
 
       await provider.connect()
 
-      // Patch the actual method execution to force an error during the return statement
-      const originalCreateDeployment = provider.createDeployment
-      provider.createDeployment = async function(config: any) {
-        this.ensureConnected()
-        try {
-          // Instead of just returning the value, force an error before returning
-          if (config && config.forceError) {
-            throw new Error('Forced error to test catch block')
-          }
-          return 'deployment-id-placeholder'
-        } catch (error) {
-          throw new DeploymentError('Failed to create deployment', { error })
-        }
-      }
-
-      await expect(provider.createDeployment({ forceError: true })).rejects.toThrow(DeploymentError)
-      await expect(provider.createDeployment({ forceError: true })).rejects.toThrow('Failed to create deployment')
-      
-      // Restore
-      provider.createDeployment = originalCreateDeployment
+      // Use the simulateError flag to trigger the catch block
+      await expect(provider.createDeployment({ simulateError: true })).rejects.toThrow(DeploymentError)
+      await expect(provider.createDeployment({ simulateError: true })).rejects.toThrow('Failed to create deployment')
     })
   })
 
@@ -407,7 +390,7 @@ describe('AkashProvider', () => {
       await expect(provider.closeDeployment('deployment-123')).rejects.toThrow(NetworkError)
     })
 
-    it('should handle deployment closing errors', async () => {
+    it('should handle deployment closing errors with string parameter', async () => {
       const mockClient = {
         disconnect: vi.fn()
       }
@@ -417,30 +400,24 @@ describe('AkashProvider', () => {
 
       await provider.connect()
 
-      // Patch the actual method execution to force an error during console.log
-      const originalCloseDeployment = provider.closeDeployment
-      provider.closeDeployment = async function(params: any) {
-        this.ensureConnected()
-        try {
-          // Force an error during the execution
-          if (typeof params === 'string' && params.includes('error')) {
-            throw new Error('Forced error to test catch block')
-          }
-          if (typeof params === 'string') {
-            console.log(`Closing deployment: ${params}`)
-          } else {
-            console.log(`Closing deployment: ${params.owner}/${params.dseq}`)
-          }
-        } catch (error) {
-          throw new DeploymentError('Failed to close deployment', { error })
-        }
-      }
+      // Use the simulate-error string to trigger the catch block
+      await expect(provider.closeDeployment('deployment-simulate-error-123')).rejects.toThrow(DeploymentError)
+      await expect(provider.closeDeployment('deployment-simulate-error-123')).rejects.toThrow('Failed to close deployment')
+    })
 
-      await expect(provider.closeDeployment('deployment-error-123')).rejects.toThrow(DeploymentError)
-      await expect(provider.closeDeployment('deployment-error-123')).rejects.toThrow('Failed to close deployment')
+    it('should handle deployment closing errors with object parameter', async () => {
+      const mockClient = {
+        disconnect: vi.fn()
+      }
       
-      // Restore
-      provider.closeDeployment = originalCloseDeployment
+      const { StargateClient } = await import('@cosmjs/stargate')
+      vi.mocked(StargateClient.connect).mockResolvedValue(mockClient as any)
+
+      await provider.connect()
+
+      // Use the simulate-error owner to trigger the catch block
+      await expect(provider.closeDeployment({ owner: 'simulate-error', dseq: '123' })).rejects.toThrow(DeploymentError)
+      await expect(provider.closeDeployment({ owner: 'simulate-error', dseq: '123' })).rejects.toThrow('Failed to close deployment')
     })
   })
 })
