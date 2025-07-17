@@ -1,12 +1,19 @@
 {
   "name": "@cryptoandcoffee/akash-jsdk-cli",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Command-line tools for Akash Network SDK",
   "type": "module",
-  "keywords": ["akash", "network", "cli", "blockchain", "cosmos", "deployment"],
+  "keywords": [
+    "akash",
+    "network",
+    "cli",
+    "blockchain",
+    "cosmos",
+    "deployment"
+  ],
   "homepage": "https://github.com/cryptoandcoffee/akash-jsdk#readme",
   "repository": {
-    "type": "git", 
+    "type": "git",
     "url": "https://github.com/cryptoandcoffee/akash-jsdk.git",
     "directory": "packages/cli"
   },
