@@ -1,9 +1,16 @@
 {
   "name": "@cryptoandcoffee/akash-jsdk-core",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Core SDK for Akash Network",
   "type": "module",
-  "keywords": ["akash", "network", "blockchain", "cosmos", "sdk", "typescript"],
+  "keywords": [
+    "akash",
+    "network",
+    "blockchain",
+    "cosmos",
+    "sdk",
+    "typescript"
+  ],
   "homepage": "https://github.com/cryptoandcoffee/akash-jsdk#readme",
   "repository": {
     "type": "git",
