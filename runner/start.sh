@@ -7,12 +7,23 @@ cd /home/runner
 RUNNER_NAME="${RUNNER_NAME_PREFIX}-$(date +%s)-$(hostname | cut -c1-8)"
 echo "🏷️  Runner name: ${RUNNER_NAME}"
 
-# Get registration token from GitHub API
-echo "🔑 Fetching registration token from GitHub..."
+# Determine if this is organization or repository level
+if [[ "${GITHUB_REPOSITORY}" == *"/"* ]]; then
+    # Repository level runner
+    GITHUB_URL="https://github.com/${GITHUB_REPOSITORY}"
+    API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runners/registration-token"
+    echo "🔑 Fetching repository-level registration token..."
+else
+    # Organization level runner  
+    GITHUB_URL="https://github.com/${GITHUB_REPOSITORY}"
+    API_URL="https://api.github.com/orgs/${GITHUB_REPOSITORY}/actions/runners/registration-token"
+    echo "🔑 Fetching organization-level registration token..."
+fi
+
 REGISTRATION_TOKEN=$(curl -s -X POST \
     -H "Accept: application/vnd.github.v3+json" \
     -H "Authorization: token ${GITHUB_ACCESS_TOKEN}" \
-    "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runners/registration-token" \
+    "${API_URL}" \
     | jq -r .token)
 
 if [[ "${REGISTRATION_TOKEN}" == "null" || -z "${REGISTRATION_TOKEN}" ]]; then
@@ -25,7 +36,7 @@ echo "✅ Registration token obtained"
 # Configure runner
 echo "⚙️  Configuring GitHub Actions runner..."
 CONFIGURE_ARGS=(
-    --url "https://github.com/${GITHUB_REPOSITORY}"
+    --url "${GITHUB_URL}"
     --token "${REGISTRATION_TOKEN}"
     --name "${RUNNER_NAME}"
     --labels "${RUNNER_LABELS}"

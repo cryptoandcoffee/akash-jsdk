@@ -7,7 +7,7 @@ Deploy a cost-effective, decentralized GitHub Actions runner on the Akash Networ
 - **Cost-effective**: ~$0.50-2.00/month vs $0.008/minute for GitHub hosted runners
 - **Decentralized**: Runs on Akash Network's distributed cloud infrastructure  
 - **Ephemeral**: Self-destructing runners for enhanced security
-- **Docker-in-Docker**: Full container build support
+- **Docker support**: Uses host Docker daemon (standard approach)
 - **Node.js optimized**: Pre-configured with Node.js 20.x and pnpm
 - **Auto-cleanup**: Graceful shutdown and deregistration
 
@@ -40,7 +40,7 @@ docker push cryptoandcoffee/github-runner:latest
 4. Upload the `deploy.yaml` file
 5. Set environment variables:
    - `GITHUB_ACCESS_TOKEN`: Your GitHub PAT
-   - `GITHUB_REPOSITORY`: `cryptoandcoffee/akash-jsdk`
+   - `GITHUB_REPOSITORY`: `cryptoandcoffee` (for org-level) or `cryptoandcoffee/akash-jsdk` (for repo-level)
 6. Review pricing and deploy
 
 #### Option B: Using Akash CLI
@@ -65,12 +65,28 @@ akash provider lease-logs --from mykey
 
 ## 🔧 Configuration
 
+### Runner Scope Options
+
+You can deploy runners at two levels:
+
+**🏢 Organization Level (Recommended)**
+- `GITHUB_REPOSITORY=cryptoandcoffee`
+- Runners available to all repositories in the organization
+- Requires GitHub PAT with `admin:org` scope
+- More cost-effective for multiple repositories
+
+**📁 Repository Level**
+- `GITHUB_REPOSITORY=cryptoandcoffee/akash-jsdk`
+- Runners dedicated to specific repository only
+- Requires GitHub PAT with `repo` scope
+- More isolated but higher cost per repository
+
 ### Required Environment Variables
 
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `GITHUB_ACCESS_TOKEN` | GitHub PAT with repo/admin:org scopes | `ghp_xxxxxxxxxxxx` |
-| `GITHUB_REPOSITORY` | Repository in owner/repo format | `cryptoandcoffee/akash-jsdk` |
+| `GITHUB_REPOSITORY` | Organization name or owner/repo format | `cryptoandcoffee` or `cryptoandcoffee/akash-jsdk` |
 
 ### Optional Environment Variables
 
@@ -85,7 +101,7 @@ akash provider lease-logs --from mykey
 
 The deployment allocates:
 - **CPU**: 2 vCores (suitable for parallel builds)
-- **Memory**: 4GB RAM (handles Node.js builds + Docker)
+- **Memory**: 4GB RAM (handles Node.js builds and workflows)
 - **Storage**: 20GB ephemeral (code, deps, images)
 
 ## 🔐 Security Best Practices

@@ -17,17 +17,9 @@ if [[ -z "${GITHUB_REPOSITORY}" ]]; then
     exit 1
 fi
 
-# Start Docker daemon in background if not running
-if ! pgrep dockerd > /dev/null; then
-    echo "🐳 Starting Docker daemon..."
-    sudo dockerd &
-    # Wait for Docker to be ready
-    while ! docker info > /dev/null 2>&1; do
-        echo "⏳ Waiting for Docker daemon to start..."
-        sleep 2
-    done
-    echo "✅ Docker daemon is ready"
-fi
+# Note: Docker daemon is not started inside the container
+# If workflows need Docker, they will use the host's Docker daemon
+# This is the standard approach for GitHub Actions runners
 
 # Set up signal handlers for graceful shutdown
 cleanup_and_exit() {

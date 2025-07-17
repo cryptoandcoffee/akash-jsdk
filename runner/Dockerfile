@@ -7,13 +7,8 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Set runner version and architecture
-ARG RUNNER_VERSION="2.321.0"
+ARG RUNNER_VERSION="2.326.0"
 ARG RUNNER_ARCH="x64"
-
-# Create runner user for security
-RUN useradd -m -s /bin/bash runner && \
-    usermod -aG sudo runner && \
-    echo 'runner ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 # Install essential packages for GitHub Actions and Node.js builds
 RUN apt-get update && apt-get install -y \
@@ -21,6 +16,7 @@ RUN apt-get update && apt-get install -y \
     wget \
     git \
     jq \
+    sudo \
     build-essential \
     libssl-dev \
     libffi-dev \
@@ -35,12 +31,14 @@ RUN apt-get update && apt-get install -y \
     tar \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Docker for Docker-in-Docker support
-RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg && \
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null && \
-    apt-get update && \
-    apt-get install -y docker-ce docker-ce-cli containerd.io && \
-    usermod -aG docker runner
+# Create runner user for security
+RUN useradd -m -s /bin/bash runner && \
+    usermod -aG sudo runner && \
+    echo 'runner ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+# Note: Docker is not installed inside the runner container
+# GitHub Actions workflows that need Docker will use the host's Docker daemon
+# This is the standard and secure approach for self-hosted runners
 
 # Install Node.js 20.x LTS
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
@@ -89,8 +87,7 @@ ENV RUNNER_GROUP="default"
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD pgrep -f "Runner.Listener" > /dev/null || exit 1
 
-# Expose no ports (runner connects outbound to GitHub)
-EXPOSE
+# No ports exposed (runner connects outbound to GitHub)
 
 # Set entrypoint
 ENTRYPOINT ["/home/runner/entrypoint.sh"]

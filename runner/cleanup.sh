@@ -11,12 +11,21 @@ if [[ ! -f ".runner" ]]; then
     exit 0
 fi
 
+# Determine API URL for removal token
+if [[ "${GITHUB_REPOSITORY}" == *"/"* ]]; then
+    # Repository level
+    API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runners/remove-token"
+else
+    # Organization level
+    API_URL="https://api.github.com/orgs/${GITHUB_REPOSITORY}/actions/runners/remove-token"
+fi
+
 # Get removal token from GitHub API
 echo "🔑 Fetching removal token from GitHub..."
 REMOVAL_TOKEN=$(curl -s -X POST \
     -H "Accept: application/vnd.github.v3+json" \
     -H "Authorization: token ${GITHUB_ACCESS_TOKEN}" \
-    "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runners/remove-token" \
+    "${API_URL}" \
     | jq -r .token 2>/dev/null || echo "")
 
 if [[ -n "${REMOVAL_TOKEN}" && "${REMOVAL_TOKEN}" != "null" ]]; then
@@ -40,10 +49,6 @@ if [[ -d "_work" ]]; then
     rm -rf _work/* 2>/dev/null || true
 fi
 
-# Stop Docker daemon if we started it
-if pgrep dockerd > /dev/null; then
-    echo "🐳 Stopping Docker daemon..."
-    sudo pkill dockerd 2>/dev/null || true
-fi
+# Note: No Docker daemon cleanup needed since we don't run Docker inside the container
 
 echo "✅ Cleanup completed"
