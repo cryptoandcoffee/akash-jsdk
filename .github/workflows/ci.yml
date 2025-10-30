@@ -9,7 +9,7 @@ on:
 jobs:
   test:
     name: Test
-    runs-on: self-hosted
+    runs-on: [self-hosted, akash]
     steps:
       - uses: actions/checkout@v4
 

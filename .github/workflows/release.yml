@@ -11,7 +11,7 @@ concurrency:
 jobs:
   release:
     name: Release
-    runs-on: self-hosted
+    runs-on: [self-hosted, akash]
     permissions:
       contents: write
       issues: write
