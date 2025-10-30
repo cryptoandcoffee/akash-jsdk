@@ -21,9 +21,6 @@ jobs:
         with:
           version: latest
 
-      - name: 📦 Install GitHub CLI
-        uses: dev-hanz-ops/install-gh-cli-action@v0.2.1
-
       - name: Install dependencies
         run: pnpm install
 
@@ -31,4 +28,4 @@ jobs:
         run: pnpm run build
 
       - name: Run tests
-        run: pnpm test || true
+        run: pnpm test
