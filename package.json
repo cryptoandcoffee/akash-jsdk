@@ -4,7 +4,7 @@
   "description": "Modern JavaScript SDK for Akash Network",
   "type": "module",
   "private": true,
-  "packageManager": "pnpm@8.15.0",
+  "packageManager": "pnpm@10.20.0",
   "scripts": {
     "build": "pnpm run --recursive build",
     "dev": "pnpm run --recursive dev",
@@ -18,11 +18,11 @@
     "version-packages": "changeset version"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.27.1",
-    "@types/react": "^18.2.48",
-    "@types/react-dom": "^18.2.18",
-    "typescript": "^5.3.3",
-    "vite": "^5.4.19"
+    "@changesets/cli": "^2.29.7",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.12"
   },
   "engines": {
     "node": ">=18.0.0",
@@ -36,5 +36,9 @@
   "author": {
     "name": "CryptoAndCoffee",
     "url": "https://github.com/cryptoandcoffee"
+  },
+  "dependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
+    "jsonwebtoken": "^9.0.2"
   }
 }

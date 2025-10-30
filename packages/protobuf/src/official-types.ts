@@ -165,6 +165,19 @@ export interface Lease {
   price: DecCoin
   createdAt: number
   closedOn: number
+  /** Lease close reason (AEP-39) */
+  closeReason?: LeaseCloseReason
+}
+
+/**
+ * Lease close reasons (AEP-39: Lease Termination Tracking)
+ */
+export enum LeaseCloseReason {
+  UNSPECIFIED = 0,
+  MANIFEST_TIMEOUT = 1,
+  UNSTABLE = 2,
+  INSUFFICIENT_FUNDS = 3,
+  USER_REQUESTED = 4
 }
 
 export interface LeaseID {
@@ -412,15 +425,38 @@ export interface MsgCloseDeployment {
   id: DeploymentID
 }
 
+/**
+ * Deposit sources (AEP-75: Multi-Depositor Escrow)
+ */
+export enum DepositSource {
+  BALANCE = 0,
+  GRANT = 1,
+  DELEGATED = 2
+}
+
+/**
+ * Deposit configuration (AEP-75)
+ */
+export interface Deposit {
+  amount: Coin
+  sources: DepositSource[]
+  depositors?: string[]
+}
+
 export interface MsgCreateBid {
   order: OrderID
   provider: string
   price: DecCoin
-  deposit: Coin
+  /** Legacy single deposit */
+  deposit?: Coin
+  /** New multi-source deposit (AEP-75) */
+  depositConfig?: Deposit
 }
 
 export interface MsgCloseBid {
   bidId: BidID
+  /** Close reason (AEP-39) */
+  reason?: LeaseCloseReason
 }
 
 export interface MsgCreateLease {
@@ -429,6 +465,8 @@ export interface MsgCreateLease {
 
 export interface MsgCloseLease {
   leaseId: LeaseID
+  /** Close reason (AEP-39) */
+  reason?: LeaseCloseReason
 }
 
 export interface MsgWithdrawLease {
