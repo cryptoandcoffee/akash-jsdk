@@ -155,15 +155,21 @@ function Dashboard() {
 
 Replace traditional certificate-based authentication with JWT tokens:
 
-#### 🌐 Using Keplr Wallet (Recommended for Web Apps)
+#### 🌐 Using Cosmos Wallets for JWT Authentication
+
+The SDK supports multiple Cosmos wallets through a universal adapter. All wallets use ADR-36 signing, so your private key never leaves the wallet extension.
+
+**Keplr Wallet** (Recommended for Web Apps)
 
 ```typescript
-import { AkashSDK } from '@cryptoandcoffee/akash-jsdk-core'
+import { AkashSDK, WalletAdapter } from '@cryptoandcoffee/akash-jsdk-core'
 
 const sdk = new AkashSDK({
   rpcEndpoint: 'https://rpc.akashedge.com:443',
   chainId: 'akashnet-2'
 })
+
+const walletAdapter = new WalletAdapter()
 
 // Connect to Keplr
 await window.keplr.enable('akashnet-2')
@@ -171,7 +177,7 @@ const offlineSigner = window.keplr.getOfflineSigner('akashnet-2')
 const accounts = await offlineSigner.getAccounts()
 
 // Generate JWT using Keplr's ADR-36 signing (no private key needed!)
-const token = await sdk.wallet.generateJWTTokenWithKeplr(
+const token = await walletAdapter.generateJWTWithKeplr(
   'akashnet-2',
   accounts[0].address,
   {
@@ -181,6 +187,83 @@ const token = await sdk.wallet.generateJWTTokenWithKeplr(
 )
 
 // Set authentication and use!
+sdk.setAuthConfig({ method: 'jwt', jwtToken: token })
+```
+
+**Leap Wallet**
+
+```typescript
+import { WalletAdapter } from '@cryptoandcoffee/akash-jsdk-core'
+
+const walletAdapter = new WalletAdapter()
+
+// Connect to Leap
+await window.leap.enable('akashnet-2')
+const accounts = await window.leap.getAccounts('akashnet-2')
+
+// Generate JWT using Leap
+const token = await walletAdapter.generateJWTWithLeap(
+  'akashnet-2',
+  accounts[0].address,
+  { expiresIn: 900, accessType: 'full' }
+)
+```
+
+**Cosmostation Wallet**
+
+```typescript
+import { WalletAdapter } from '@cryptoandcoffee/akash-jsdk-core'
+
+const walletAdapter = new WalletAdapter()
+
+// Connect to Cosmostation
+const account = await window.cosmostation.cosmos.request({
+  method: 'cos_requestAccount',
+  params: { chainName: 'akashnet-2' }
+})
+
+// Generate JWT using Cosmostation
+const token = await walletAdapter.generateJWTWithCosmostation(
+  'akashnet-2',
+  account.address,
+  { expiresIn: 900, accessType: 'full' }
+)
+```
+
+**MetaMask with Leap Cosmos Snap**
+
+```typescript
+import { WalletAdapter } from '@cryptoandcoffee/akash-jsdk-core'
+
+const walletAdapter = new WalletAdapter()
+
+// Generate JWT using MetaMask Snap (auto-installs snap if needed)
+const token = await walletAdapter.generateJWTWithMetaMaskSnap(
+  'akashnet-2',
+  'akash1youraddress...',
+  { expiresIn: 900, accessType: 'full' }
+)
+```
+
+**Auto-Detect Available Wallet**
+
+```typescript
+import { WalletAdapter, SupportedWallet } from '@cryptoandcoffee/akash-jsdk-core'
+
+const walletAdapter = new WalletAdapter()
+
+// Detect available wallets
+const available = walletAdapter.detectAvailableWallets()
+console.log('Available wallets:', available) // [SupportedWallet.Keplr, SupportedWallet.Leap, ...]
+
+// Auto-select and use first available wallet
+const { token, wallet } = await walletAdapter.generateJWTAuto(
+  'akashnet-2',
+  'akash1youraddress...',
+  { expiresIn: 900, accessType: 'full' }
+)
+
+console.log(`Generated JWT using ${wallet}`) // "Generated JWT using keplr"
 sdk.setAuthConfig({ method: 'jwt', jwtToken: token })
 ```
 
