@@ -3,6 +3,8 @@ export * from './providers'
 export * from './errors'
 export * from './utils'
 export * from './modules'
+export * from './cache'
+export * from './events'
 
 import { AkashProvider } from './providers'
 import { AkashConfig } from './types'
@@ -27,7 +29,12 @@ import { ProviderManager } from './modules/provider'
 import { SDLManager } from './modules/sdl'
 import { WalletManager } from './modules/wallet'
 import { JWTAuthManager } from './modules/jwt-auth'
+import { BatchManager } from './modules/batch'
+import { IBCManager } from './modules/ibc'
+import { StakingManager } from './modules/staking'
 import { AuthConfig, AuthMethod } from './types/jwt'
+import { CacheManager } from './cache'
+import { EventStreamManager } from './events/stream'
 
 export class AkashSDK {
   private provider: AkashProvider
@@ -42,21 +49,35 @@ export class AkashSDK {
   public readonly sdl: SDLManager
   public readonly wallet: WalletManager
   public readonly jwtAuth: JWTAuthManager
+  public readonly batch: BatchManager
+  public readonly ibc: IBCManager
+  public readonly cache: CacheManager
+  public readonly events: EventStreamManager
+  public readonly staking: StakingManager
 
   constructor(config: AkashConfig) {
     validateConfig(config)
     this.provider = new AkashProvider(config)
+
+    // Initialize cache manager
+    this.cache = new CacheManager()
 
     // Initialize module managers
     this.certificates = new CertificateManager(this.provider)
     this.escrow = new EscrowManager(this.provider)
     this.audit = new AuditManager(this.provider)
     this.governance = new GovernanceManager(this.provider)
-    this.market = new MarketManager(this.provider)
-    this.providerManager = new ProviderManager(this.provider)
+    this.market = new MarketManager(this.provider, this.cache)
+    this.providerManager = new ProviderManager(this.provider, this.cache)
     this.sdl = new SDLManager()
     this.wallet = new WalletManager(this.provider)
     this.jwtAuth = new JWTAuthManager()
+    this.batch = new BatchManager(this.provider)
+    this.ibc = new IBCManager(this.provider)
+    this.staking = new StakingManager(this.provider)
+    this.events = new EventStreamManager({
+      rpcEndpoint: config.rpcEndpoint
+    })
   }
 
   async connect(): Promise<void> {

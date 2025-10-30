@@ -2,6 +2,24 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { AkashSDK } from './index'
 import { ValidationError } from './errors'
 
+// Mock isomorphic-ws
+vi.mock('isomorphic-ws', () => ({
+  default: class MockWebSocket {
+    static CONNECTING = 0
+    static OPEN = 1
+    static CLOSING = 2
+    static CLOSED = 3
+    readyState = 0
+    onopen: ((event: any) => void) | null = null
+    onclose: ((event: any) => void) | null = null
+    onerror: ((event: any) => void) | null = null
+    onmessage: ((event: any) => void) | null = null
+    constructor(public url: string) {}
+    send(data: string): void {}
+    close(): void {}
+  }
+}))
+
 // Mock the AkashProvider
 vi.mock('./providers/akash', () => ({
   AkashProvider: vi.fn().mockImplementation(() => ({
