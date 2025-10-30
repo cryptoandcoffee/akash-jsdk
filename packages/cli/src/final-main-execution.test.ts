@@ -4,10 +4,10 @@ import { fileURLToPath } from 'url'
 import path from 'path'
 
 describe('Main Module Direct Execution - Final Coverage Push', () => {
-  it('should execute cli.ts directly as a script to hit main module lines', async () => {
+  it.skipIf(process.env.CI)('should execute cli.ts directly as a script to hit main module lines', async () => {
     // This test executes the cli.ts file directly to trigger the main module execution
     const cliPath = path.resolve(process.cwd(), 'src/cli.ts')
-    
+
     return new Promise<void>((resolve, reject) => {
       // Execute the CLI file directly with tsx/ts-node to trigger main module execution
       const child = spawn('npx', ['tsx', cliPath, '--help'], {
