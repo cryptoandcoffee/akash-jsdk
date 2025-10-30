@@ -1,5 +1,19 @@
 # @cryptoandcoffee/akash-jsdk-core
 
+## 3.0.3
+
+### Patch Changes
+
+- 6e17bf9: Infrastructure and release workflow improvements
+
+  - Fixed GitHub releases to create unified releases instead of per-package releases
+  - Improved release organization with single release per version
+  - Enhanced release workflow automation for better maintainability
+  - Cleaned up release page for better user experience
+
+- Updated dependencies [6e17bf9]
+  - @cryptoandcoffee/akash-jsdk-protobuf@3.0.3
+
 ## 3.0.2
 
 ### Patch Changes
