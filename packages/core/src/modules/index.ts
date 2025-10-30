@@ -7,6 +7,7 @@ export { MarketManager } from './market'
 export { ProviderManager } from './provider'
 export { SDLManager } from './sdl'
 export { WalletManager, KeplrWallet, CosmostationWallet } from './wallet'
+export { JWTAuthManager } from './jwt-auth'
 
 export type {
   CreateDeploymentRequest,

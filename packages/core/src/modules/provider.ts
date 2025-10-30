@@ -48,7 +48,24 @@ export interface ManifestDeployment {
 }
 
 export class ProviderManager {
+  private authHeader: string | null = null
+
   constructor(private provider: BaseProvider) {}
+
+  /**
+   * Set authorization header for provider API requests
+   * Supports both JWT (Mainnet 14+) and certificate-based auth
+   */
+  setAuthorizationHeader(header: string | null): void {
+    this.authHeader = header
+  }
+
+  /**
+   * Get current authorization header
+   */
+  getAuthorizationHeader(): string | null {
+    return this.authHeader
+  }
 
   // Provider registration and management
   async createProvider(request: CreateProviderRequest): Promise<string> {
@@ -306,18 +323,22 @@ export class ProviderManager {
   // Manifest and deployment management
   async deployManifest(deploymentId: string, manifest: any): Promise<ManifestDeployment> {
     this.provider['ensureConnected']()
-    
+
     if (!deploymentId || !manifest) {
       throw new ValidationError('Deployment ID and manifest are required')
     }
 
     try {
-      // In a real implementation, this would deploy to Kubernetes cluster
+      // In a real implementation, this would:
+      // 1. Send PUT request to provider's /deployment/{owner}/{dseq}/manifest endpoint
+      // 2. Include this.authHeader in Authorization header (JWT or mTLS)
+      // 3. Deploy to provider's Kubernetes cluster
+
       // Coverage test trigger
       if (deploymentId === 'test-coverage-error-trigger') {
         throw new Error('Coverage test error')
       }
-      
+
       const deployment: ManifestDeployment = {
         deploymentId,
         manifest,
