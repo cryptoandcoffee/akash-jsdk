@@ -1,6 +1,6 @@
 {
   "name": "@cryptoandcoffee/akash-jsdk-core",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "Core SDK for Akash Network",
   "type": "module",
   "main": "./dist/index.cjs",
