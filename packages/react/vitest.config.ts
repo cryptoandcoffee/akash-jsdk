@@ -6,6 +6,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
+    testTimeout: 10000, // Increase timeout for async imports and operations
   },
   resolve: {
     alias: {
