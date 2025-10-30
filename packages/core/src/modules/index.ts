@@ -8,6 +8,7 @@ export { ProviderManager } from './provider'
 export { SDLManager } from './sdl'
 export { WalletManager, KeplrWallet, CosmostationWallet } from './wallet'
 export { JWTAuthManager } from './jwt-auth'
+export { WalletAdapter, SupportedWallet } from './wallet-adapters'
 
 export type {
   CreateDeploymentRequest,
@@ -65,3 +66,7 @@ export type {
   Balance,
   TransactionHistory
 } from './wallet'
+
+export type {
+  WalletJWTOptions
+} from './wallet-adapters'
