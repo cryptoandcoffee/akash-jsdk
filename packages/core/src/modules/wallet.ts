@@ -174,6 +174,75 @@ export class WalletManager {
   }
 
   /**
+   * Generate JWT using Keplr's signArbitrary (ADR-36) method
+   * This is the recommended way for web applications using Keplr
+   */
+  async generateJWTTokenWithKeplr(
+    chainId: string,
+    address: string,
+    options?: {
+      expiresIn?: number;
+      accessType?: import('../types/jwt').JWTAccessType;
+      leasePermissions?: any[];
+    }
+  ): Promise<string> {
+    // Check if Keplr is available
+    if (typeof window === 'undefined' || !(window as any).keplr) {
+      throw new ValidationError('Keplr wallet not found. Please install Keplr extension.')
+    }
+
+    const keplr = (window as any).keplr
+
+    try {
+      // Build JWT claims
+      const now = Math.floor(Date.now() / 1000)
+      const expiresIn = options?.expiresIn || 900
+
+      const header = {
+        alg: 'ES256K',
+        typ: 'JWT'
+      }
+
+      const claims = {
+        iss: address,
+        sub: address,
+        iat: now,
+        nbf: now,
+        exp: now + expiresIn,
+        version: 'v1',
+        leases: {
+          access: options?.accessType || 'full',
+          permissions: options?.leasePermissions
+        }
+      }
+
+      // Encode header and payload
+      const encodedHeader = this.jwtAuthManager['base64urlEncode'](JSON.stringify(header))
+      const encodedPayload = this.jwtAuthManager['base64urlEncode'](JSON.stringify(claims))
+      const message = `${encodedHeader}.${encodedPayload}`
+
+      // Sign with Keplr using ADR-36
+      const signResult = await keplr.signArbitrary(
+        chainId,
+        address,
+        message
+      )
+
+      // Encode signature
+      const encodedSignature = this.jwtAuthManager['base64urlEncode'](
+        Buffer.from(signResult.signature, 'base64')
+      )
+
+      // Combine into JWT
+      const token = `${message}.${encodedSignature}`
+
+      return token
+    } catch (error) {
+      throw new NetworkError('Failed to generate JWT with Keplr', { error })
+    }
+  }
+
+  /**
    * Get transaction history for an address
    */
   async getTransactionHistory(address: string, limit: number = 10): Promise<TransactionHistory[]> {
