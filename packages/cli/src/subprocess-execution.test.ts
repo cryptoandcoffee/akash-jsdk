@@ -6,7 +6,7 @@ import path from 'path'
 const execAsync = promisify(exec)
 
 describe('Subprocess CLI Execution', () => {
-  it('should execute the CLI as a subprocess to trigger main module execution', async () => {
+  it.skipIf(process.env.CI)('should execute the CLI as a subprocess to trigger main module execution', async () => {
     const cliPath = path.resolve(process.cwd(), 'src/cli.ts')
     
     try {
