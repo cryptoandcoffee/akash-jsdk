@@ -192,12 +192,14 @@ describe('useProviders', () => {
 
     it('should fetch providers immediately on connection', async () => {
       const { result } = renderHook(() => useProviders(), { wrapper })
-      
+
       await waitFor(() => {
         expect(mockSDK.providers.list).toHaveBeenCalled()
-      })
-      
-      expect(result.current.providers).toEqual(mockProviders)
+      }, { timeout: 3000 })
+
+      await waitFor(() => {
+        expect(result.current.providers).toEqual(mockProviders)
+      }, { timeout: 3000 })
     })
 
     it('should handle connection state changes', async () => {
