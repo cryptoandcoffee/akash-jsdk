@@ -1,6 +1,6 @@
 {
   "name": "@cryptoandcoffee/akash-jsdk-react",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "React hooks for Akash Network SDK",
   "type": "module",
   "main": "./dist/index.cjs",
