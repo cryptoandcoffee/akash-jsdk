@@ -98,11 +98,10 @@ jobs:
             sed -n "/## ${VERSION}/,/## /p" "packages/${FIRST_PKG}/CHANGELOG.md" | head -n -1 >> release-notes.md
           fi
 
-          # Create unified release
+          # Create unified release (will be marked as latest automatically if it's the newest)
           gh release create "v${VERSION}" \
             --title "Release v${VERSION}" \
-            --notes-file release-notes.md \
-            --latest
+            --notes-file release-notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
