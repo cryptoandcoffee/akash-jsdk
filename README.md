@@ -9,7 +9,7 @@ A modern, fully-featured JavaScript SDK for Akash Network built from scratch wit
 - **React Integration**: Custom hooks and provider for seamless React development  
 - **CLI Tools**: Command-line interface for deployment and management operations
 - **Custom Protobuf**: Optimized protobuf implementation using @bufbuild/protobuf
-- **100% Test Coverage**: Enterprise-grade testing with 1,145 passing tests across all packages
+- **Comprehensive Testing**: Enterprise-grade testing with 789 meaningful tests across all packages
 - **Performance First**: ES2022 target, ESM modules, incremental builds
 
 ## What's New in v3.0 - Mainnet 14 Support
