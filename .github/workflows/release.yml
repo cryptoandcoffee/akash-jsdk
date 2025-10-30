@@ -11,7 +11,7 @@ concurrency:
 jobs:
   release:
     name: Release
-    runs-on: [self-hosted, akash, linux, x64, cryptoandcoffee]
+    runs-on: [self-hosted, akash, Linux, X64, cryptoandcoffee]
     permissions:
       contents: write
       issues: write
