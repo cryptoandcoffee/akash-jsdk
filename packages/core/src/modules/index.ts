@@ -9,6 +9,9 @@ export { SDLManager } from './sdl'
 export { WalletManager, KeplrWallet, CosmostationWallet } from './wallet'
 export { JWTAuthManager } from './jwt-auth'
 export { WalletAdapter, SupportedWallet } from './wallet-adapters'
+export { BatchManager, BatchBuilder } from './batch'
+export { IBCManager } from './ibc'
+export { StakingManager } from './staking'
 
 export type {
   CreateDeploymentRequest,
@@ -70,3 +73,26 @@ export type {
 export type {
   WalletJWTOptions
 } from './wallet-adapters'
+
+export type {
+  BatchResult,
+  BatchOperation
+} from './batch'
+
+export type {
+  IBCTransferParams,
+  IBCTransferResult,
+  Channel,
+  TransferStatus,
+  Height
+} from './ibc'
+
+export type {
+  StakingResult,
+  Validator,
+  Delegation,
+  DelegationResponse,
+  Rewards,
+  UnbondingDelegation,
+  Redelegation
+} from './staking'

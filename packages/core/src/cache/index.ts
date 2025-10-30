@@ -1,0 +1,4 @@
+export { CacheManager } from './manager'
+export type { CacheEntry, CacheStats, CacheOptions } from './manager'
+export { MemoryStorage, LocalStorageBackend } from './storage'
+export type { StorageBackend } from './storage'
