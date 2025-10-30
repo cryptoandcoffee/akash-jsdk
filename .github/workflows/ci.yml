@@ -9,8 +9,7 @@ on:
 jobs:
   test:
     name: Test
-    runs-on: [self-hosted, akash, linux, x64, cryptoandcoffee]
-
+    runs-on: [self-hosted, akash, Linux, X64, cryptoandcoffee]
     steps:
       - uses: actions/checkout@v4
 
