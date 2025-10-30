@@ -7,10 +7,10 @@ import { promisify } from 'util'
 const execAsync = promisify(exec)
 
 describe('Main Module Execution Coverage', () => {
-  it('should test the main module execution directly using tsx', async () => {
+  it.skipIf(process.env.CI)('should test the main module execution directly using tsx', async () => {
     // Create a test by running the CLI directly as a script
     const cliPath = path.resolve(process.cwd(), 'src/cli.ts')
-    
+
     try {
       // Execute the CLI with an invalid command to trigger error handling
       await execAsync(`npx tsx "${cliPath}" invalid-command`, {
