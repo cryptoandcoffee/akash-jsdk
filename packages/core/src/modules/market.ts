@@ -16,6 +16,7 @@ import {
   Coin
 } from '@cryptoandcoffee/akash-jsdk-protobuf'
 import { NetworkError, ValidationError } from '../errors'
+import { CacheManager } from '../cache'
 
 export interface CreateBidRequest {
   orderId: OrderID;
@@ -48,7 +49,12 @@ export interface LeaseFilters {
 }
 
 export class MarketManager {
-  constructor(private provider: BaseProvider) {}
+  private cache?: CacheManager
+  private readonly CACHE_TTL = 2 * 60 * 1000 // 2 minutes
+
+  constructor(private provider: BaseProvider, cache?: CacheManager) {
+    this.cache = cache
+  }
 
   // Order operations
   async getOrder(orderId: OrderID): Promise<Order | null> {
@@ -90,6 +96,17 @@ export class MarketManager {
   async listOrders(filters: OrderFilters = {}): Promise<Order[]> {
     this.provider['ensureConnected']()
 
+    // Generate cache key based on filters
+    const cacheKey = `market:orders:${JSON.stringify(filters)}`
+
+    // Try to get from cache if available
+    if (this.cache) {
+      const cached = await this.cache.get<Order[]>(cacheKey)
+      if (cached) {
+        return cached
+      }
+    }
+
     try {
       const searchTags = [
         { key: 'message.module', value: 'market' }
@@ -105,7 +122,7 @@ export class MarketManager {
 
       const response = await this.provider['client']!.searchTx(searchTags)
 
-      return response.map((tx, index) => ({
+      const orders = response.map((tx, index) => ({
         orderId: {
           owner: filters.owner || 'akash1mock',
           dseq: filters.dseq || tx.height.toString(),
@@ -135,6 +152,13 @@ export class MarketManager {
         },
         createdAt: tx.height
       }))
+
+      // Cache the result
+      if (this.cache) {
+        await this.cache.set(cacheKey, orders, this.CACHE_TTL)
+      }
+
+      return orders
     } catch (error) {
       throw new NetworkError('Failed to list orders', { error })
     }
@@ -228,6 +252,17 @@ export class MarketManager {
   async listBids(filters: BidFilters = {}): Promise<Bid[]> {
     this.provider['ensureConnected']()
 
+    // Generate cache key based on filters
+    const cacheKey = `market:bids:${JSON.stringify(filters)}`
+
+    // Try to get from cache if available
+    if (this.cache) {
+      const cached = await this.cache.get<Bid[]>(cacheKey)
+      if (cached) {
+        return cached
+      }
+    }
+
     try {
       const searchTags = [
         { key: 'message.module', value: 'market' }
@@ -247,7 +282,7 @@ export class MarketManager {
 
       const response = await this.provider['client']!.searchTx(searchTags)
 
-      return response.map((tx, index) => ({
+      const bids = response.map((tx, index) => ({
         bidId: {
           owner: filters.owner || 'akash1owner',
           dseq: filters.dseq || `${tx.height}`,
@@ -256,12 +291,19 @@ export class MarketManager {
           provider: filters.provider || `akash1provider${index}`
         },
         state: filters.state || BidState.OPEN,
-        price: { 
-          denom: 'uakt', 
-          amount: `${100 + index * 10}` 
+        price: {
+          denom: 'uakt',
+          amount: `${100 + index * 10}`
         },
         createdAt: Date.now()
       }))
+
+      // Cache the result
+      if (this.cache) {
+        await this.cache.set(cacheKey, bids, this.CACHE_TTL)
+      }
+
+      return bids
     } catch (error) {
       throw new NetworkError('Failed to list bids', { error })
     }

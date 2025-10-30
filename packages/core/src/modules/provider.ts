@@ -1,12 +1,13 @@
 import { BaseProvider } from '../providers/base'
-import { 
-  Provider, 
-  Attribute, 
+import {
+  Provider,
+  Attribute,
   ProviderInfo,
   ResourceUnits,
-  DecCoin 
+  DecCoin
 } from '@cryptoandcoffee/akash-jsdk-protobuf'
 import { NetworkError, ValidationError } from '../errors'
+import { CacheManager } from '../cache'
 
 export interface CreateProviderRequest {
   owner: string;
@@ -49,8 +50,12 @@ export interface ManifestDeployment {
 
 export class ProviderManager {
   private authHeader: string | null = null
+  private cache?: CacheManager
+  private readonly CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
-  constructor(private provider: BaseProvider) {}
+  constructor(private provider: BaseProvider, cache?: CacheManager) {
+    this.cache = cache
+  }
 
   /**
    * Set authorization header for provider API requests
@@ -180,6 +185,17 @@ export class ProviderManager {
   async listProviders(filters: ProviderFilters = {}): Promise<Provider[]> {
     this.provider['ensureConnected']()
 
+    // Generate cache key based on filters
+    const cacheKey = `providers:list:${JSON.stringify(filters)}`
+
+    // Try to get from cache if available
+    if (this.cache) {
+      const cached = await this.cache.get<Provider[]>(cacheKey)
+      if (cached) {
+        return cached
+      }
+    }
+
     try {
       const searchTags = [
         { key: 'message.module', value: 'provider' }
@@ -191,7 +207,7 @@ export class ProviderManager {
 
       const response = await this.provider['client']!.searchTx(searchTags)
 
-      return response.map((_, index) => ({
+      const providers = response.map((_, index) => ({
         owner: filters.owner || (index === 0 ? 'akash1mock' : `akash1provider${index}`),
         hostUri: `https://provider${index}.akash.network`,
         attributes: [
@@ -208,6 +224,13 @@ export class ProviderManager {
           website: `https://provider${index}-website.com`
         }
       }))
+
+      // Cache the result
+      if (this.cache) {
+        await this.cache.set(cacheKey, providers, this.CACHE_TTL)
+      }
+
+      return providers
     } catch (error) {
       throw new NetworkError('Failed to list providers', { error })
     }
