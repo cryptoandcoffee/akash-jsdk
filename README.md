@@ -155,26 +155,53 @@ function Dashboard() {
 
 Replace traditional certificate-based authentication with JWT tokens:
 
+#### 🌐 Using Keplr Wallet (Recommended for Web Apps)
+
+```typescript
+import { AkashSDK } from '@cryptoandcoffee/akash-jsdk-core'
+
+const sdk = new AkashSDK({
+  rpcEndpoint: 'https://rpc.akashedge.com:443',
+  chainId: 'akashnet-2'
+})
+
+// Connect to Keplr
+await window.keplr.enable('akashnet-2')
+const offlineSigner = window.keplr.getOfflineSigner('akashnet-2')
+const accounts = await offlineSigner.getAccounts()
+
+// Generate JWT using Keplr's ADR-36 signing (no private key needed!)
+const token = await sdk.wallet.generateJWTTokenWithKeplr(
+  'akashnet-2',
+  accounts[0].address,
+  {
+    expiresIn: 900, // 15 minutes
+    accessType: 'full'
+  }
+)
+
+// Set authentication and use!
+sdk.setAuthConfig({ method: 'jwt', jwtToken: token })
+```
+
+#### 🔑 Using Private Key (For Node.js/CLI)
+
 ```typescript
 import { JWTAuthManager, JWTAccessType, JWTPermissionScope } from '@cryptoandcoffee/akash-jsdk-core'
 
 const jwtAuth = new JWTAuthManager()
 
-// Generate a JWT token for provider authentication
+// Generate JWT with private key
 const token = await jwtAuth.generateToken({
   address: 'akash1...',
-  privateKey: yourPrivateKey,
-  expiresIn: 900, // 15 minutes
+  privateKey: process.env.AKASH_PRIVATE_KEY,
+  expiresIn: 900,
   accessType: JWTAccessType.Full,
   leasePermissions: [{
     owner: 'akash1...',
     dseq: '12345',
-    gseq: '1',
-    oseq: '1',
-    provider: 'akash1provider...',
     scopes: [
       JWTPermissionScope.SendManifest,
-      JWTPermissionScope.GetManifest,
       JWTPermissionScope.Status,
       JWTPermissionScope.Logs
     ]
@@ -185,18 +212,10 @@ const token = await jwtAuth.generateToken({
 const authHeader = jwtAuth.createAuthHeader(token)
 // Authorization: Bearer eyJhbGciOiJFUzI1NksiLCJ0eXAiOiJKV1QifQ...
 
-// Validate token
+// Validate and check expiration
 const validation = await jwtAuth.validateToken(token, publicKey)
-if (validation.valid) {
-  console.log('Token is valid:', validation.claims)
-} else {
-  console.error('Token validation failed:', validation.error)
-}
-
-// Check token expiration
 if (jwtAuth.isTokenExpired(token)) {
-  // Generate new token
-  const newToken = await jwtAuth.generateToken(options)
+  // Regenerate token
 }
 ```
 
