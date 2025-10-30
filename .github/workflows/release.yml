@@ -51,7 +51,7 @@ jobs:
           publish: pnpm run release
           title: 'Release packages'
           commit: 'Release packages'
-          createGithubReleases: true
+          createGithubReleases: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -62,6 +62,43 @@ jobs:
         run: |
           echo "Auto-merging release PR #${{ steps.changesets.outputs.pullRequestNumber }}"
           gh pr merge ${{ steps.changesets.outputs.pullRequestNumber }} --merge --delete-branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create unified GitHub release
+        if: steps.changesets.outputs.published == 'true'
+        run: |
+          # Get published packages info
+          PUBLISHED='${{ steps.changesets.outputs.publishedPackages }}'
+
+          # Extract version (all packages share same version in monorepo)
+          VERSION=$(echo "$PUBLISHED" | jq -r '.[0].version')
+
+          echo "Creating unified release v${VERSION}"
+
+          # Build consolidated release notes
+          cat > release-notes.md << 'EOFNOTES'
+          ## Packages Released
+
+          EOFNOTES
+
+          echo "$PUBLISHED" | jq -r '.[] | "- " + .name + "@" + .version' >> release-notes.md
+
+          echo "" >> release-notes.md
+          echo "## Changes" >> release-notes.md
+          echo "" >> release-notes.md
+
+          # Extract changelog from first package (they all have same changes in monorepo)
+          FIRST_PKG=$(echo "$PUBLISHED" | jq -r '.[0].name' | sed 's/@cryptoandcoffee\/akash-jsdk-//')
+          if [ -f "packages/${FIRST_PKG}/CHANGELOG.md" ]; then
+            sed -n "/## ${VERSION}/,/## /p" "packages/${FIRST_PKG}/CHANGELOG.md" | head -n -1 >> release-notes.md
+          fi
+
+          # Create unified release
+          gh release create "v${VERSION}" \
+            --title "Release v${VERSION}" \
+            --notes-file release-notes.md \
+            --latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
