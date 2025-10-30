@@ -26,10 +26,12 @@ import { MarketManager } from './modules/market'
 import { ProviderManager } from './modules/provider'
 import { SDLManager } from './modules/sdl'
 import { WalletManager } from './modules/wallet'
+import { JWTAuthManager } from './modules/jwt-auth'
+import { AuthConfig, AuthMethod } from './types/jwt'
 
 export class AkashSDK {
   private provider: AkashProvider
-  
+
   // Module managers
   public readonly certificates: CertificateManager
   public readonly escrow: EscrowManager
@@ -39,11 +41,12 @@ export class AkashSDK {
   public readonly providerManager: ProviderManager
   public readonly sdl: SDLManager
   public readonly wallet: WalletManager
+  public readonly jwtAuth: JWTAuthManager
 
   constructor(config: AkashConfig) {
     validateConfig(config)
     this.provider = new AkashProvider(config)
-    
+
     // Initialize module managers
     this.certificates = new CertificateManager(this.provider)
     this.escrow = new EscrowManager(this.provider)
@@ -53,6 +56,7 @@ export class AkashSDK {
     this.providerManager = new ProviderManager(this.provider)
     this.sdl = new SDLManager()
     this.wallet = new WalletManager(this.provider)
+    this.jwtAuth = new JWTAuthManager()
   }
 
   async connect(): Promise<void> {
@@ -65,6 +69,30 @@ export class AkashSDK {
 
   isConnected(): boolean {
     return this.provider.isConnected()
+  }
+
+  /**
+   * Set authentication configuration for provider interactions
+   * Supports both JWT (Mainnet 14+) and certificate-based auth
+   */
+  setAuthConfig(config: AuthConfig): void {
+    this.wallet.setAuthConfig(config)
+
+    // Update provider manager with auth header if using JWT
+    if (config.method === AuthMethod.JWT && config.jwtToken) {
+      const authHeader = this.jwtAuth.createAuthHeader(config.jwtToken)
+      this.providerManager.setAuthorizationHeader(authHeader)
+    } else if (config.method === AuthMethod.Certificate) {
+      // Certificate auth uses mTLS, no Authorization header needed
+      this.providerManager.setAuthorizationHeader(null)
+    }
+  }
+
+  /**
+   * Get current authentication configuration
+   */
+  getAuthConfig(): AuthConfig | null {
+    return this.wallet.getAuthConfig()
   }
 
   // Legacy deployment methods (maintained for backward compatibility)

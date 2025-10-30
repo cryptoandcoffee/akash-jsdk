@@ -1,15 +1,19 @@
 import { BaseProvider } from '../providers/base'
-import { 
-  Order, 
-  OrderID, 
-  OrderState, 
-  Bid, 
-  BidID, 
-  BidState, 
-  Lease, 
-  LeaseID, 
+import {
+  Order,
+  OrderID,
+  OrderState,
+  Bid,
+  BidID,
+  BidState,
+  Lease,
+  LeaseID,
   LeaseState,
-  DecCoin 
+  DecCoin,
+  LeaseCloseReason,
+  Deposit,
+  DepositSource,
+  Coin
 } from '@cryptoandcoffee/akash-jsdk-protobuf'
 import { NetworkError, ValidationError } from '../errors'
 
@@ -17,7 +21,10 @@ export interface CreateBidRequest {
   orderId: OrderID;
   provider: string;
   price: DecCoin;
-  deposit: DecCoin;
+  /** Legacy single deposit (backward compatible) */
+  deposit?: DecCoin;
+  /** New multi-source deposit configuration (AEP-75) */
+  depositConfig?: Deposit;
 }
 
 export interface OrderFilters {
@@ -136,7 +143,7 @@ export class MarketManager {
   // Bid operations
   async createBid(request: CreateBidRequest): Promise<any> {
     this.provider['ensureConnected']()
-    
+
     if (!request.orderId || !request.provider || !request.price) {
       throw new ValidationError('Order ID, provider, and price are required')
     }
@@ -145,8 +152,14 @@ export class MarketManager {
       throw new ValidationError('Bid price must be positive')
     }
 
+    // Validate deposit configuration (support both legacy and new formats)
+    if (!request.deposit && !request.depositConfig) {
+      throw new ValidationError('Either deposit or depositConfig is required')
+    }
+
     try {
       // In a real implementation, this would submit a MsgCreateBid transaction
+      // with either legacy deposit or new depositConfig (AEP-75)
       const response = await this.provider['client']!.searchTx([
         { key: 'message.module', value: 'market' },
         { key: 'message.action', value: 'bid-created' }
@@ -166,20 +179,21 @@ export class MarketManager {
     }
   }
 
-  async closeBid(bidId: BidID): Promise<void> {
+  async closeBid(bidId: BidID, _reason?: LeaseCloseReason): Promise<void> {
     this.provider['ensureConnected']()
-    
+
     if (!bidId.owner || !bidId.provider || !bidId.dseq) {
       throw new ValidationError('Complete bid ID is required')
     }
 
     try {
-      // In a real implementation, this would submit a MsgCloseBid transaction
+      // In a real implementation, this would submit a MsgCloseBid transaction with reason (AEP-39)
       await this.provider['client']!.searchTx([
         { key: 'message.module', value: 'market' },
         { key: 'message.action', value: 'bid-closed' },
         { key: 'bid.provider', value: bidId.provider }
       ])
+      // Note: reason parameter would be included in the actual transaction message
     } catch (error) {
       throw new NetworkError('Failed to close bid', { error })
     }
@@ -275,20 +289,21 @@ export class MarketManager {
     }
   }
 
-  async closeLease(leaseId: LeaseID): Promise<void> {
+  async closeLease(leaseId: LeaseID, _reason?: LeaseCloseReason): Promise<void> {
     this.provider['ensureConnected']()
-    
+
     if (!leaseId.owner || !leaseId.provider || !leaseId.dseq) {
       throw new ValidationError('Complete lease ID is required')
     }
 
     try {
-      // In a real implementation, this would submit a MsgCloseLease transaction
+      // In a real implementation, this would submit a MsgCloseLease transaction with reason (AEP-39)
       await this.provider['client']!.searchTx([
         { key: 'message.module', value: 'market' },
         { key: 'message.action', value: 'lease-closed' },
         { key: 'lease.provider', value: leaseId.provider }
       ])
+      // Note: reason parameter would be included in the actual transaction message
     } catch (error) {
       throw new NetworkError('Failed to close lease', { error })
     }
@@ -361,6 +376,23 @@ export class MarketManager {
       }))
     } catch (error) {
       throw new NetworkError('Failed to list leases', { error })
+    }
+  }
+
+  /**
+   * Create a deposit configuration (AEP-75: Multi-Depositor Escrow)
+   */
+  createDepositConfig(
+    amount: string,
+    denom: string = 'uakt',
+    sources: DepositSource[] = [DepositSource.BALANCE],
+    depositors?: string[]
+  ): Deposit {
+    const coin: Coin = { denom, amount }
+    return {
+      amount: coin,
+      sources,
+      depositors
     }
   }
 

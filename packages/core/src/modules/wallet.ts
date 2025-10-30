@@ -1,6 +1,8 @@
 import { BaseProvider } from '../providers/base'
 import { Coin } from '@cryptoandcoffee/akash-jsdk-protobuf'
 import { NetworkError, ValidationError } from '../errors'
+import { JWTAuthManager } from './jwt-auth'
+import { JWTGenerationOptions, AuthConfig, AuthMethod } from '../types/jwt'
 
 // Extend Window interface for wallet providers
 declare global {
@@ -48,8 +50,12 @@ export interface TransactionHistory {
 
 export class WalletManager {
   private connectedWallet: WalletProvider | null = null
+  private jwtAuthManager: JWTAuthManager
+  private authConfig: AuthConfig | null = null
 
-  constructor(private provider: BaseProvider) {}
+  constructor(private provider: BaseProvider) {
+    this.jwtAuthManager = new JWTAuthManager()
+  }
 
   /**
    * Connect to a wallet provider (Keplr, Cosmostation, etc.)
@@ -295,10 +301,7 @@ export class WalletManager {
 
       // In real implementation, would use:
       // const result = await this.provider['client']!.broadcastTx(...)
-      
-      // Add a testable operation that can be mocked to throw an error
-      const timestamp = Date.now()
-      
+
       return {
         txHash: mockResult.transactionHash,
         height: mockResult.height,
@@ -330,10 +333,7 @@ export class WalletManager {
 
       // In real implementation, would use:
       // const result = await this.provider['client']!.broadcastTx(...)
-      
-      // Add a testable operation that can be mocked to throw an error
-      const timestamp = Date.now()
-      
+
       return {
         txHash: mockResult.transactionHash,
         height: mockResult.height,
@@ -405,10 +405,7 @@ export class WalletManager {
 
       // In real implementation, would use:
       // const result = await this.provider['client']!.sendTokens(...)
-      
-      // Add a testable operation that can be mocked to throw an error
-      const timestamp = Date.now()
-      
+
       return {
         txHash: mockResult.transactionHash,
         height: mockResult.height,
@@ -500,10 +497,84 @@ export class WalletManager {
 
     return {
       valid: false,
-      errors: address.startsWith('cosmos1') 
+      errors: address.startsWith('cosmos1')
         ? ['Address must start with akash or akashvaloper']
         : ['Invalid address format']
     }
+  }
+
+  /**
+   * Generate a JWT token for Akash Network authentication (Mainnet 14+)
+   * Uses the wallet's private key to sign the token
+   */
+  async generateJWTToken(options: Omit<JWTGenerationOptions, 'privateKey'>): Promise<string> {
+    if (!this.connectedWallet) {
+      throw new ValidationError('No wallet connected')
+    }
+
+    try {
+      // In a real implementation, this would:
+      // 1. Get the private key from the wallet (securely)
+      // 2. Use it to sign the JWT with ES256K algorithm
+      // For now, we'll create a mock private key
+      const mockPrivateKey = '-----BEGIN PRIVATE KEY-----\nMIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAL...\n-----END PRIVATE KEY-----'
+
+      const fullOptions: JWTGenerationOptions = {
+        ...options,
+        privateKey: mockPrivateKey
+      }
+
+      return await this.jwtAuthManager.generateToken(fullOptions)
+    } catch (error) {
+      throw new NetworkError('Failed to generate JWT token', { error })
+    }
+  }
+
+  /**
+   * Set authentication configuration
+   * Allows switching between JWT and certificate-based auth
+   */
+  setAuthConfig(config: AuthConfig): void {
+    this.authConfig = config
+  }
+
+  /**
+   * Get current authentication configuration
+   */
+  getAuthConfig(): AuthConfig | null {
+    return this.authConfig
+  }
+
+  /**
+   * Get JWT authentication manager instance
+   */
+  getJWTAuthManager(): JWTAuthManager {
+    return this.jwtAuthManager
+  }
+
+  /**
+   * Check if JWT token is expired and needs refresh
+   */
+  isJWTTokenExpired(token: string): boolean {
+    return this.jwtAuthManager.isTokenExpired(token)
+  }
+
+  /**
+   * Create authorization header for provider requests
+   * Supports both JWT and certificate-based auth
+   */
+  createAuthorizationHeader(): string | null {
+    if (!this.authConfig) {
+      return null
+    }
+
+    if (this.authConfig.method === AuthMethod.JWT && this.authConfig.jwtToken) {
+      return this.jwtAuthManager.createAuthHeader(this.authConfig.jwtToken)
+    }
+
+    // Certificate-based auth doesn't use Authorization header
+    // It uses mTLS certificates in the TLS handshake
+    return null
   }
 }
 

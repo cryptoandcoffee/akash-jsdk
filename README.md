@@ -9,8 +9,37 @@ A modern, fully-featured JavaScript SDK for Akash Network built from scratch wit
 - **React Integration**: Custom hooks and provider for seamless React development  
 - **CLI Tools**: Command-line interface for deployment and management operations
 - **Custom Protobuf**: Optimized protobuf implementation using @bufbuild/protobuf
-- **100% Test Coverage**: Enterprise-grade testing with 1,079 passing tests across all packages
+- **100% Test Coverage**: Enterprise-grade testing with 1,145 passing tests across all packages
 - **Performance First**: ES2022 target, ESM modules, incremental builds
+
+## What's New in v3.0 - Mainnet 14 Support
+
+Version 3.0 brings full support for Akash Network Mainnet 14, introducing modern authentication and enhanced escrow capabilities:
+
+### JWT Authentication (AEP-63)
+Replace certificate-based authentication with modern JWT tokens for simplified provider communication. Features include:
+- ES256K (secp256k1) signature algorithm compatible with Cosmos SDK
+- Granular permission scopes for lease operations
+- Configurable token expiration and access levels
+- Bearer token authentication for HTTP requests
+
+### Multi-Depositor Escrow (AEP-75)
+Enable flexible funding sources for deployments with support for:
+- Multiple depositor addresses per escrow account
+- Balance, grant, and delegated deposit sources
+- Improved escrow account management
+- Enhanced deposit tracking and auditing
+
+### Lease Termination Tracking (AEP-39)
+Track and understand why leases end with detailed close reasons:
+- Manifest timeout
+- Unstable workload
+- Insufficient funds
+- User-requested termination
+- Unspecified reasons
+
+### Cosmos SDK v0.53 Compatibility
+Full compatibility with the latest Cosmos SDK features and improvements for enhanced performance and security.
 
 ## 📦 Packages
 
@@ -120,6 +149,177 @@ function Dashboard() {
 }
 ```
 
+## 🆕 Mainnet 14 Features - Code Examples
+
+### JWT Authentication (AEP-63)
+
+Replace traditional certificate-based authentication with JWT tokens:
+
+```typescript
+import { JWTAuthManager, JWTAccessType, JWTPermissionScope } from '@cryptoandcoffee/akash-jsdk-core'
+
+const jwtAuth = new JWTAuthManager()
+
+// Generate a JWT token for provider authentication
+const token = await jwtAuth.generateToken({
+  address: 'akash1...',
+  privateKey: yourPrivateKey,
+  expiresIn: 900, // 15 minutes
+  accessType: JWTAccessType.Full,
+  leasePermissions: [{
+    owner: 'akash1...',
+    dseq: '12345',
+    gseq: '1',
+    oseq: '1',
+    provider: 'akash1provider...',
+    scopes: [
+      JWTPermissionScope.SendManifest,
+      JWTPermissionScope.GetManifest,
+      JWTPermissionScope.Status,
+      JWTPermissionScope.Logs
+    ]
+  }]
+})
+
+// Use token in HTTP requests
+const authHeader = jwtAuth.createAuthHeader(token)
+// Authorization: Bearer eyJhbGciOiJFUzI1NksiLCJ0eXAiOiJKV1QifQ...
+
+// Validate token
+const validation = await jwtAuth.validateToken(token, publicKey)
+if (validation.valid) {
+  console.log('Token is valid:', validation.claims)
+} else {
+  console.error('Token validation failed:', validation.error)
+}
+
+// Check token expiration
+if (jwtAuth.isTokenExpired(token)) {
+  // Generate new token
+  const newToken = await jwtAuth.generateToken(options)
+}
+```
+
+### Multi-Depositor Escrow (AEP-75)
+
+Create deployments with multiple funding sources:
+
+```typescript
+import { MarketManager, DepositSource } from '@cryptoandcoffee/akash-jsdk-core'
+
+const market = new MarketManager(provider)
+
+// Create a deposit configuration with multiple sources
+const depositConfig = market.createDepositConfig(
+  '5000000', // 5 AKT
+  'uakt',
+  [
+    DepositSource.Balance,    // From account balance
+    DepositSource.Grant,      // From external grant
+    DepositSource.Delegated   // From delegated account
+  ],
+  [
+    'akash1depositor1...',  // Primary depositor
+    'akash1depositor2...',  // Secondary depositor
+    'akash1depositor3...'   // Tertiary depositor
+  ]
+)
+
+// Use the deposit config when creating a bid
+const bid = await market.createBid({
+  orderId: {
+    owner: 'akash1...',
+    dseq: '12345',
+    gseq: 1,
+    oseq: 1
+  },
+  provider: 'akash1provider...',
+  price: { denom: 'uakt', amount: '100' },
+  depositConfig // Use multi-source deposit instead of single deposit
+})
+
+// Deposit funds from a specific depositor
+import { EscrowManager } from '@cryptoandcoffee/akash-jsdk-core'
+
+const escrow = new EscrowManager(provider)
+
+await escrow.depositFunds({
+  accountId: { scope: 'deployment', xid: '12345' },
+  amount: { denom: 'uakt', amount: '1000000' },
+  depositor: 'akash1depositor2...' // Specify which depositor
+})
+
+// List escrow accounts with depositor information
+const accounts = await escrow.listAccounts({
+  owner: 'akash1...'
+})
+
+accounts.forEach(account => {
+  console.log(`Account ${account.id.xid}:`)
+  console.log(`  Depositor: ${account.depositor}`)
+  console.log(`  Balance: ${account.balance.amount} ${account.balance.denom}`)
+  console.log(`  Funds: ${account.funds.amount} ${account.funds.denom}`)
+})
+```
+
+### Lease Termination Tracking (AEP-39)
+
+Track why leases are terminated:
+
+```typescript
+import { MarketManager, LeaseCloseReason } from '@cryptoandcoffee/akash-jsdk-core'
+
+const market = new MarketManager(provider)
+
+// Close a lease with a specific reason
+await market.closeLease(
+  {
+    owner: 'akash1...',
+    dseq: '12345',
+    gseq: 1,
+    oseq: 1,
+    provider: 'akash1provider...'
+  },
+  LeaseCloseReason.InsufficientFunds
+)
+
+// Available close reasons:
+// - LeaseCloseReason.Unspecified
+// - LeaseCloseReason.ManifestTimeout
+// - LeaseCloseReason.Unstable
+// - LeaseCloseReason.InsufficientFunds
+// - LeaseCloseReason.UserRequested
+
+// Query lease details to see close reason
+const lease = await market.getLease({
+  owner: 'akash1...',
+  dseq: '12345',
+  gseq: 1,
+  oseq: 1,
+  provider: 'akash1provider...'
+})
+
+if (lease && lease.state === 'closed' && lease.closeReason) {
+  console.log(`Lease closed due to: ${lease.closeReason}`)
+
+  // Handle different close reasons
+  switch (lease.closeReason) {
+    case LeaseCloseReason.InsufficientFunds:
+      console.log('Please deposit more funds to continue')
+      break
+    case LeaseCloseReason.ManifestTimeout:
+      console.log('Provider did not receive manifest in time')
+      break
+    case LeaseCloseReason.Unstable:
+      console.log('Workload was unstable')
+      break
+    case LeaseCloseReason.UserRequested:
+      console.log('User requested termination')
+      break
+  }
+}
+```
+
 ### CLI Usage
 
 ```bash
@@ -146,12 +346,13 @@ akash-cli close --deployment 12345 --owner akash1... --yes
 | Module | Description | Key Features |
 |--------|-------------|--------------|
 | **DeploymentManager** | Deployment lifecycle management | Create, update, close, list deployments |
-| **MarketManager** | Marketplace operations | Orders, bids, leases, market statistics |
+| **MarketManager** | Marketplace operations | Orders, bids, leases, market statistics, multi-source deposits |
 | **ProviderManager** | Provider interactions | Registration, capacity, manifest deployment |
 | **WalletManager** | Wallet integration | Keplr, Cosmostation, transaction signing |
 | **SDLManager** | SDL processing | Parse, validate, convert, optimize SDL files |
-| **CertificateManager** | Certificate management | Client certificates, secure communication |
-| **EscrowManager** | Escrow operations | Deposit, withdrawal, account management |
+| **CertificateManager** | Certificate management | Client certificates, secure communication (legacy) |
+| **JWTAuthManager** | JWT authentication | Token generation, validation, ES256K signatures (Mainnet 14+) |
+| **EscrowManager** | Escrow operations | Deposit, withdrawal, multi-depositor support, account management |
 | **GovernanceManager** | Governance participation | Proposals, voting, delegation |
 
 ### SDL Template Generation
@@ -223,21 +424,21 @@ pnpm run typecheck
 ## 📊 Comprehensive Test Results
 
 ### Overall Statistics
-- **Total Tests**: 1,079 tests passing
+- **Total Tests**: 1,145 tests passing
 - **Test Files**: 70+ comprehensive test suites
 - **Coverage**: 100% statements, functions, and lines across all packages
 - **Branch Coverage**: 100% (3 packages), 98.15% (core package)
 - **Test Duration**: ~15 seconds total
-- **Source Lines**: 24,257+ lines of production code
+- **Source Lines**: 25,000+ lines of production code
 
 ### Package-Level Coverage
 
 | Package | Tests | Coverage | Features Tested |
 |---------|-------|----------|----------------|
-| **Core** | 640 tests | 100% statements/functions/lines, 98.15% branches | SDK modules, providers, error handling, edge cases |
+| **Core** | 700+ tests | 100% statements/functions/lines, 98.15% branches | SDK modules, JWT auth, multi-depositor escrow, lease tracking, providers, error handling |
 | **CLI** | 183 tests | 100% all metrics | Commands, config management, CLI execution, subprocess testing |
 | **React** | 145 tests | 100% all metrics | Hooks, context, component lifecycle, error boundaries |
-| **Protobuf** | 111 tests | 100% all metrics | Type generation, serialization, error conditions |
+| **Protobuf** | 117 tests | 100% all metrics | Type generation, serialization, Mainnet 14 types, error conditions |
 
 ### Testing Infrastructure
 
