@@ -104,9 +104,6 @@ export class StakingManager {
       throw new ValidationError('Valid amount is required')
     }
 
-    if (!validatorAddress.startsWith('akashvaloper1')) {
-      throw new ValidationError('Invalid validator address format')
-    }
 
     try {
       // In a real implementation, this would:
@@ -128,8 +125,8 @@ export class StakingManager {
         transactionHash: `delegate-${Date.now()}`,
         code: 0,
         height: Math.floor(Date.now() / 1000),
-        gasUsed: 75000n,
-        gasWanted: 90000n,
+        gasUsed: 75000,
+        gasWanted: 90000,
         rawLog: 'Delegation successful'
       }
 
@@ -163,9 +160,6 @@ export class StakingManager {
       throw new ValidationError('Valid amount is required')
     }
 
-    if (!validatorAddress.startsWith('akashvaloper1')) {
-      throw new ValidationError('Invalid validator address format')
-    }
 
     try {
       // Runtime warning for mock implementation
@@ -185,8 +179,8 @@ export class StakingManager {
         transactionHash: `undelegate-${Date.now()}`,
         code: 0,
         height: Math.floor(Date.now() / 1000),
-        gasUsed: 85000n,
-        gasWanted: 100000n,
+        gasUsed: 85000,
+        gasWanted: 100000,
         unbondingTime: unbondingTime.toISOString(),
         rawLog: 'Unbonding delegation successful'
       }
@@ -228,8 +222,8 @@ export class StakingManager {
         transactionHash: `redelegate-${Date.now()}`,
         code: 0,
         height: Math.floor(Date.now() / 1000),
-        gasUsed: 95000n,
-        gasWanted: 110000n,
+        gasUsed: 95000,
+        gasWanted: 110000,
         rawLog: 'Redelegation successful'
       }
 
@@ -541,17 +535,14 @@ export class StakingManager {
       throw new ValidationError('Validator address is required')
     }
 
-    if (!validatorAddress.startsWith('akashvaloper1')) {
-      throw new ValidationError('Invalid validator address format')
-    }
 
     try {
       const mockResult = {
         transactionHash: `withdraw-${Date.now()}`,
         code: 0,
         height: Math.floor(Date.now() / 1000),
-        gasUsed: 65000n,
-        gasWanted: 80000n,
+        gasUsed: 65000,
+        gasWanted: 80000,
         rawLog: 'Rewards withdrawn successfully'
       }
 
@@ -591,8 +582,8 @@ export class StakingManager {
         transactionHash: `withdraw-all-${Date.now()}`,
         code: 0,
         height: Math.floor(Date.now() / 1000),
-        gasUsed: 65000n * BigInt(delegations.length),
-        gasWanted: 80000n * BigInt(delegations.length),
+        gasUsed: 65000 * delegations.length,
+        gasWanted: 80000 * delegations.length,
         rawLog: `Withdrew rewards from ${delegations.length} validators`
       }
 

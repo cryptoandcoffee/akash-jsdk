@@ -63,14 +63,14 @@ describe('StakingManager', () => {
       const amount = { denom: 'uakt', amount: '1000000' }
 
       await expect(stakingManager.delegate('', amount)).rejects.toThrow(ValidationError)
-      await expect(stakingManager.delegate('', amount)).rejects.toThrow('Validator address is required')
+      await expect(stakingManager.delegate('', amount)).rejects.toThrow('Address must be a non-empty string')
     })
 
     it('should throw error for invalid validator address format', async () => {
       const amount = { denom: 'uakt', amount: '1000000' }
 
       await expect(stakingManager.delegate('cosmos1invalid', amount)).rejects.toThrow(ValidationError)
-      await expect(stakingManager.delegate('cosmos1invalid', amount)).rejects.toThrow('Invalid validator address format')
+      await expect(stakingManager.delegate('cosmos1invalid', amount)).rejects.toThrow('Address must start with akashvaloper')
     })
 
     it('should throw error for missing amount', async () => {
@@ -138,14 +138,14 @@ describe('StakingManager', () => {
       const amount = { denom: 'uakt', amount: '500000' }
 
       await expect(stakingManager.undelegate('', amount)).rejects.toThrow(ValidationError)
-      await expect(stakingManager.undelegate('', amount)).rejects.toThrow('Validator address is required')
+      await expect(stakingManager.undelegate('', amount)).rejects.toThrow('Address must be a non-empty string')
     })
 
     it('should throw error for invalid validator address format', async () => {
       const amount = { denom: 'uakt', amount: '500000' }
 
       await expect(stakingManager.undelegate('akash1invalid', amount)).rejects.toThrow(ValidationError)
-      await expect(stakingManager.undelegate('akash1invalid', amount)).rejects.toThrow('Invalid validator address format')
+      await expect(stakingManager.undelegate('akash1invalid', amount)).rejects.toThrow('Address must start with akashvaloper')
     })
 
     it('should handle network errors during undelegation', async () => {
@@ -207,7 +207,7 @@ describe('StakingManager', () => {
       const amount = { denom: 'uakt', amount: '750000' }
 
       await expect(stakingManager.redelegate('invalid', dstValidator, amount)).rejects.toThrow(ValidationError)
-      await expect(stakingManager.redelegate('invalid', dstValidator, amount)).rejects.toThrow('Invalid validator address format')
+      await expect(stakingManager.redelegate('invalid', dstValidator, amount)).rejects.toThrow('Address must start with akashvaloper')
     })
 
     it('should throw error for missing amount', async () => {
@@ -304,12 +304,12 @@ describe('StakingManager', () => {
 
     it('should throw error for missing validator address', async () => {
       await expect(stakingManager.getValidator('')).rejects.toThrow(ValidationError)
-      await expect(stakingManager.getValidator('')).rejects.toThrow('Validator address is required')
+      await expect(stakingManager.getValidator('')).rejects.toThrow('Address must be a non-empty string')
     })
 
     it('should throw error for invalid validator address format', async () => {
       await expect(stakingManager.getValidator('akash1invalid')).rejects.toThrow(ValidationError)
-      await expect(stakingManager.getValidator('akash1invalid')).rejects.toThrow('Invalid validator address format')
+      await expect(stakingManager.getValidator('akash1invalid')).rejects.toThrow('Address must start with akashvaloper')
     })
 
     it('should throw error for validator not found', async () => {
@@ -530,12 +530,12 @@ describe('StakingManager', () => {
 
     it('should throw error for missing validator address', async () => {
       await expect(stakingManager.withdrawRewards('')).rejects.toThrow(ValidationError)
-      await expect(stakingManager.withdrawRewards('')).rejects.toThrow('Validator address is required')
+      await expect(stakingManager.withdrawRewards('')).rejects.toThrow('Address must be a non-empty string')
     })
 
     it('should throw error for invalid validator address format', async () => {
       await expect(stakingManager.withdrawRewards('akash1invalid')).rejects.toThrow(ValidationError)
-      await expect(stakingManager.withdrawRewards('akash1invalid')).rejects.toThrow('Invalid validator address format')
+      await expect(stakingManager.withdrawRewards('akash1invalid')).rejects.toThrow('Address must start with akashvaloper')
     })
 
     it('should handle network errors during reward withdrawal', async () => {
