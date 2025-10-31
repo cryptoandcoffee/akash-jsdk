@@ -42,3 +42,14 @@ export function parseAKT(amount: string, decimals: number = 6): string {
   const num = parseFloat(amount)
   return Math.floor(num * Math.pow(10, decimals)).toString()
 }
+
+// Export all validation utilities
+export * from './validation'
+
+// Export logger components
+export { Logger, LogLevel, ConsoleLogger, NoOpLogger, createDefaultLogger } from './logger'
+
+// Export new utilities
+export * from './event-parsing'
+export * from './validation-helpers'
+export * from './error-helpers'

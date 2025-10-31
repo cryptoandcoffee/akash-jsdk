@@ -3,11 +3,14 @@ import { CertificateManager } from './certificates'
 import { AkashProvider } from '../providers/akash'
 
 // Mock the provider
+const mockClient = {
+  searchTx: vi.fn()
+}
+
 const mockProvider = {
-  client: {
-    searchTx: vi.fn()
-  },
-  ensureConnected: vi.fn()
+  client: mockClient,
+  ensureConnected: vi.fn(),
+  getClient: vi.fn().mockReturnValue(mockClient)
 } as unknown as AkashProvider
 
 describe('CertificateManager', () => {

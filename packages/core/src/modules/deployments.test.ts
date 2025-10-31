@@ -19,11 +19,14 @@ const createMockTx = (height: number, hash: string = 'mock-hash') => ({
 })
 
 // Mock the provider
+const mockClient = {
+  searchTx: vi.fn()
+}
+
 const mockProvider = {
   ensureConnected: vi.fn(),
-  client: {
-    searchTx: vi.fn()
-  },
+  client: mockClient,
+  getClient: vi.fn().mockReturnValue(mockClient),
   signer: 'akash1test'
 } as unknown as AkashProvider
 

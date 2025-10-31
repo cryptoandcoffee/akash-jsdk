@@ -9,6 +9,26 @@ import {
 import { NetworkError, ValidationError } from '../errors'
 import { CacheManager } from '../cache'
 
+
+export interface OrderId {
+  owner: string
+  dseq: string
+  gseq: number
+  oseq: number
+}
+
+export interface BidId extends OrderId {
+  provider: string
+}
+
+export interface ProviderConfig {
+  hostUri: string
+  attributes?: Array<{ key: string; value: string }>
+  info?: {
+    email?: string
+    website?: string
+  }
+}
 export interface CreateProviderRequest {
   owner: string;
   hostUri: string;
@@ -44,7 +64,7 @@ export interface ProviderCapacity {
 
 export interface ManifestDeployment {
   deploymentId: string;
-  manifest: any; // SDL manifest object
+  manifest: Record<string, unknown>; // SDL manifest object
   status: 'pending' | 'active' | 'failed' | 'closed';
 }
 
@@ -74,7 +94,7 @@ export class ProviderManager {
 
   // Provider registration and management
   async createProvider(request: CreateProviderRequest): Promise<string> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!request.owner || !request.hostUri) {
       throw new ValidationError('Invalid provider parameters')
@@ -89,7 +109,7 @@ export class ProviderManager {
 
     try {
       // In a real implementation, this would submit a MsgCreateProvider transaction
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'provider' },
         { key: 'message.action', value: 'provider-created' }
       ])
@@ -101,7 +121,7 @@ export class ProviderManager {
   }
 
   async updateProvider(request: UpdateProviderRequest): Promise<void> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!request.owner) {
       throw new ValidationError('Provider owner is required')
@@ -117,7 +137,7 @@ export class ProviderManager {
 
     try {
       // In a real implementation, this would submit a MsgUpdateProvider transaction
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'provider' },
         { key: 'message.action', value: 'provider-updated' },
         { key: 'provider.owner', value: request.owner }
@@ -128,7 +148,7 @@ export class ProviderManager {
   }
 
   async deleteProvider(owner: string): Promise<void> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!owner) {
       throw new ValidationError('Provider owner is required')
@@ -136,7 +156,7 @@ export class ProviderManager {
 
     try {
       // In a real implementation, this would submit a MsgDeleteProvider transaction
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'provider' },
         { key: 'message.action', value: 'provider-deleted' },
         { key: 'provider.owner', value: owner }
@@ -147,14 +167,14 @@ export class ProviderManager {
   }
 
   async getProvider(owner: string): Promise<Provider | null> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!owner) {
       throw new ValidationError('Provider owner is required')
     }
 
     try {
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'provider' },
         { key: 'provider.owner', value: owner }
       ])
@@ -183,7 +203,7 @@ export class ProviderManager {
   }
 
   async listProviders(filters: ProviderFilters = {}): Promise<Provider[]> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     // Generate cache key based on filters
     const cacheKey = `providers:list:${JSON.stringify(filters)}`
@@ -205,7 +225,7 @@ export class ProviderManager {
         searchTags.push({ key: 'provider.owner', value: filters.owner })
       }
 
-      const response = await this.provider['client']!.searchTx(searchTags)
+      const response = await this.provider.getClient().searchTx(searchTags)
 
       const providers = response.map((_, index) => ({
         owner: filters.owner || (index === 0 ? 'akash1mock' : `akash1provider${index}`),
@@ -237,8 +257,8 @@ export class ProviderManager {
   }
 
   // Bid management for providers
-  async placeBid(orderId: any, price: DecCoin, deposit: DecCoin): Promise<string> {
-    this.provider['ensureConnected']()
+  async placeBid(orderId: OrderId, price: DecCoin, deposit: DecCoin): Promise<string> {
+    this.provider.ensureConnected()
     
     if (!orderId || !price || !deposit) {
       throw new ValidationError('Order ID, price, and deposit are required')
@@ -250,7 +270,7 @@ export class ProviderManager {
 
     try {
       // In a real implementation, this would submit a MsgCreateBid transaction from provider
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'market' },
         { key: 'message.action', value: 'bid-created' }
       ])
@@ -262,8 +282,8 @@ export class ProviderManager {
     }
   }
 
-  async updateBidPricing(bidId: any, newPrice: DecCoin): Promise<void> {
-    this.provider['ensureConnected']()
+  async updateBidPricing(bidId: BidId, newPrice: DecCoin): Promise<void> {
+    this.provider.ensureConnected()
     
     if (!bidId || !newPrice) {
       throw new ValidationError('Bid ID and new price are required')
@@ -275,7 +295,7 @@ export class ProviderManager {
 
     try {
       // In a real implementation, this would submit a bid update transaction
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'market' },
         { key: 'message.action', value: 'bid-updated' }
       ])
@@ -286,7 +306,7 @@ export class ProviderManager {
 
   // Resource and capacity management
   async getProviderCapacity(owner: string): Promise<ProviderCapacity> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!owner) {
       throw new ValidationError('Provider owner is required')
@@ -301,19 +321,19 @@ export class ProviderManager {
       
       return {
         total: {
-          cpu: { units: '100' } as any,
-          memory: { size: '1000Gi' } as any,
-          storage: { size: '10000Gi' } as any
+          cpu: { units: { val: '100' } },
+          memory: { size: '1' },
+          storage: { size: '1' }
         },
         available: {
-          cpu: { units: '80' } as any,
-          memory: { size: '800Gi' } as any,
-          storage: { size: '8000Gi' } as any
+          cpu: { units: '80' },
+          memory: { size: '1' },
+          storage: { size: '1' }
         },
         allocated: {
-          cpu: { units: '20' } as any,
-          memory: { size: '200Gi' } as any,
-          storage: { size: '2000Gi' } as any
+          cpu: { units: '20' },
+          memory: { size: '1' },
+          storage: { size: '1' }
         }
       }
     } catch (error) {
@@ -322,7 +342,7 @@ export class ProviderManager {
   }
 
   async updateResourcePricing(owner: string, pricing: ResourcePricing): Promise<void> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!owner || !pricing) {
       throw new ValidationError('Provider owner and pricing are required')
@@ -344,8 +364,8 @@ export class ProviderManager {
   }
 
   // Manifest and deployment management
-  async deployManifest(deploymentId: string, manifest: any): Promise<ManifestDeployment> {
-    this.provider['ensureConnected']()
+  async deployManifest(deploymentId: string, manifest: Record<string, unknown>): Promise<ManifestDeployment> {
+    this.provider.ensureConnected()
 
     if (!deploymentId || !manifest) {
       throw new ValidationError('Deployment ID and manifest are required')
@@ -374,8 +394,8 @@ export class ProviderManager {
     }
   }
 
-  async updateManifest(deploymentId: string, newManifest: any): Promise<void> {
-    this.provider['ensureConnected']()
+  async updateManifest(deploymentId: string, newManifest: Record<string, unknown>): Promise<void> {
+    this.provider.ensureConnected()
     
     if (!deploymentId || !newManifest) {
       throw new ValidationError('Deployment ID and new manifest are required')
@@ -390,7 +410,7 @@ export class ProviderManager {
   }
 
   async getManifestStatus(deploymentId: string): Promise<ManifestDeployment | null> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!deploymentId) {
       throw new ValidationError('Deployment ID is required')
@@ -414,7 +434,7 @@ export class ProviderManager {
   }
 
   async closeManifest(deploymentId: string): Promise<void> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!deploymentId) {
       throw new ValidationError('Deployment ID is required')
@@ -438,7 +458,7 @@ export class ProviderManager {
     lastSeen?: number;
     version?: string;
   }> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!owner) {
       throw new ValidationError('Provider owner is required')
@@ -446,7 +466,7 @@ export class ProviderManager {
 
     try {
       // Get active deployments count
-      const leaseResponse = await this.provider['client']!.searchTx([
+      const leaseResponse = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'market' },
         { key: 'lease.provider', value: owner },
         { key: 'lease.state', value: 'active' }
@@ -478,7 +498,7 @@ export class ProviderManager {
   /**
    * Validate provider configuration
    */
-  validateProviderConfig(config: any): { valid: boolean; errors: string[] } {
+  validateProviderConfig(config: ProviderConfig): { valid: boolean; errors: string[] } {
     const errors: string[] = []
 
     if (!config.owner || config.owner.trim() === '') {

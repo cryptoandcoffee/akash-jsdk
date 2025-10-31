@@ -4,14 +4,17 @@ import { AkashProvider } from '../providers/akash'
 import { NetworkError, ValidationError } from '../errors'
 
 // Mock the provider
+const mockClient = {
+  getBalance: vi.fn(),
+  searchTx: vi.fn(),
+  simulate: vi.fn(),
+  broadcastTx: vi.fn()
+}
+
 const mockProvider = {
-  client: {
-    getBalance: vi.fn(),
-    searchTx: vi.fn(),
-    simulate: vi.fn(),
-    broadcastTx: vi.fn()
-  },
-  ensureConnected: vi.fn()
+  client: mockClient,
+  ensureConnected: vi.fn(),
+  getClient: vi.fn().mockReturnValue(mockClient)
 } as any
 
 // Mock wallet provider
@@ -143,14 +146,17 @@ describe('WalletManager', () => {
     })
 
     it('should return fallback balance when client.getBalance is not available', async () => {
+      const mockClientWithoutGetBalance = {
+        searchTx: vi.fn(),
+        simulate: vi.fn(),
+        broadcastTx: vi.fn()
+        // Note: no getBalance method
+      }
+
       const mockProviderWithoutGetBalance = {
-        client: {
-          searchTx: vi.fn(),
-          simulate: vi.fn(),
-          broadcastTx: vi.fn()
-          // Note: no getBalance method
-        },
-        ensureConnected: vi.fn()
+        client: mockClientWithoutGetBalance,
+        ensureConnected: vi.fn(),
+        getClient: vi.fn().mockReturnValue(mockClientWithoutGetBalance)
       } as unknown as AkashProvider
 
       const walletManagerWithFallback = new WalletManager(mockProviderWithoutGetBalance)

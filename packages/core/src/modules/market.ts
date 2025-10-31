@@ -58,14 +58,14 @@ export class MarketManager {
 
   // Order operations
   async getOrder(orderId: OrderID): Promise<Order | null> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!orderId.owner || !orderId.dseq || !orderId.gseq || !orderId.oseq) {
       throw new ValidationError('Complete order ID is required')
     }
 
     try {
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'market' },
         { key: 'order.owner', value: orderId.owner },
         { key: 'order.dseq', value: orderId.dseq }
@@ -94,7 +94,7 @@ export class MarketManager {
   }
 
   async listOrders(filters: OrderFilters = {}): Promise<Order[]> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     // Generate cache key based on filters
     const cacheKey = `market:orders:${JSON.stringify(filters)}`
@@ -120,7 +120,7 @@ export class MarketManager {
         searchTags.push({ key: 'order.dseq', value: filters.dseq })
       }
 
-      const response = await this.provider['client']!.searchTx(searchTags)
+      const response = await this.provider.getClient().searchTx(searchTags)
 
       const orders = response.map((tx, index) => ({
         orderId: {
@@ -166,7 +166,7 @@ export class MarketManager {
 
   // Bid operations
   async createBid(request: CreateBidRequest): Promise<any> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     if (!request.orderId || !request.provider || !request.price) {
       throw new ValidationError('Order ID, provider, and price are required')
@@ -184,7 +184,7 @@ export class MarketManager {
     try {
       // In a real implementation, this would submit a MsgCreateBid transaction
       // with either legacy deposit or new depositConfig (AEP-75)
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'market' },
         { key: 'message.action', value: 'bid-created' }
       ])
@@ -204,7 +204,7 @@ export class MarketManager {
   }
 
   async closeBid(bidId: BidID, _reason?: LeaseCloseReason): Promise<void> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     if (!bidId.owner || !bidId.provider || !bidId.dseq) {
       throw new ValidationError('Complete bid ID is required')
@@ -212,7 +212,7 @@ export class MarketManager {
 
     try {
       // In a real implementation, this would submit a MsgCloseBid transaction with reason (AEP-39)
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'market' },
         { key: 'message.action', value: 'bid-closed' },
         { key: 'bid.provider', value: bidId.provider }
@@ -224,10 +224,10 @@ export class MarketManager {
   }
 
   async getBid(bidId: BidID): Promise<Bid | null> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     try {
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'market' },
         { key: 'bid.owner', value: bidId.owner },
         { key: 'bid.provider', value: bidId.provider },
@@ -250,7 +250,7 @@ export class MarketManager {
   }
 
   async listBids(filters: BidFilters = {}): Promise<Bid[]> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     // Generate cache key based on filters
     const cacheKey = `market:bids:${JSON.stringify(filters)}`
@@ -280,7 +280,7 @@ export class MarketManager {
         searchTags.push({ key: 'bid.dseq', value: filters.dseq })
       }
 
-      const response = await this.provider['client']!.searchTx(searchTags)
+      const response = await this.provider.getClient().searchTx(searchTags)
 
       const bids = response.map((tx, index) => ({
         bidId: {
@@ -311,7 +311,7 @@ export class MarketManager {
 
   // Lease operations
   async createLease(bidId: BidID): Promise<string> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!bidId.owner || !bidId.provider || !bidId.dseq) {
       throw new ValidationError('Complete bid ID is required')
@@ -319,7 +319,7 @@ export class MarketManager {
 
     try {
       // In a real implementation, this would submit a MsgCreateLease transaction
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'market' },
         { key: 'message.action', value: 'lease-created' }
       ])
@@ -332,7 +332,7 @@ export class MarketManager {
   }
 
   async closeLease(leaseId: LeaseID, _reason?: LeaseCloseReason): Promise<void> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     if (!leaseId.owner || !leaseId.provider || !leaseId.dseq) {
       throw new ValidationError('Complete lease ID is required')
@@ -340,7 +340,7 @@ export class MarketManager {
 
     try {
       // In a real implementation, this would submit a MsgCloseLease transaction with reason (AEP-39)
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'market' },
         { key: 'message.action', value: 'lease-closed' },
         { key: 'lease.provider', value: leaseId.provider }
@@ -352,10 +352,10 @@ export class MarketManager {
   }
 
   async getLease(leaseId: LeaseID): Promise<Lease | null> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     try {
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'market' },
         { key: 'lease.owner', value: leaseId.owner },
         { key: 'lease.provider', value: leaseId.provider },
@@ -379,7 +379,7 @@ export class MarketManager {
   }
 
   async listLeases(filters: LeaseFilters = {}): Promise<Lease[]> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     try {
       const searchTags = [
@@ -398,7 +398,7 @@ export class MarketManager {
         searchTags.push({ key: 'lease.dseq', value: filters.dseq })
       }
 
-      const response = await this.provider['client']!.searchTx(searchTags)
+      const response = await this.provider.getClient().searchTx(searchTags)
 
       return response.map((tx, index) => ({
         leaseId: {
@@ -445,21 +445,21 @@ export class MarketManager {
     totalBids: number;
     averagePrice: DecCoin;
   }> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     try {
       // Execute the same searches as mocked in the test
-      const ordersResult = await this.provider['client']!.searchTx([
+      const ordersResult = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'market' },
         { key: 'message.action', value: 'order' }
       ])
       
-      const leasesResult = await this.provider['client']!.searchTx([
+      const leasesResult = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'market' },
         { key: 'message.action', value: 'lease' }
       ])
       
-      const bidsResult = await this.provider['client']!.searchTx([
+      const bidsResult = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'market' },
         { key: 'message.action', value: 'bid' }
       ])

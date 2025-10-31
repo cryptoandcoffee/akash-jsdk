@@ -73,34 +73,82 @@ export interface EventSubscription {
   filter?: EventFilter
 }
 
-export interface TendermintEvent {
-  query: string
-  data: {
-    type: string
-    value: {
-      TxResult?: {
-        height: string
-        tx: string
-        result: {
-          events: Array<{
-            type: string
-            attributes: Array<{
-              key: string
-              value: string
-            }>
-          }>
-        }
-      }
-    }
+/**
+ * Tendermint event attribute
+ */
+export interface TendermintAttribute {
+  key: string
+  value: string
+  index?: boolean
+}
+
+/**
+ * Tendermint blockchain event
+ */
+export interface TendermintBlockchainEvent {
+  type: string
+  attributes: TendermintAttribute[]
+}
+
+/**
+ * Transaction result from Tendermint
+ */
+export interface TendermintTxResultData {
+  height: string
+  tx: string
+  result: {
+    events: TendermintBlockchainEvent[]
+    log?: string
+    data?: string
+    code?: number
   }
 }
 
+/**
+ * Event data structure
+ */
+export interface TendermintEventData {
+  type: string
+  value: {
+    TxResult?: TendermintTxResultData
+    [key: string]: unknown
+  }
+}
+
+/**
+ * WebSocket subscription parameters
+ */
+export interface TendermintSubscriptionParams {
+  query: string
+  data?: TendermintEventData
+}
+
+/**
+ * Tendermint event from WebSocket params
+ */
+export interface TendermintEvent {
+  query: string
+  data: TendermintEventData
+}
+
+/**
+ * WebSocket message result
+ */
+export interface WebSocketMessageResult {
+  query?: string
+  data?: TendermintEventData
+  [key: string]: unknown
+}
+
+/**
+ * WebSocket message structure
+ */
 export interface WebSocketMessage {
   jsonrpc: string
   id?: string
   method?: string
-  params?: any
-  result?: any
+  params?: TendermintSubscriptionParams | TendermintEvent
+  result?: WebSocketMessageResult
   error?: {
     code: number
     message: string
@@ -116,6 +164,9 @@ export enum ConnectionState {
   FAILED = 'failed'
 }
 
+// Import Logger from utils to avoid duplication
+import type { Logger } from '../utils/logger'
+
 export interface EventStreamConfig {
   rpcEndpoint: string
   maxReconnectAttempts?: number
@@ -123,4 +174,14 @@ export interface EventStreamConfig {
   maxReconnectDelay?: number
   heartbeatInterval?: number
   heartbeatTimeout?: number
+  logger?: Logger
+  onConnectionStateChange?: (state: ConnectionState) => void
+
+  /**
+   * Maximum number of concurrent subscriptions (default: 100)
+   */
+  maxSubscriptions?: number
 }
+
+// Re-export Logger for backward compatibility
+export type { Logger }

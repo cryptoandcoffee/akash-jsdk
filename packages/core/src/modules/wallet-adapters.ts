@@ -7,6 +7,35 @@ import { JWTAuthManager } from './jwt-auth'
 import { JWTAccessType } from '../types/jwt'
 import { ValidationError, NetworkError } from '../errors'
 
+// Window extension types
+interface WindowWithWallets extends Window {
+  keplr?: {
+    enable: (chainId: string) => Promise<void>
+    getKey: (chainId: string) => Promise<{ bech32Address: string }>
+    signArbitrary: (chainId: string, signer: string, data: string) => Promise<{ signature: string }>
+  }
+  leap?: {
+    enable: (chainId: string) => Promise<void>
+    getKey: (chainId: string) => Promise<{ bech32Address: string }>
+    signArbitrary: (chainId: string, signer: string, data: string) => Promise<{ signature: string }>
+  }
+  cosmostation?: {
+    providers?: {
+      keplr?: {
+        enable: (chainId: string) => Promise<void>
+        getKey: (chainId: string) => Promise<{ bech32Address: string }>
+        signArbitrary: (chainId: string, signer: string, data: string) => Promise<{ signature: string }>
+      }
+    }
+  }
+  ethereum?: {
+    isMetaMask?: boolean
+    request: (args: { method: string; params?: unknown[] }) => Promise<unknown>
+  }
+}
+
+declare const window: WindowWithWallets
+
 export enum SupportedWallet {
   Keplr = 'keplr',
   Leap = 'leap',
@@ -17,7 +46,7 @@ export enum SupportedWallet {
 export interface WalletJWTOptions {
   expiresIn?: number
   accessType?: JWTAccessType
-  leasePermissions?: any[]
+  leasePermissions?: Array<{ owner: string; dseq: string; gseq?: number; provider?: string }>
 }
 
 /**
@@ -40,7 +69,7 @@ export class WalletAdapter {
     }
 
     const available: SupportedWallet[] = []
-    const w = window as any
+    const w = window
 
     if (w.keplr) available.push(SupportedWallet.Keplr)
     if (w.leap) available.push(SupportedWallet.Leap)
@@ -58,11 +87,11 @@ export class WalletAdapter {
     address: string,
     options?: WalletJWTOptions
   ): Promise<string> {
-    if (typeof window === 'undefined' || !(window as any).keplr) {
+    if (typeof window === 'undefined' || !window.keplr) {
       throw new ValidationError('Keplr wallet not found')
     }
 
-    const keplr = (window as any).keplr
+    const keplr = window.keplr
 
     try {
       const token = await this.signJWTWithWallet(
@@ -90,11 +119,11 @@ export class WalletAdapter {
     address: string,
     options?: WalletJWTOptions
   ): Promise<string> {
-    if (typeof window === 'undefined' || !(window as any).leap) {
+    if (typeof window === 'undefined' || !window.leap) {
       throw new ValidationError('Leap wallet not found')
     }
 
-    const leap = (window as any).leap
+    const leap = window.leap
 
     try {
       // Leap uses the same signArbitrary API as Keplr
@@ -123,11 +152,11 @@ export class WalletAdapter {
     address: string,
     options?: WalletJWTOptions
   ): Promise<string> {
-    if (typeof window === 'undefined' || !(window as any).cosmostation) {
+    if (typeof window === 'undefined' || !window.cosmostation) {
       throw new ValidationError('Cosmostation wallet not found')
     }
 
-    const cosmostation = (window as any).cosmostation
+    const cosmostation = window.cosmostation
 
     try {
       // Cosmostation uses cosmos.request API
@@ -191,11 +220,11 @@ export class WalletAdapter {
     address: string,
     options?: WalletJWTOptions
   ): Promise<string> {
-    if (typeof window === 'undefined' || !(window as any).ethereum) {
+    if (typeof window === 'undefined' || !window.ethereum) {
       throw new ValidationError('MetaMask not found')
     }
 
-    const ethereum = (window as any).ethereum
+    const ethereum = window.ethereum
 
     try {
       // Check if Leap Cosmos Snap is installed

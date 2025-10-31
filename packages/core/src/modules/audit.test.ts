@@ -8,13 +8,16 @@ describe('AuditManager', () => {
 
   beforeEach(() => {
     // Create fresh mock provider for each test
+    const mockClient = {
+      searchTx: vi.fn()
+    }
+
     mockProvider = {
-      client: {
-        searchTx: vi.fn()
-      },
-      ensureConnected: vi.fn()
+      client: mockClient,
+      ensureConnected: vi.fn(),
+      getClient: vi.fn().mockReturnValue(mockClient)
     } as unknown as AkashProvider
-    
+
     auditManager = new AuditManager(mockProvider)
   })
 

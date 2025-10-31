@@ -28,10 +28,17 @@ export abstract class BaseProvider {
     }
   }
 
-  protected ensureConnected(): void {
+  ensureConnected(): void {
     if (!this.client) {
       throw new NetworkError('Provider not connected. Call connect() first.')
     }
+  }
+
+  getClient(): StargateClient {
+    if (!this.client) {
+      throw new NetworkError('Provider not connected. Call connect() first.')
+    }
+    return this.client
   }
 
   isConnected(): boolean {

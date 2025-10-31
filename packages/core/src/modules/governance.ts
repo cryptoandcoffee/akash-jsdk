@@ -33,7 +33,7 @@ export class GovernanceManager {
   constructor(private provider: BaseProvider) {}
 
   async submitProposal(request: SubmitProposalRequest): Promise<string> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!request.title || !request.description || !request.proposer) {
       throw new ValidationError('Invalid proposal parameters')
@@ -45,7 +45,7 @@ export class GovernanceManager {
 
     try {
       // In a real implementation, this would submit a MsgSubmitProposal transaction
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'gov' },
         { key: 'message.action', value: 'submit_proposal' }
       ])
@@ -59,7 +59,7 @@ export class GovernanceManager {
   }
 
   async vote(request: VoteRequest): Promise<void> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!request.proposalId || !request.voter || request.option === undefined) {
       throw new ValidationError('Proposal ID, voter, and vote option are required')
@@ -71,7 +71,7 @@ export class GovernanceManager {
 
     try {
       // In a real implementation, this would submit a MsgVote transaction
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'gov' },
         { key: 'message.action', value: 'vote' },
         { key: 'message.sender', value: request.voter }
@@ -82,7 +82,7 @@ export class GovernanceManager {
   }
 
   async deposit(request: DepositRequest): Promise<void> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!request.proposalId || !request.depositor || !request.amount?.length) {
       throw new ValidationError('Proposal ID, depositor, and amount are required')
@@ -90,7 +90,7 @@ export class GovernanceManager {
 
     try {
       // In a real implementation, this would submit a MsgDeposit transaction
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'gov' },
         { key: 'message.action', value: 'deposit' },
         { key: 'message.sender', value: request.depositor }
@@ -101,14 +101,14 @@ export class GovernanceManager {
   }
 
   async getProposal(proposalId: string): Promise<Proposal | null> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!proposalId) {
       throw new ValidationError('Proposal ID is required')
     }
 
     try {
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'gov' },
         { key: 'proposal.id', value: proposalId }
       ])
@@ -146,7 +146,7 @@ export class GovernanceManager {
   }
 
   async listProposals(filters: ProposalFilters = {}): Promise<Proposal[]> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     try {
       const searchTags = [
@@ -161,7 +161,7 @@ export class GovernanceManager {
         searchTags.push({ key: 'message.sender', value: filters.depositor })
       }
 
-      const response = await this.provider['client']!.searchTx(searchTags)
+      const response = await this.provider.getClient().searchTx(searchTags)
 
       // Mock proposal data based on transaction results
       return response.map((_, index) => ({
@@ -192,14 +192,14 @@ export class GovernanceManager {
   }
 
   async getVote(proposalId: string, voter: string): Promise<{ option: VoteOption; metadata?: string } | null> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!proposalId || !voter) {
       throw new ValidationError('Proposal ID and voter are required')
     }
 
     try {
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'gov' },
         { key: 'message.action', value: 'vote' },
         { key: 'proposal.id', value: proposalId },
@@ -221,14 +221,14 @@ export class GovernanceManager {
   }
 
   async getDeposits(proposalId: string): Promise<Array<{ depositor: string; amount: Coin[] }>> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!proposalId) {
       throw new ValidationError('Proposal ID is required')
     }
 
     try {
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'gov' },
         { key: 'message.action', value: 'deposit' },
         { key: 'proposal.id', value: proposalId }
@@ -245,14 +245,14 @@ export class GovernanceManager {
   }
 
   async getVotes(proposalId: string): Promise<Array<{ proposalId: string; voter: string; option: string }>> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!proposalId) {
       throw new ValidationError('Proposal ID is required')
     }
 
     try {
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'gov' },
         { key: 'message.action', value: 'vote' },
         { key: 'proposal.id', value: proposalId }
@@ -270,7 +270,7 @@ export class GovernanceManager {
   }
 
   async getTallyResult(proposalId: string): Promise<TallyResult> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!proposalId) {
       throw new ValidationError('Proposal ID is required')
@@ -278,7 +278,7 @@ export class GovernanceManager {
 
     try {
       // Mock tally data for the test expectations
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'gov' },
         { key: 'proposal.id', value: proposalId }
       ])
@@ -299,7 +299,7 @@ export class GovernanceManager {
     depositParams: any;
     tallyParams: any;
   }> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     // Mock governance parameters
     return {

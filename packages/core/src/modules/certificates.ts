@@ -18,7 +18,7 @@ export class CertificateManager {
   constructor(private provider: BaseProvider) {}
 
   async create(request: CreateCertificateRequest): Promise<any> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!request.owner || !request.cert || !request.pubkey) {
       throw new ValidationError('Invalid certificate parameters')
@@ -26,7 +26,7 @@ export class CertificateManager {
 
     try {
       // In a real implementation, this would submit a MsgCreateCertificate transaction
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'cert' },
         { key: 'message.action', value: 'create-certificate' }
       ])
@@ -47,7 +47,7 @@ export class CertificateManager {
   }
 
   async revoke(certificateId: CertificateID): Promise<void> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!certificateId.owner || !certificateId.serial) {
       throw new ValidationError('Certificate owner and serial are required')
@@ -55,7 +55,7 @@ export class CertificateManager {
 
     try {
       // In a real implementation, this would submit a MsgRevokeCertificate transaction
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'cert' },
         { key: 'message.action', value: 'revoke-certificate' },
         { key: 'message.sender', value: certificateId.owner }
@@ -66,7 +66,7 @@ export class CertificateManager {
   }
 
   async list(filters: CertificateFilters = {}): Promise<Certificate[]> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     try {
       const searchTags = [
@@ -77,7 +77,7 @@ export class CertificateManager {
         searchTags.push({ key: 'message.sender', value: filters.owner })
       }
 
-      const response = await this.provider['client']!.searchTx(searchTags)
+      const response = await this.provider.getClient().searchTx(searchTags)
 
       // Mock certificate data based on transaction results
       return response.map((tx, index) => ({
@@ -95,7 +95,7 @@ export class CertificateManager {
   }
 
   async get(certificateId: CertificateID): Promise<Certificate | null> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     try {
       const certificates = await this.list({

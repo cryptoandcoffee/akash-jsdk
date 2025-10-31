@@ -102,7 +102,7 @@ export class WalletManager {
    * Get account balances
    */
   async getBalance(address: string): Promise<Coin> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     if (!address) {
       throw new ValidationError('Address is required')
@@ -110,8 +110,8 @@ export class WalletManager {
 
     try {
       // Use the provider's client to get balance
-      if (this.provider['client']?.getBalance) {
-        return await this.provider['client'].getBalance(address, 'uakt')
+      if (this.provider.getClient().getBalance) {
+        return await this.provider.getClient().getBalance(address, 'uakt')
       }
       
       // Fallback mock data
@@ -132,7 +132,7 @@ export class WalletManager {
       throw new ValidationError('No wallet connected')
     }
 
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     if (!request.from || !request.msgs?.length) {
       throw new ValidationError('From address and messages are required')
@@ -246,14 +246,14 @@ export class WalletManager {
    * Get transaction history for an address
    */
   async getTransactionHistory(address: string, limit: number = 10): Promise<TransactionHistory[]> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     if (!address) {
       throw new ValidationError('Address is required')
     }
 
     try {
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.sender', value: address }
       ])
 
@@ -282,7 +282,7 @@ export class WalletManager {
     gasWanted: string;
     estimatedFee: Coin[];
   }> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     if (!request.from || !request.msgs?.length) {
       throw new ValidationError('From address and messages are required')
@@ -525,10 +525,10 @@ export class WalletManager {
    * Get delegations for an address
    */
   async getDelegations(delegatorAddress: string): Promise<any[]> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     try {
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'staking' },
         { key: 'message.sender', value: delegatorAddress }
       ])

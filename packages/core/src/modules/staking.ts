@@ -1,20 +1,16 @@
 import { BaseProvider } from '../providers/base'
 import { Coin } from '@cryptoandcoffee/akash-jsdk-protobuf'
 import { NetworkError, ValidationError } from '../errors'
-
-export interface StakingResult {
-  transactionHash: string
-  code: number
-  height: number
-  gasUsed?: number
-  gasWanted?: number
-  unbondingTime?: string
-  rawLog?: string
-}
+import {
+  validateValidatorAddress,
+  validateCoinAmount,
+  validateRequired
+} from '../utils/validation'
+import { StakingResult } from '../types/results'
 
 export interface Validator {
   operatorAddress: string
-  consensusPubkey?: any
+  consensusPubkey?: { type: string; value: string }
   jailed: boolean
   status: string
   tokens: string
@@ -94,9 +90,13 @@ export class StakingManager {
    * Delegate tokens to a validator
    */
   async delegate(validatorAddress: string, amount: Coin, _delegatorAddress?: string): Promise<StakingResult> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     if (!validatorAddress) {
+    validateValidatorAddress(validatorAddress)
+    validateRequired(amount, 'Amount')
+    validateCoinAmount(amount)
+
       throw new ValidationError('Validator address is required')
     }
 
@@ -113,17 +113,28 @@ export class StakingManager {
       // 1. Create MsgDelegate message
       // 2. Sign and broadcast the transaction
       // For now, return mock result
+
+      // Runtime warning for mock implementation
+      if (process.env.NODE_ENV !== 'test') {
+        console.warn(
+          '⚠️  WARNING: Using mock staking delegation. ' +
+          'This will not execute real blockchain transactions. ' +
+          'Do not use in production. ' +
+          'See PRODUCTION_READINESS.md for details.'
+        )
+      }
+
       const mockResult = {
         transactionHash: `delegate-${Date.now()}`,
         code: 0,
         height: Math.floor(Date.now() / 1000),
-        gasUsed: 75000,
-        gasWanted: 90000,
+        gasUsed: 75000n,
+        gasWanted: 90000n,
         rawLog: 'Delegation successful'
       }
 
       // Simulate network call
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'staking' },
         { key: 'message.action', value: 'delegate' }
       ])
@@ -138,7 +149,11 @@ export class StakingManager {
    * Undelegate tokens from a validator
    */
   async undelegate(validatorAddress: string, amount: Coin, _delegatorAddress?: string): Promise<StakingResult> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
+
+    validateValidatorAddress(validatorAddress)
+    validateRequired(amount, 'Amount')
+    validateCoinAmount(amount)
 
     if (!validatorAddress) {
       throw new ValidationError('Validator address is required')
@@ -153,6 +168,16 @@ export class StakingManager {
     }
 
     try {
+      // Runtime warning for mock implementation
+      if (process.env.NODE_ENV !== 'test') {
+        console.warn(
+          '⚠️  WARNING: Using mock staking undelegation. ' +
+          'This will not execute real blockchain transactions. ' +
+          'Do not use in production. ' +
+          'See PRODUCTION_READINESS.md for details.'
+        )
+      }
+
       const currentTime = new Date()
       const unbondingTime = new Date(currentTime.getTime() + this.DEFAULT_UNBONDING_PERIOD_DAYS * 24 * 60 * 60 * 1000)
 
@@ -160,14 +185,14 @@ export class StakingManager {
         transactionHash: `undelegate-${Date.now()}`,
         code: 0,
         height: Math.floor(Date.now() / 1000),
-        gasUsed: 85000,
-        gasWanted: 100000,
+        gasUsed: 85000n,
+        gasWanted: 100000n,
         unbondingTime: unbondingTime.toISOString(),
         rawLog: 'Unbonding delegation successful'
       }
 
       // Simulate network call
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'staking' },
         { key: 'message.action', value: 'begin_unbonding' }
       ])
@@ -187,19 +212,12 @@ export class StakingManager {
     amount: Coin,
     _delegatorAddress?: string
   ): Promise<StakingResult> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
-    if (!srcValidator || !dstValidator) {
-      throw new ValidationError('Source and destination validator addresses are required')
-    }
-
-    if (!amount || !amount.denom || !amount.amount) {
-      throw new ValidationError('Valid amount is required')
-    }
-
-    if (!srcValidator.startsWith('akashvaloper1') || !dstValidator.startsWith('akashvaloper1')) {
-      throw new ValidationError('Invalid validator address format')
-    }
+    validateValidatorAddress(srcValidator, 'Source validator address')
+    validateValidatorAddress(dstValidator, 'Destination validator address')
+    validateRequired(amount, 'Amount')
+    validateCoinAmount(amount)
 
     if (srcValidator === dstValidator) {
       throw new ValidationError('Source and destination validators must be different')
@@ -210,13 +228,13 @@ export class StakingManager {
         transactionHash: `redelegate-${Date.now()}`,
         code: 0,
         height: Math.floor(Date.now() / 1000),
-        gasUsed: 95000,
-        gasWanted: 110000,
+        gasUsed: 95000n,
+        gasWanted: 110000n,
         rawLog: 'Redelegation successful'
       }
 
       // Simulate network call
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'staking' },
         { key: 'message.action', value: 'begin_redelegate' }
       ])
@@ -231,11 +249,11 @@ export class StakingManager {
    * Get all validators or filter by status
    */
   async getValidators(status?: 'BOND_STATUS_BONDED' | 'BOND_STATUS_UNBONDED' | 'BOND_STATUS_UNBONDING'): Promise<Validator[]> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     try {
       // Simulate network call
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'staking' }
       ])
 
@@ -281,7 +299,7 @@ export class StakingManager {
    * Get validator details by address
    */
   async getValidator(address: string): Promise<Validator> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     if (!address) {
       throw new ValidationError('Validator address is required')
@@ -293,7 +311,7 @@ export class StakingManager {
 
     try {
       // Simulate network call
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'staking' },
         { key: 'message.validator', value: address }
       ])
@@ -337,7 +355,7 @@ export class StakingManager {
    * Get delegations for a delegator address
    */
   async getDelegations(delegatorAddress?: string): Promise<Delegation[]> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     const address = delegatorAddress || 'akash1delegator'
 
@@ -351,7 +369,7 @@ export class StakingManager {
 
     try {
       // Simulate network call
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'staking' },
         { key: 'message.sender', value: address }
       ])
@@ -375,7 +393,7 @@ export class StakingManager {
    * Get unbonding delegations for a delegator
    */
   async getUnbondingDelegations(delegatorAddress?: string): Promise<UnbondingDelegation[]> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     const address = delegatorAddress || 'akash1delegator'
 
@@ -389,7 +407,7 @@ export class StakingManager {
 
     try {
       // Simulate network call
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'staking' },
         { key: 'message.action', value: 'begin_unbonding' },
         { key: 'message.sender', value: address }
@@ -422,7 +440,7 @@ export class StakingManager {
    * Get redelegations for a delegator
    */
   async getRedelegations(delegatorAddress?: string): Promise<Redelegation[]> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     const address = delegatorAddress || 'akash1delegator'
 
@@ -432,7 +450,7 @@ export class StakingManager {
 
     try {
       // Simulate network call
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'staking' },
         { key: 'message.action', value: 'begin_redelegate' }
       ])
@@ -465,7 +483,7 @@ export class StakingManager {
    * Get staking rewards for a delegator
    */
   async getRewards(delegatorAddress?: string): Promise<Rewards> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     const address = delegatorAddress || 'akash1delegator'
 
@@ -479,7 +497,7 @@ export class StakingManager {
 
     try {
       // Simulate network call
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'distribution' },
         { key: 'message.sender', value: address }
       ])
@@ -513,9 +531,11 @@ export class StakingManager {
 
   /**
    * Withdraw staking rewards from a validator
+    validateValidatorAddress(validatorAddress)
+
    */
   async withdrawRewards(validatorAddress: string, _delegatorAddress?: string): Promise<StakingResult> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     if (!validatorAddress) {
       throw new ValidationError('Validator address is required')
@@ -530,13 +550,13 @@ export class StakingManager {
         transactionHash: `withdraw-${Date.now()}`,
         code: 0,
         height: Math.floor(Date.now() / 1000),
-        gasUsed: 65000,
-        gasWanted: 80000,
+        gasUsed: 65000n,
+        gasWanted: 80000n,
         rawLog: 'Rewards withdrawn successfully'
       }
 
       // Simulate network call
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'distribution' },
         { key: 'message.action', value: 'withdraw_delegator_reward' }
       ])
@@ -551,7 +571,7 @@ export class StakingManager {
    * Withdraw all staking rewards from all validators
    */
   async withdrawAllRewards(delegatorAddress?: string): Promise<StakingResult> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     const address = delegatorAddress || 'akash1delegator'
 
@@ -571,8 +591,8 @@ export class StakingManager {
         transactionHash: `withdraw-all-${Date.now()}`,
         code: 0,
         height: Math.floor(Date.now() / 1000),
-        gasUsed: 65000 * delegations.length,
-        gasWanted: 80000 * delegations.length,
+        gasUsed: 65000n * BigInt(delegations.length),
+        gasWanted: 80000n * BigInt(delegations.length),
         rawLog: `Withdrew rewards from ${delegations.length} validators`
       }
 
@@ -589,11 +609,11 @@ export class StakingManager {
    * Get staking pool information
    */
   async getPool(): Promise<{ bondedTokens: string; notBondedTokens: string }> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     try {
       // Simulate network call
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'staking' }
       ])
 
@@ -617,7 +637,7 @@ export class StakingManager {
     bondDenom: string
     minCommissionRate: string
   }> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     return {
       unbondingTime: `${this.DEFAULT_UNBONDING_PERIOD_DAYS * 24 * 60 * 60}s`,

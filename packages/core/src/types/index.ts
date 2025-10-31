@@ -113,3 +113,6 @@ export interface DepositConfig {
 
 export type { JWTClaims, JWTGenerationOptions, AuthConfig } from './jwt'
 export { JWTPermissionScope, JWTAccessType, AuthMethod } from './jwt'
+
+// Export result types
+export * from './results'

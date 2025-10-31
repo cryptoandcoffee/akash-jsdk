@@ -11,9 +11,31 @@ import {
   DeploymentEvent,
   OrderEvent,
   BidEvent,
-  LeaseEvent
+  LeaseEvent,
+  Logger
 } from './types'
-import { NetworkError } from '../errors'
+import { NetworkError, EventStreamError } from '../errors'
+import { getEventAttributes } from '../utils/event-parsing'
+import { createDefaultLogger } from '../utils/logger'
+import {
+  validateWebSocketUrl,
+  validateTendermintQuery,
+  validateCallback
+} from'../utils/validation'
+import {
+  DEFAULT_MAX_RECONNECT_ATTEMPTS,
+  DEFAULT_RECONNECT_BASE_DELAY,
+  DEFAULT_MAX_RECONNECT_DELAY,
+  DEFAULT_HEARTBEAT_INTERVAL,
+  DEFAULT_HEARTBEAT_TIMEOUT,
+  EXPONENTIAL_BACKOFF_BASE,
+  JSONRPC_VERSION,
+  WEBSOCKET_PATH_SUFFIX,
+  DECIMAL_RADIX,
+  SUBSCRIPTION_ID_RANDOM_LENGTH,
+  RANDOM_ID_BASE,
+  RANDOM_ID_SUBSTRING_START
+} from './constants'
 
 export class EventStreamManager {
   private ws: WebSocket | null = null
@@ -30,14 +52,26 @@ export class EventStreamManager {
   private rpcEndpoint: string
   private pendingPings = new Set<string>()
   private reconnectTimer: NodeJS.Timeout | null = null
+  private config: EventStreamConfig
+  private logger: Logger
+  private maxSubscriptions: number
+
+  // Event handler references for proper cleanup
+  private wsOpenHandler: ((event: any) => void) | null = null
+  private wsMessageHandler: ((event: any) => void) | null = null
+  private wsCloseHandler: ((event: any) => void) | null = null
+  private wsErrorHandler: ((event: any) => void) | null = null
 
   constructor(config: EventStreamConfig) {
+    this.config = config
     this.rpcEndpoint = config.rpcEndpoint
-    this.maxReconnectAttempts = config.maxReconnectAttempts ?? 5
-    this.reconnectBaseDelay = config.reconnectBaseDelay ?? 1000
-    this.maxReconnectDelay = config.maxReconnectDelay ?? 30000
-    this.heartbeatInterval = config.heartbeatInterval ?? 30000
-    this.heartbeatTimeout = config.heartbeatTimeout ?? 10000
+    this.maxReconnectAttempts = config.maxReconnectAttempts ?? DEFAULT_MAX_RECONNECT_ATTEMPTS
+    this.reconnectBaseDelay = config.reconnectBaseDelay ?? DEFAULT_RECONNECT_BASE_DELAY
+    this.maxReconnectDelay = config.maxReconnectDelay ?? DEFAULT_MAX_RECONNECT_DELAY
+    this.heartbeatInterval = config.heartbeatInterval ?? DEFAULT_HEARTBEAT_INTERVAL
+    this.heartbeatTimeout = config.heartbeatTimeout ?? DEFAULT_HEARTBEAT_TIMEOUT
+    this.maxSubscriptions = config.maxSubscriptions ?? 100
+    this.logger = config.logger ?? createDefaultLogger()
   }
 
   /**
@@ -45,18 +79,23 @@ export class EventStreamManager {
    */
   async connect(): Promise<void> {
     if (this.connectionState === ConnectionState.CONNECTED) {
+    validateWebSocketUrl(this.rpcEndpoint)
+
       return
     }
 
     this.connectionState = ConnectionState.CONNECTING
-    const wsUrl = this.rpcEndpoint.replace(/^http/, 'ws') + '/websocket'
+    this.config.onConnectionStateChange?.(ConnectionState.CONNECTING)
+    const wsUrl = this.rpcEndpoint.replace(/^http/, 'ws') + WEBSOCKET_PATH_SUFFIX
 
     return new Promise((resolve, reject) => {
       try {
         this.ws = new WebSocket(wsUrl)
+        this.setupWebSocketHandlers()
 
-        this.ws.onopen = () => {
+        this.wsOpenHandler = () => {
           this.connectionState = ConnectionState.CONNECTED
+          this.config.onConnectionStateChange?.(ConnectionState.CONNECTED)
           this.reconnectAttempts = 0
           this.startHeartbeat()
 
@@ -66,23 +105,32 @@ export class EventStreamManager {
           resolve()
         }
 
-        this.ws.onmessage = (event: any) => {
+        this.wsMessageHandler = (event: any) => {
           this.handleMessage(event.data)
         }
 
-        this.ws.onclose = () => {
+        this.wsCloseHandler = () => {
           this.handleClose()
         }
 
-        this.ws.onerror = (error: any) => {
-          console.error('WebSocket error:', error)
+        this.wsErrorHandler = (error: any) => {
+          this.logger.error('WebSocket error', { error })
           if (this.connectionState === ConnectionState.CONNECTING) {
             this.connectionState = ConnectionState.DISCONNECTED
+            this.config.onConnectionStateChange?.(ConnectionState.DISCONNECTED)
             reject(new NetworkError('Failed to connect to WebSocket', { error }))
           }
         }
+
+        if (this.ws) {
+          this.ws.onopen = this.wsOpenHandler
+          this.ws.onmessage = this.wsMessageHandler
+          this.ws.onclose = this.wsCloseHandler
+          this.ws.onerror = this.wsErrorHandler
+        }
       } catch (error) {
         this.connectionState = ConnectionState.FAILED
+        this.config.onConnectionStateChange?.(ConnectionState.FAILED)
         reject(new NetworkError('Failed to create WebSocket connection', { error }))
       }
     })
@@ -96,7 +144,18 @@ export class EventStreamManager {
    * @returns Subscription ID
    */
   subscribe(query: string, callback: EventCallback, filter?: EventFilter): string {
-    const id = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+    validateTendermintQuery(query)
+    validateCallback(callback, 'Callback function')
+
+    // Validate subscription limit
+    if (this.subscriptions.size >= this.maxSubscriptions) {
+      throw new EventStreamError(
+        `Maximum subscriptions reached: ${this.maxSubscriptions}`,
+        { currentCount: this.subscriptions.size }
+      )
+    }
+
+    const id = `sub_${Date.now()}_${Math.random().toString(RANDOM_ID_BASE).substring(RANDOM_ID_SUBSTRING_START, RANDOM_ID_SUBSTRING_START + SUBSCRIPTION_ID_RANDOM_LENGTH)}`
 
     const subscription: EventSubscription = {
       id,
@@ -127,7 +186,7 @@ export class EventStreamManager {
     // Send unsubscribe message if connected
     if (this.connectionState === ConnectionState.CONNECTED && this.ws) {
       const unsubscribeMsg: WebSocketMessage = {
-        jsonrpc: '2.0',
+        jsonrpc: JSONRPC_VERSION,
         method: 'unsubscribe',
         id: subscriptionId,
         params: { query: subscription.query }
@@ -140,29 +199,45 @@ export class EventStreamManager {
   }
 
   /**
-   * Disconnect from WebSocket
+   * Disconnect from WebSocket and clean up all resources
    */
   disconnect(): void {
+    this.logger.debug('Disconnecting event stream')
+
+    // Stop heartbeat first
     this.stopHeartbeat()
 
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer)
-      this.reconnectTimer = null
-    }
+    // Clear reconnection timer
+    this.clearReconnectTimer()
 
+    // Clear all pending operations
+    this.pendingPings.clear()
+
+    // Clean up WebSocket
     if (this.ws) {
-      // Unsubscribe from all subscriptions
-      for (const [id] of this.subscriptions) {
-        this.unsubscribe(id)
+      // Remove all event handlers before closing
+      this.removeWebSocketHandlers()
+
+      // Close if still open
+      if (this.ws.readyState === WebSocket.OPEN ||
+          this.ws.readyState === WebSocket.CONNECTING) {
+        this.ws.close()
       }
 
-      this.ws.close()
       this.ws = null
     }
 
+    // Clear subscriptions
     this.subscriptions.clear()
+
+    // Update state
     this.connectionState = ConnectionState.DISCONNECTED
+    this.config.onConnectionStateChange?.(ConnectionState.DISCONNECTED)
+
+    // Reset reconnection state
     this.reconnectAttempts = 0
+
+    this.logger.debug('Event stream disconnected and cleaned up')
   }
 
   /**
@@ -192,7 +267,7 @@ export class EventStreamManager {
     }
 
     const subscribeMsg: WebSocketMessage = {
-      jsonrpc: '2.0',
+      jsonrpc: JSONRPC_VERSION,
       method: 'subscribe',
       id: subscription.id,
       params: { query: subscription.query }
@@ -228,7 +303,7 @@ export class EventStreamManager {
         this.handleEvent(message.params as any)
       }
     } catch (error) {
-      console.error('Failed to parse WebSocket message:', error)
+      this.logger.error('Failed to parse WebSocket message', { error })
     }
   }
 
@@ -245,7 +320,7 @@ export class EventStreamManager {
         try {
           subscription.callback(akashEvent)
         } catch (error) {
-          console.error('Error in event callback:', error)
+          this.logger.error('Error in event callback', { error })
         }
       }
     }
@@ -258,7 +333,7 @@ export class EventStreamManager {
         return null
       }
 
-      const height = parseInt(txResult.height, 10)
+      const height = parseInt(txResult.height, DECIMAL_RADIX)
       const events = txResult.result?.events || []
 
       // Find message events
@@ -313,23 +388,15 @@ export class EventStreamManager {
 
       return null
     } catch (error) {
-      console.error('Failed to parse event:', error)
+      this.logger.error('Failed to parse event', { error })
       return null
     }
   }
 
   private parseDeploymentEvent(event: any, action: string, height: number): DeploymentEvent | null {
-    const getAttr = (key: string): string | undefined => {
-      const attr = event.attributes.find((a: any) =>
-        Buffer.from(a.key, 'base64').toString() === key
-      )
-      return attr ? Buffer.from(attr.value, 'base64').toString() : undefined
-    }
+    const attrs = getEventAttributes(event, ['owner', 'dseq', 'version', 'state'])
 
-    const owner = getAttr('owner')
-    const dseq = getAttr('dseq')
-
-    if (!owner || !dseq) {
+    if (!attrs.owner || !attrs.dseq) {
       return null
     }
 
@@ -343,28 +410,18 @@ export class EventStreamManager {
     return {
       type,
       height,
-      owner,
-      dseq,
-      version: getAttr('version'),
-      state: getAttr('state') as any,
+      owner: attrs.owner,
+      dseq: attrs.dseq,
+      version: attrs.version || undefined,
+      state: attrs.state as any,
       timestamp: Date.now()
     }
   }
 
   private parseOrderEvent(event: any, action: string, height: number): OrderEvent | null {
-    const getAttr = (key: string): string | undefined => {
-      const attr = event.attributes.find((a: any) =>
-        Buffer.from(a.key, 'base64').toString() === key
-      )
-      return attr ? Buffer.from(attr.value, 'base64').toString() : undefined
-    }
+    const attrs = getEventAttributes(event, ['owner', 'dseq', 'gseq', 'oseq', 'state'])
 
-    const owner = getAttr('owner')
-    const dseq = getAttr('dseq')
-    const gseq = getAttr('gseq')
-    const oseq = getAttr('oseq')
-
-    if (!owner || !dseq || !gseq || !oseq) {
+    if (!attrs.owner || !attrs.dseq || !attrs.gseq || !attrs.oseq) {
       return null
     }
 
@@ -373,86 +430,58 @@ export class EventStreamManager {
     return {
       type,
       height,
-      owner,
-      dseq,
-      gseq: parseInt(gseq, 10),
-      oseq: parseInt(oseq, 10),
-      state: getAttr('state') as any,
+      owner: attrs.owner,
+      dseq: attrs.dseq,
+      gseq: parseInt(attrs.gseq, DECIMAL_RADIX),
+      oseq: parseInt(attrs.oseq, DECIMAL_RADIX),
+      state: attrs.state as any,
       timestamp: Date.now()
     }
   }
 
   private parseBidEvent(event: any, action: string, height: number): BidEvent | null {
-    const getAttr = (key: string): string | undefined => {
-      const attr = event.attributes.find((a: any) =>
-        Buffer.from(a.key, 'base64').toString() === key
-      )
-      return attr ? Buffer.from(attr.value, 'base64').toString() : undefined
-    }
+    const attrs = getEventAttributes(event, ['owner', 'dseq', 'gseq', 'oseq', 'provider', 'price-amount', 'price-denom', 'state'])
 
-    const owner = getAttr('owner')
-    const dseq = getAttr('dseq')
-    const gseq = getAttr('gseq')
-    const oseq = getAttr('oseq')
-    const provider = getAttr('provider')
-
-    if (!owner || !dseq || !gseq || !oseq || !provider) {
+    if (!attrs.owner || !attrs.dseq || !attrs.gseq || !attrs.oseq || !attrs.provider) {
       return null
     }
 
     const type: BidEvent['type'] = action.includes('close') ? 'bid.closed' : 'bid.created'
 
-    const priceAmount = getAttr('price-amount')
-    const priceDenom = getAttr('price-denom')
-
     return {
       type,
       height,
-      owner,
-      dseq,
-      gseq: parseInt(gseq, 10),
-      oseq: parseInt(oseq, 10),
-      provider,
-      price: priceAmount && priceDenom ? { amount: priceAmount, denom: priceDenom } : undefined,
-      state: getAttr('state') as any,
+      owner: attrs.owner,
+      dseq: attrs.dseq,
+      gseq: parseInt(attrs.gseq, DECIMAL_RADIX),
+      oseq: parseInt(attrs.oseq, DECIMAL_RADIX),
+      provider: attrs.provider,
+      price: attrs['price-amount'] && attrs['price-denom'] ? { amount: attrs['price-amount'], denom: attrs['price-denom'] } : undefined,
+      state: attrs.state as any,
       timestamp: Date.now()
     }
   }
 
   private parseLeaseEvent(event: any, action: string, height: number): LeaseEvent | null {
-    const getAttr = (key: string): string | undefined => {
-      const attr = event.attributes.find((a: any) =>
-        Buffer.from(a.key, 'base64').toString() === key
-      )
-      return attr ? Buffer.from(attr.value, 'base64').toString() : undefined
-    }
+    const attrs = getEventAttributes(event, ['owner', 'dseq', 'gseq', 'oseq', 'provider', 'price-amount', 'price-denom', 'state', 'close-reason'])
 
-    const owner = getAttr('owner')
-    const dseq = getAttr('dseq')
-    const gseq = getAttr('gseq')
-    const oseq = getAttr('oseq')
-    const provider = getAttr('provider')
-
-    if (!owner || !dseq || !gseq || !oseq || !provider) {
+    if (!attrs.owner || !attrs.dseq || !attrs.gseq || !attrs.oseq || !attrs.provider) {
       return null
     }
 
     const type: LeaseEvent['type'] = action.includes('close') ? 'lease.closed' : 'lease.created'
 
-    const priceAmount = getAttr('price-amount')
-    const priceDenom = getAttr('price-denom')
-
     return {
       type,
       height,
-      owner,
-      dseq,
-      gseq: parseInt(gseq, 10),
-      oseq: parseInt(oseq, 10),
-      provider,
-      price: priceAmount && priceDenom ? { amount: priceAmount, denom: priceDenom } : undefined,
-      state: getAttr('state') as any,
-      closeReason: getAttr('close-reason'),
+      owner: attrs.owner,
+      dseq: attrs.dseq,
+      gseq: parseInt(attrs.gseq, DECIMAL_RADIX),
+      oseq: parseInt(attrs.oseq, DECIMAL_RADIX),
+      provider: attrs.provider,
+      price: attrs['price-amount'] && attrs['price-denom'] ? { amount: attrs['price-amount'], denom: attrs['price-denom'] } : undefined,
+      state: attrs.state as any,
+      closeReason: attrs['close-reason'] || undefined,
       timestamp: Date.now()
     }
   }
@@ -492,25 +521,45 @@ export class EventStreamManager {
     this.handleReconnect()
   }
 
-  private handleReconnect(): void {
+  private async handleReconnect(): Promise<void> {
+    // Clear any existing reconnect timer
+    this.clearReconnectTimer()
+
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       this.connectionState = ConnectionState.FAILED
-      console.error('Max reconnection attempts reached')
+      this.config.onConnectionStateChange?.(ConnectionState.FAILED)
+      this.logger.error('Max reconnection attempts reached')
       return
     }
 
+    this.reconnectAttempts++
+    this.connectionState = ConnectionState.RECONNECTING
+    this.config.onConnectionStateChange?.(ConnectionState.RECONNECTING)
+
     const delay = Math.min(
-      this.reconnectBaseDelay * Math.pow(2, this.reconnectAttempts),
+      this.reconnectBaseDelay * Math.pow(EXPONENTIAL_BACKOFF_BASE, this.reconnectAttempts - 1),
       this.maxReconnectDelay
     )
 
-    this.reconnectAttempts++
+    this.logger.info(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`)
 
-    this.reconnectTimer = setTimeout(() => {
-      this.connect().catch(error => {
-        console.error('Reconnection attempt failed:', error)
+    this.reconnectTimer = setTimeout(async () => {
+      try {
+        // Clean up old connection completely before reconnecting
+        if (this.ws) {
+          this.removeWebSocketHandlers()
+          if (this.ws.readyState === WebSocket.OPEN ||
+              this.ws.readyState === WebSocket.CONNECTING) {
+            this.ws.close()
+          }
+          this.ws = null
+        }
+
+        await this.connect()
+      } catch (error) {
+        this.logger.error('Reconnection attempt failed', { error })
         this.handleReconnect()
-      })
+      }
     }, delay)
   }
 
@@ -545,7 +594,7 @@ export class EventStreamManager {
     this.pendingPings.add(pingId)
 
     const pingMsg: WebSocketMessage = {
-      jsonrpc: '2.0',
+      jsonrpc: JSONRPC_VERSION,
       method: 'ping',
       id: pingId
     }
@@ -555,7 +604,7 @@ export class EventStreamManager {
     // Set timeout for pong response
     this.heartbeatTimeoutTimer = setTimeout(() => {
       if (this.pendingPings.has(pingId)) {
-        console.error('Heartbeat timeout - connection may be dead')
+        this.logger.warn('Heartbeat timeout - connection may be dead')
         this.ws?.close()
       }
     }, this.heartbeatTimeout)
@@ -565,6 +614,48 @@ export class EventStreamManager {
     if (this.heartbeatTimeoutTimer) {
       clearTimeout(this.heartbeatTimeoutTimer)
       this.heartbeatTimeoutTimer = null
+    }
+  }
+
+  /**
+   * Setup WebSocket event handlers
+   * @private
+   */
+  private setupWebSocketHandlers(): void {
+    // Handlers are set up in connect() method
+    // This method can be used for additional setup if needed
+  }
+
+  /**
+   * Remove all WebSocket event handlers
+   * @private
+   */
+  private removeWebSocketHandlers(): void {
+    if (!this.ws) {
+      return
+    }
+
+    // Remove event handlers to prevent memory leaks
+    this.ws.onopen = null
+    this.ws.onmessage = null
+    this.ws.onclose = null
+    this.ws.onerror = null
+
+    // Clear handler references
+    this.wsOpenHandler = null
+    this.wsMessageHandler = null
+    this.wsCloseHandler = null
+    this.wsErrorHandler = null
+  }
+
+  /**
+   * Clears reconnection timer
+   * @private
+   */
+  private clearReconnectTimer(): void {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer)
+      this.reconnectTimer = null
     }
   }
 }

@@ -1,6 +1,36 @@
 import { BaseProvider } from '../providers/base'
 import { Coin } from '@cryptoandcoffee/akash-jsdk-protobuf'
 import { NetworkError, ValidationError } from '../errors'
+import {
+  validateNonEmptyString,
+  validateChannelId,
+  validateCoinAmount,
+  validateTimeoutTimestamp,
+  validatePositiveNumber,
+  validateRequired
+} from '../utils/validation'
+import { IBCTransferResult } from '../types/results'
+import {
+  DEFAULT_TIMEOUT_OFFSET_NS,
+  MS_TO_NS_CONVERSION,
+  DEFAULT_SOURCE_PORT,
+  DEFAULT_TIMEOUT_BLOCKS,
+  DEFAULT_REVISION_NUMBER,
+  DEFAULT_CHANNEL_STATE,
+  DEFAULT_CHANNEL_ORDERING,
+  DEFAULT_IBC_VERSION,
+  TX_SUCCESS_CODE,
+  DEFAULT_CHANNEL_ID,
+  COUNTERPARTY_CHANNEL_OFFSET,
+  MIN_RECEIVER_ADDRESS_LENGTH,
+  IBC_DENOM_PREFIX,
+  DEFAULT_BASE_DENOM,
+  DEFAULT_IBC_PATH,
+  MOCK_IBC_ACK,
+  DEFAULT_IBC_GAS_USED,
+  DEFAULT_IBC_GAS_WANTED,
+  MOCK_IBC_HEIGHT
+} from './ibc-constants'
 
 export interface Height {
   revisionNumber: bigint
@@ -14,14 +44,6 @@ export interface IBCTransferParams {
   timeoutHeight?: Height
   timeoutTimestamp?: bigint
   memo?: string
-}
-
-export interface IBCTransferResult {
-  transactionHash: string
-  code: number
-  height: number
-  gasUsed: bigint
-  gasWanted: bigint
 }
 
 export interface Channel {
@@ -53,11 +75,25 @@ export class IBCManager {
 
   /**
    * Initiate an IBC transfer to another chain
+   *
+   * @warning MOCK IMPLEMENTATION - Does not execute actual IBC transfer on blockchain
+   * @todo Implement real IBC MsgTransfer message creation and broadcasting
+   * @todo Add proper IBC client integration from @cosmjs/stargate
    */
   async transfer(params: IBCTransferParams): Promise<IBCTransferResult> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     // Validate parameters
+    // Validate all transfer parameters
+    validateChannelId(params.sourceChannel)
+    validateRequired(params.token, 'Token')
+    validateCoinAmount(params.token)
+    validateNonEmptyString(params.receiver, 'Receiver address')
+    
+    if (params.timeoutTimestamp) {
+      validateTimeoutTimestamp(params.timeoutTimestamp)
+    }
+
     if (!params.sourceChannel) {
       throw new ValidationError('Source channel is required')
     }
@@ -88,8 +124,18 @@ export class IBCManager {
       // 2. Sign and broadcast the transaction
       // 3. Return the transaction result
 
+      // Runtime warning for mock implementation
+      if (process.env.NODE_ENV !== 'test') {
+        console.warn(
+          '⚠️  WARNING: Using mock IBC transfer. ' +
+          'This will not execute real IBC token transfers. ' +
+          'Do not use in production. ' +
+          'See PRODUCTION_READINESS.md for details.'
+        )
+      }
+
       // For now, we'll mock the transaction
-      const mockTx = await this.provider['client']!.searchTx([
+      const mockTx = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'ibc' },
         { key: 'message.action', value: 'transfer' }
       ])
@@ -111,14 +157,17 @@ export class IBCManager {
 
   /**
    * Get all IBC channels
+   *
+   * @warning MOCK IMPLEMENTATION - Returns mock channel data, not actual IBC channels
+   * @todo Implement real channel queries using ibc.core.channel.v1.Query/Channels
    */
   async getChannels(): Promise<Channel[]> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     try {
       // In a real implementation, this would query the IBC channel module
       // For now, return mock data based on transactions
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'ibc' }
       ])
 
@@ -160,11 +209,16 @@ export class IBCManager {
     }
   }
 
+    validateChannelId(channelId)
+
   /**
    * Get details of a specific IBC channel
+   *
+   * @warning MOCK IMPLEMENTATION - Returns mock channel info, not actual IBC channel state
+   * @todo Implement real channel query using ibc.core.channel.v1.Query/Channel
    */
   async getChannel(channelId: string): Promise<Channel> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     if (!channelId) {
       throw new ValidationError('Channel ID is required')
@@ -199,9 +253,13 @@ export class IBCManager {
 
   /**
    * Check the status of an IBC transfer
+   *
+   * @warning MOCK IMPLEMENTATION - Returns mock transfer status, not actual IBC packet status
+   * @todo Implement real transfer status tracking via IBC acknowledgement events
+   * @todo Add packet acknowledgement monitoring
    */
   async getTransferStatus(txHash: string): Promise<TransferStatus> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     if (!txHash) {
       throw new ValidationError('Transaction hash is required')
@@ -213,7 +271,7 @@ export class IBCManager {
       // 2. Check for IBC acknowledgement events
       // 3. Determine if transfer succeeded, failed, or timed out
 
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'tx.hash', value: txHash }
       ])
 
@@ -255,7 +313,9 @@ export class IBCManager {
    * Calculate timeout height based on current height
    */
   async calculateTimeoutHeight(blocksInFuture: number = 100): Promise<Height> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
+    validatePositiveNumber(blocksInFuture, 'Blocks in future')
+
 
     if (blocksInFuture <= 0) {
       throw new ValidationError('Blocks in future must be positive')
@@ -263,7 +323,7 @@ export class IBCManager {
 
     try {
       // In a real implementation, this would query the current chain height
-      const currentHeight = await this.provider['client']!.getHeight()
+      const currentHeight = await this.provider.getClient().getHeight()
 
       return {
         revisionNumber: 0n, // Typically 0 for most chains
@@ -324,13 +384,16 @@ export class IBCManager {
 
   /**
    * Get IBC denom trace for a token
+   *
+   * @warning MOCK IMPLEMENTATION - Returns hardcoded mock denom trace
+   * @todo Implement real denom trace queries from IBC transfer module
    */
   async getDenomTrace(denom: string): Promise<{
     path: string
     baseDenom: string
     hash: string
   } | null> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     if (!denom) {
       throw new ValidationError('Denom is required')
