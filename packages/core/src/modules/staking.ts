@@ -92,18 +92,9 @@ export class StakingManager {
   async delegate(validatorAddress: string, amount: Coin, _delegatorAddress?: string): Promise<StakingResult> {
     this.provider.ensureConnected()
 
-    if (!validatorAddress) {
     validateValidatorAddress(validatorAddress)
     validateRequired(amount, 'Amount')
     validateCoinAmount(amount)
-
-      throw new ValidationError('Validator address is required')
-    }
-
-    if (!amount || !amount.denom || !amount.amount) {
-      throw new ValidationError('Valid amount is required')
-    }
-
 
     try {
       // In a real implementation, this would:
@@ -152,9 +143,6 @@ export class StakingManager {
     validateRequired(amount, 'Amount')
     validateCoinAmount(amount)
 
-    if (!validatorAddress) {
-      throw new ValidationError('Validator address is required')
-    }
 
     if (!amount || !amount.denom || !amount.amount) {
       throw new ValidationError('Valid amount is required')
@@ -295,15 +283,9 @@ export class StakingManager {
   async getValidator(address: string): Promise<Validator> {
     this.provider.ensureConnected()
 
-    if (!address) {
-      throw new ValidationError('Validator address is required')
-    }
+    validateValidatorAddress(address)
 
-    if (!address.startsWith('akashvaloper1')) {
-      throw new ValidationError('Invalid validator address format')
-    }
-
-    try {
+    try{
       // Simulate network call
       const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'staking' },
@@ -525,16 +507,11 @@ export class StakingManager {
 
   /**
    * Withdraw staking rewards from a validator
-    validateValidatorAddress(validatorAddress)
-
    */
   async withdrawRewards(validatorAddress: string, _delegatorAddress?: string): Promise<StakingResult> {
     this.provider.ensureConnected()
 
-    if (!validatorAddress) {
-      throw new ValidationError('Validator address is required')
-    }
-
+    validateValidatorAddress(validatorAddress)
 
     try {
       const mockResult = {

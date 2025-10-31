@@ -484,8 +484,8 @@ describe('IBCManager', () => {
     })
 
     it('should throw validation error for non-positive blocks', async () => {
-      await expect(ibcManager.calculateTimeoutHeight(0)).rejects.toThrow('Blocks in future must be positive')
-      await expect(ibcManager.calculateTimeoutHeight(-10)).rejects.toThrow('Blocks in future must be positive')
+      await expect(ibcManager.calculateTimeoutHeight(0)).rejects.toThrow('Blocks in future must be a positive number')
+      await expect(ibcManager.calculateTimeoutHeight(-10)).rejects.toThrow('Blocks in future must be a positive number')
     })
 
     it('should throw network error when height query fails', async () => {
