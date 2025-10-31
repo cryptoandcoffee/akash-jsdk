@@ -26,7 +26,7 @@ export class AuditManager {
   constructor(private provider: BaseProvider) {}
 
   async createAuditRequest(request: AuditRequest): Promise<any> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!request.owner || !request.auditor || !request.provider || !request.attributes?.length) {
       throw new ValidationError('Invalid audit parameters')
@@ -34,7 +34,7 @@ export class AuditManager {
 
     try {
       // In a real implementation, this would submit a MsgSignProviderAttributes transaction
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'audit' },
         { key: 'message.action', value: 'sign-provider-attributes' }
       ])
@@ -57,7 +57,7 @@ export class AuditManager {
   }
 
   async revokeAudit(owner: string, auditor: string): Promise<void> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!owner || !auditor) {
       throw new ValidationError('Owner and auditor are required')
@@ -65,7 +65,7 @@ export class AuditManager {
 
     try {
       // In a real implementation, this would submit a MsgDeleteProviderAttributes transaction
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'audit' },
         { key: 'message.action', value: 'delete-provider-attributes' },
         { key: 'audit.owner', value: owner },
@@ -77,14 +77,14 @@ export class AuditManager {
   }
 
   async getProviderAudits(provider: string): Promise<AuditedAttributes[]> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!provider) {
       throw new ValidationError('Provider address is required')
     }
 
     try {
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'audit' },
         { key: 'audit.owner', value: provider }
       ])
@@ -114,14 +114,14 @@ export class AuditManager {
   }
 
   async getAuditorProviders(auditor: string): Promise<AuditedAttributes[]> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!auditor) {
       throw new ValidationError('Auditor address is required')
     }
 
     try {
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'audit' },
         { key: 'audit.auditor', value: auditor }
       ])
@@ -142,7 +142,7 @@ export class AuditManager {
   }
 
   async listAllAudits(filters: AuditFilters = {}): Promise<AuditedAttributes[]> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     try {
       const searchTags = [
@@ -157,7 +157,7 @@ export class AuditManager {
         searchTags.push({ key: 'audit.auditor', value: filters.auditor })
       }
 
-      const response = await this.provider['client']!.searchTx(searchTags)
+      const response = await this.provider.getClient().searchTx(searchTags)
 
       // Mock audited attributes based on transaction results
       return response.map((_, index) => ({
@@ -194,7 +194,7 @@ export class AuditManager {
   }
 
   async getAuditHistory(owner: string, auditor?: string): Promise<any[]> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!owner) {
       throw new ValidationError('Owner is required')
@@ -209,8 +209,8 @@ export class AuditManager {
       if (auditor) {
         tags.push({ key: 'audit.auditor', value: auditor })
       }
-      
-      const response = await this.provider['client']!.searchTx(tags)
+
+      const response = await this.provider.getClient().searchTx(tags)
 
       // Mock audit history based on transaction results
       return response.map((tx, index) => ({
@@ -231,10 +231,10 @@ export class AuditManager {
   }
 
   async getAuditors(): Promise<any[]> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     try {
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'audit' },
         { key: 'message.action', value: 'auditor-registration' }
       ])
@@ -255,7 +255,7 @@ export class AuditManager {
   }
 
   async validateAuditCriteria(provider: string, criteria: any): Promise<any> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     try {
       const audits = await this.getProviderAudits(provider)
@@ -300,10 +300,10 @@ export class AuditManager {
   }
 
   async searchAuditedProviders(searchCriteria: any): Promise<any[]> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     try {
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'audit' }
       ])
 
@@ -330,22 +330,22 @@ export class AuditManager {
   }
 
   async getAuditStats(): Promise<any> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     try {
       // Query the network for audit statistics
-      const totalAudits = await this.provider['client']!.searchTx([
+      const totalAudits = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'audit' }
       ])
-      const activeAudits = await this.provider['client']!.searchTx([
+      const activeAudits = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'audit' },
         { key: 'audit.state', value: 'active' }
       ])
-      const auditors = await this.provider['client']!.searchTx([
+      const auditors = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'audit' },
         { key: 'message.action', value: 'sign-provider-attributes' }
       ])
-      const providers = await this.provider['client']!.searchTx([
+      const providers = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'audit' },
         { key: 'audit.provider', value: '' }
       ])

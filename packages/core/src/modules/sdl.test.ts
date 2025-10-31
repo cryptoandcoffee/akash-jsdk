@@ -4,11 +4,14 @@ import { AkashProvider } from '../providers/akash'
 import { ValidationError } from '../errors'
 
 // Mock the provider
+const mockClient = {
+  searchTx: vi.fn()
+}
+
 const mockProvider = {
-  client: {
-    searchTx: vi.fn()
-  },
-  ensureConnected: vi.fn()
+  client: mockClient,
+  ensureConnected: vi.fn(),
+  getClient: vi.fn().mockReturnValue(mockClient)
 } as unknown as AkashProvider
 
 describe('SDLManager', () => {

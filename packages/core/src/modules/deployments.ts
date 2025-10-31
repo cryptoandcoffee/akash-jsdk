@@ -18,7 +18,7 @@ export class DeploymentManager {
   constructor(private provider: BaseProvider) {}
 
   async create(request: CreateDeploymentRequest): Promise<DeploymentID> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!request.sdl || request.sdl.trim().length === 0) {
       throw new ValidationError('SDL is required')
@@ -26,7 +26,7 @@ export class DeploymentManager {
 
     try {
       // In a real implementation, this would submit a MsgCreateDeployment transaction
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'deployment' },
         { key: 'message.action', value: 'create-deployment' }
       ])
@@ -44,7 +44,7 @@ export class DeploymentManager {
   }
 
   async list(filters: DeploymentFilters = {}): Promise<Deployment[]> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     try {
       const searchTags = [
@@ -59,7 +59,7 @@ export class DeploymentManager {
         searchTags.push({ key: 'deployment.dseq', value: filters.dseq })
       }
 
-      const response = await this.provider['client']!.searchTx(searchTags)
+      const response = await this.provider.getClient().searchTx(searchTags)
 
       // Mock deployments based on transaction results
       return response.map((tx, index) => ({
@@ -77,14 +77,14 @@ export class DeploymentManager {
   }
 
   async get(deploymentId: DeploymentID): Promise<Deployment | null> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!deploymentId.owner || !deploymentId.dseq) {
       throw new ValidationError('Invalid deployment ID')
     }
 
     try {
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'deployment' },
         { key: 'deployment.owner', value: deploymentId.owner },
         { key: 'deployment.dseq', value: deploymentId.dseq }
@@ -108,7 +108,7 @@ export class DeploymentManager {
   }
 
   async close(deploymentId: DeploymentID): Promise<void> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!deploymentId.owner || !deploymentId.dseq) {
       throw new ValidationError('Invalid deployment ID')
@@ -116,7 +116,7 @@ export class DeploymentManager {
 
     try {
       // In a real implementation, this would submit a MsgCloseDeployment transaction
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'deployment' },
         { key: 'message.action', value: 'close-deployment' },
         { key: 'deployment.owner', value: deploymentId.owner },
@@ -133,7 +133,7 @@ export class DeploymentManager {
   }
 
   async update(deploymentId: DeploymentID, sdl: string): Promise<void> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!deploymentId.owner || !deploymentId.dseq) {
       throw new ValidationError('Invalid deployment ID')
@@ -145,7 +145,7 @@ export class DeploymentManager {
 
     try {
       // In a real implementation, this would submit a MsgUpdateDeployment transaction
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'deployment' },
         { key: 'message.action', value: 'update-deployment' },
         { key: 'deployment.owner', value: deploymentId.owner },
@@ -157,7 +157,7 @@ export class DeploymentManager {
   }
 
   async getGroups(deploymentId: DeploymentID): Promise<GroupSpec[]> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!deploymentId.owner || !deploymentId.dseq) {
       throw new ValidationError('Invalid deployment ID')
@@ -165,7 +165,7 @@ export class DeploymentManager {
 
     try {
       // In a real implementation, this would query deployment groups
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'deployment' },
         { key: 'deployment.owner', value: deploymentId.owner },
         { key: 'deployment.dseq', value: deploymentId.dseq }

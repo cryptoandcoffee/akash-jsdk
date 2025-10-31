@@ -1,18 +1,29 @@
 import { BaseProvider } from '../providers/base'
 import { ValidationError, NetworkError } from '../errors'
 import { EncodeObject } from '@cosmjs/proto-signing'
-
-/**
- * Result of a batch operation execution
- */
-export interface BatchResult {
-  transactionHash: string
-  height: number
-  gasUsed: number
-  gasWanted: number
-  success: boolean
-  events: any[]
-}
+import {
+  validateNonEmptyString,
+  validateSDL,
+  validateDseq,
+  validateProviderAddress,
+  validateCertificate,
+  validateRequired,
+  validateNonEmptyArray,
+  validateGasPrice,
+  validatePositiveNumber,
+  validateTxHash
+} from '../utils/validation'
+import { BatchResult } from '../types/results'
+import {
+  DEFAULT_GAS_PRICE,
+  DEFAULT_GAS_ADJUSTMENT,
+  DEFAULT_GAS_PER_OPERATION,
+  DEFAULT_DEPLOYMENT_DEPOSIT,
+  DEFAULT_DENOM,
+  DEFAULT_GSEQ,
+  DEFAULT_OSEQ,
+  MOCK_PUBKEY
+} from './batch-constants'
 
 /**
  * Individual operation in a batch
@@ -38,6 +49,8 @@ export class BatchBuilder {
    */
   addDeployment(sdl: string): BatchBuilder {
     if (!sdl || typeof sdl !== 'string') {
+    validateSDL(sdl)
+
       throw new ValidationError('SDL must be a non-empty string')
     }
 
@@ -51,7 +64,7 @@ export class BatchBuilder {
         },
         groups: [],
         version: Buffer.from(sdl).toString('base64'),
-        deposit: { denom: 'uakt', amount: '5000000' },
+        deposit: { denom: DEFAULT_DENOM, amount: DEFAULT_DEPLOYMENT_DEPOSIT },
         depositor: this.manager['wallet']?.address || ''
       }
     }
@@ -64,6 +77,9 @@ export class BatchBuilder {
    * Add a lease creation to the batch
    */
   addLease(dseq: string, provider: string): BatchBuilder {
+    validateDseq(dseq)
+    validateProviderAddress(provider)
+
     if (!dseq || typeof dseq !== 'string') {
       throw new ValidationError('dseq must be a non-empty string')
     }
@@ -78,8 +94,8 @@ export class BatchBuilder {
         bidId: {
           owner: this.manager['wallet']?.address || '',
           dseq,
-          gseq: 1,
-          oseq: 1,
+          gseq: DEFAULT_GSEQ,
+          oseq: DEFAULT_OSEQ,
           provider
         }
       }
@@ -91,6 +107,8 @@ export class BatchBuilder {
 
   /**
    * Add a certificate creation to the batch
+    validateCertificate(cert)
+
    */
   addCertificate(cert: string): BatchBuilder {
     if (!cert || typeof cert !== 'string') {
@@ -103,7 +121,7 @@ export class BatchBuilder {
       value: {
         owner: this.manager['wallet']?.address || '',
         cert: Buffer.from(cert).toString('base64'),
-        pubkey: Buffer.from('mock-pubkey').toString('base64')
+        pubkey: Buffer.from(MOCK_PUBKEY).toString('base64')
       }
     }
 
@@ -147,10 +165,23 @@ export class BatchBuilder {
 
   /**
    * Execute all operations in the batch as a single transaction
+   *
+   * @warning MOCK IMPLEMENTATION - Does not actually execute on blockchain
+   * @todo Implement real transaction broadcasting using @cosmjs/stargate
+   *
+   * @returns Batch execution result with mock transaction hash
    */
   async execute(): Promise<BatchResult> {
     return await this.manager.executeBatch(this.operations)
   }
+}
+
+/**
+ * Configuration options for BatchManager
+ */
+export interface BatchManagerConfig {
+  gasPrice?: string
+  gasAdjustment?: number
 }
 
 /**
@@ -160,12 +191,14 @@ export class BatchBuilder {
 export class BatchManager {
   private provider: BaseProvider
   private wallet: { address: string } | null = null
-  private gasPrice: string = '0.025uakt'
-  private gasAdjustment: number = 1.5
+  private gasPrice: string
+  private gasAdjustment: number
 
-  constructor(provider: BaseProvider, wallet?: { address: string }) {
+  constructor(provider: BaseProvider, wallet?: { address: string }, config?: BatchManagerConfig) {
     this.provider = provider
     this.wallet = wallet || null
+    this.gasPrice = config?.gasPrice || DEFAULT_GAS_PRICE
+    this.gasAdjustment = config?.gasAdjustment || DEFAULT_GAS_ADJUSTMENT
   }
 
   /**
@@ -199,16 +232,21 @@ export class BatchManager {
    * Create a new batch builder
    */
   async createBatch(): Promise<BatchBuilder> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     return new BatchBuilder(this)
   }
 
   /**
    * Execute a batch of operations
+   *
+   * @warning MOCK IMPLEMENTATION - Simulates transaction execution without blockchain interaction
+   * @todo Implement SigningStargateClient.signAndBroadcast() for real transaction execution
+   * @todo Add proper protobuf message creation using @cosmjs/proto-signing
+   *
    * @internal
    */
   async executeBatch(operations: EncodeObject[]): Promise<BatchResult> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     if (!this.wallet) {
       throw new ValidationError('Wallet must be set before executing batch operations')
@@ -230,11 +268,22 @@ export class BatchManager {
       // to execute all operations in a single transaction
       // For now, we simulate the transaction
 
+      // Runtime warning for mock implementation
+      if (process.env.NODE_ENV !== 'test') {
+        console.warn(
+          '⚠️  WARNING: Using mock batch execution. ' +
+          'This will not execute real blockchain transactions. ' +
+          'Do not use in production. ' +
+          'See PRODUCTION_READINESS.md for details.'
+        )
+      }
+
       const mockResult: BatchResult = {
         transactionHash: `batch-tx-${Date.now()}`,
+        code: 0,
         height: Math.floor(Date.now() / 1000),
-        gasUsed: operations.length * 50000,
-        gasWanted: Math.floor(operations.length * 50000 * this.gasAdjustment),
+        gasUsed: BigInt(operations.length * DEFAULT_GAS_PER_OPERATION),
+        gasWanted: BigInt(Math.floor(operations.length * DEFAULT_GAS_PER_OPERATION * this.gasAdjustment)),
         success: true,
         events: operations.map((op, idx) => ({
           type: op.typeUrl,
@@ -253,12 +302,15 @@ export class BatchManager {
 
   /**
    * Simulate a batch to estimate gas without executing
+   *
+   * @warning MOCK IMPLEMENTATION - Returns estimated gas based on operation count, not actual chain simulation
+   * @todo Implement real gas simulation using SigningStargateClient.simulate()
    */
   async simulateBatch(operations: EncodeObject[]): Promise<{
     gasEstimate: number
     fee: { denom: string; amount: string }
   }> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     if (!operations || operations.length === 0) {
       throw new ValidationError('Batch must contain at least one operation')
@@ -266,14 +318,13 @@ export class BatchManager {
 
     try {
       // Simulate gas estimation
-      const baseGasPerOp = 50000
-      const gasEstimate = Math.floor(operations.length * baseGasPerOp * this.gasAdjustment)
-      const gasPrice = parseFloat(this.gasPrice.replace('uakt', ''))
+      const gasEstimate = Math.floor(operations.length * DEFAULT_GAS_PER_OPERATION * this.gasAdjustment)
+      const gasPrice = parseFloat(this.gasPrice.replace(DEFAULT_DENOM, ''))
       const feeAmount = Math.ceil(gasEstimate * gasPrice)
 
       return {
         gasEstimate,
-        fee: { denom: 'uakt', amount: feeAmount.toString() }
+        fee: { denom: DEFAULT_DENOM, amount: feeAmount.toString() }
       }
     } catch (error) {
       throw new NetworkError('Failed to simulate batch operation', { error })
@@ -324,6 +375,9 @@ export class BatchManager {
 
   /**
    * Get transaction details for a batch result
+   *
+   * @warning MOCK IMPLEMENTATION - Returns mock transaction data, not actual blockchain state
+   * @todo Implement real transaction query using StargateClient.getTx()
    */
   async getTransactionDetails(txHash: string): Promise<{
     hash: string
@@ -331,7 +385,7 @@ export class BatchManager {
     success: boolean
     timestamp: string
   } | null> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     if (!txHash || typeof txHash !== 'string') {
       throw new ValidationError('Transaction hash must be a non-empty string')

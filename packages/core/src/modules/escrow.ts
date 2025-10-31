@@ -23,7 +23,7 @@ export class EscrowManager {
   constructor(private provider: BaseProvider) {}
 
   async createAccount(params: { scope: string; xid: string }): Promise<Account> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!params.scope || !params.xid) {
       throw new ValidationError('Invalid account parameters')
@@ -31,7 +31,7 @@ export class EscrowManager {
 
     try {
       // In a real implementation, this would submit a MsgCreateAccount transaction
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'escrow' },
         { key: 'message.action', value: 'create-account' }
       ])
@@ -54,7 +54,7 @@ export class EscrowManager {
   }
 
   async depositFunds(request: DepositRequest): Promise<void> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!request.accountId.scope || !request.amount.amount || !request.depositor) {
       throw new ValidationError('Account ID, amount, and depositor are required')
@@ -66,7 +66,7 @@ export class EscrowManager {
 
     try {
       // In a real implementation, this would submit a MsgDepositDeployment transaction
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'escrow' },
         { key: 'message.action', value: 'deposit-deployment' },
         { key: 'message.sender', value: request.depositor }
@@ -87,7 +87,7 @@ export class EscrowManager {
   }
 
   async withdrawFunds(request: WithdrawRequest): Promise<void> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!request.accountId.scope || !request.amount.amount) {
       throw new ValidationError('Account ID and amount are required')
@@ -99,7 +99,7 @@ export class EscrowManager {
 
     try {
       // In a real implementation, this would submit a MsgWithdrawLease transaction
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'escrow' },
         { key: 'message.action', value: 'withdraw-lease' }
       ])
@@ -109,10 +109,10 @@ export class EscrowManager {
   }
 
   async getAccount(accountId: AccountID): Promise<Account | null> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     try {
-      const response = await this.provider['client']!.searchTx([
+      const response = await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'escrow' },
         { key: 'escrow.account.scope', value: accountId.scope },
         { key: 'escrow.account.xid', value: accountId.xid }
@@ -139,7 +139,7 @@ export class EscrowManager {
   }
 
   async listAccounts(filters: EscrowFilters = {}): Promise<Account[]> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
 
     try {
       const searchTags = [
@@ -154,7 +154,7 @@ export class EscrowManager {
         searchTags.push({ key: 'escrow.account.scope', value: filters.scope })
       }
 
-      const response = await this.provider['client']!.searchTx(searchTags)
+      const response = await this.provider.getClient().searchTx(searchTags)
 
       // Mock account data based on transaction results
       return response.map((tx, index) => ({
@@ -184,7 +184,7 @@ export class EscrowManager {
   }
 
   async closeAccount(accountId: AccountID): Promise<void> {
-    this.provider['ensureConnected']()
+    this.provider.ensureConnected()
     
     if (!accountId.scope || !accountId.xid) {
       throw new ValidationError('Account scope and xid are required')
@@ -192,7 +192,7 @@ export class EscrowManager {
 
     try {
       // In a real implementation, this would submit a MsgCloseAccount transaction
-      await this.provider['client']!.searchTx([
+      await this.provider.getClient().searchTx([
         { key: 'message.module', value: 'escrow' },
         { key: 'message.action', value: 'close-account' }
       ])

@@ -1,11 +1,60 @@
 import { describe, it, expect } from 'vitest'
-import { AkashSDKError, ValidationError, NetworkError, ProviderError, DeploymentError } from './index'
+import {
+  SDKError,
+  AkashSDKError,
+  ValidationError,
+  NetworkError,
+  ProviderError,
+  DeploymentError,
+  ConfigurationError,
+  CacheError,
+  EventStreamError
+} from './index'
 
 describe('Error classes', () => {
-  describe('AkashSDKError', () => {
+  describe('SDKError (new base class)', () => {
+    it('should create error with message', () => {
+      const error = new SDKError('Test error')
+      expect(error.message).toBe('Test error')
+      expect(error.name).toBe('SDKError')
+      expect(error instanceof Error).toBe(true)
+    })
+
+    it('should create error with context', () => {
+      const context = { operation: 'test', key: 'value' }
+      const error = new SDKError('Test error', context)
+      expect(error.message).toBe('Test error')
+      expect(error.context).toEqual(context)
+    })
+
+    it('should create error with cause', () => {
+      const cause = new Error('Original error')
+      const error = new SDKError('Wrapper error', undefined, cause)
+      expect(error.message).toBe('Wrapper error')
+      expect(error.cause).toBe(cause)
+    })
+
+    it('should include context in toString', () => {
+      const context = { operation: 'test', key: 'value' }
+      const error = new SDKError('Test error', context)
+      const str = error.toString()
+      expect(str).toContain('SDKError: Test error')
+      expect(str).toContain('Context:')
+      expect(str).toContain('"operation": "test"')
+    })
+
+    it('should include cause in toString', () => {
+      const cause = new Error('Original error')
+      const error = new SDKError('Wrapper error', undefined, cause)
+      const str = error.toString()
+      expect(str).toContain('Caused by: Original error')
+    })
+  })
+
+  describe('AkashSDKError (legacy)', () => {
     it('should create error with message and code', () => {
       const error = new AkashSDKError('Test error', 'TEST_CODE')
-      
+
       expect(error.message).toBe('Test error')
       expect(error.code).toBe('TEST_CODE')
       expect(error.name).toBe('AkashSDKError')
@@ -15,80 +64,82 @@ describe('Error classes', () => {
     it('should create error with details', () => {
       const details = { key: 'value', number: 123 }
       const error = new AkashSDKError('Test error', 'TEST_CODE', details)
-      
+
       expect(error.details).toEqual(details)
     })
   })
 
   describe('ValidationError', () => {
-    it('should create validation error', () => {
-      const error = new ValidationError('Invalid input')
-      
+    it('should create validation error with new API', () => {
+      const error = new ValidationError('Invalid input', { field: 'email' })
+
       expect(error.message).toBe('Invalid input')
-      expect(error.code).toBe('VALIDATION_ERROR')
       expect(error.name).toBe('ValidationError')
-      expect(error instanceof AkashSDKError).toBe(true)
+      expect(error.context).toEqual({ field: 'email' })
+      expect(error instanceof SDKError).toBe(true)
     })
 
-    it('should create validation error with details', () => {
-      const details = { field: 'email', reason: 'invalid format' }
-      const error = new ValidationError('Invalid input', details)
-      
-      expect(error.details).toEqual(details)
+    it('should create validation error with cause', () => {
+      const cause = new Error('Underlying issue')
+      const error = new ValidationError('Invalid input', { field: 'email' }, cause)
+
+      expect(error.cause).toBe(cause)
     })
   })
 
   describe('NetworkError', () => {
-    it('should create network error', () => {
-      const error = new NetworkError('Connection failed')
-      
+    it('should create network error with new API', () => {
+      const error = new NetworkError('Connection failed', { endpoint: 'http://localhost' })
+
       expect(error.message).toBe('Connection failed')
-      expect(error.code).toBe('NETWORK_ERROR')
       expect(error.name).toBe('NetworkError')
-      expect(error instanceof AkashSDKError).toBe(true)
-    })
-
-    it('should create network error with details', () => {
-      const details = { endpoint: 'http://localhost', statusCode: 500 }
-      const error = new NetworkError('Connection failed', details)
-      
-      expect(error.details).toEqual(details)
+      expect(error.context).toEqual({ endpoint: 'http://localhost' })
+      expect(error instanceof SDKError).toBe(true)
     })
   })
 
-  describe('ProviderError', () => {
-    it('should create provider error', () => {
-      const error = new ProviderError('Provider unavailable')
-      
-      expect(error.message).toBe('Provider unavailable')
-      expect(error.code).toBe('PROVIDER_ERROR')
-      expect(error.name).toBe('ProviderError')
-      expect(error instanceof AkashSDKError).toBe(true)
-    })
+  describe('ConfigurationError', () => {
+    it('should create configuration error', () => {
+      const error = new ConfigurationError('Invalid config', { setting: 'timeout' })
 
-    it('should create provider error with details', () => {
-      const details = { provider: 'akash1...', reason: 'offline' }
-      const error = new ProviderError('Provider unavailable', details)
-      
-      expect(error.details).toEqual(details)
+      expect(error.message).toBe('Invalid config')
+      expect(error.name).toBe('ConfigurationError')
+      expect(error.context).toEqual({ setting: 'timeout' })
     })
   })
 
-  describe('DeploymentError', () => {
-    it('should create deployment error', () => {
-      const error = new DeploymentError('Deployment failed')
-      
-      expect(error.message).toBe('Deployment failed')
-      expect(error.code).toBe('DEPLOYMENT_ERROR')
-      expect(error.name).toBe('DeploymentError')
-      expect(error instanceof AkashSDKError).toBe(true)
-    })
+  describe('CacheError', () => {
+    it('should create cache error with context', () => {
+      const error = new CacheError('Cache failed', { key: 'user:123', operation: 'get' })
 
-    it('should create deployment error with details', () => {
-      const details = { deploymentId: 'dep123', reason: 'insufficient funds' }
-      const error = new DeploymentError('Deployment failed', details)
-      
-      expect(error.details).toEqual(details)
+      expect(error.message).toBe('Cache failed')
+      expect(error.name).toBe('CacheError')
+      expect(error.context).toEqual({ key: 'user:123', operation: 'get' })
+    })
+  })
+
+  describe('EventStreamError', () => {
+    it('should create event stream error', () => {
+      const error = new EventStreamError('Stream failed', { subscription: 'sub-123' })
+
+      expect(error.message).toBe('Stream failed')
+      expect(error.name).toBe('EventStreamError')
+      expect(error.context).toEqual({ subscription: 'sub-123' })
+    })
+  })
+
+  describe('Error chaining', () => {
+    it('should chain errors with cause', () => {
+      const dbError = new Error('Database error')
+      const cacheError = new CacheError('Cache backend failed', { backend: 'redis' }, dbError)
+      const appError = new SDKError('Operation failed', { operation: 'getUserData' }, cacheError)
+
+      expect(appError.cause).toBe(cacheError)
+      expect(cacheError.cause).toBe(dbError)
+
+      const str = appError.toString()
+      expect(str).toContain('Operation failed')
+      expect(str).toContain('Cache backend failed')
     })
   })
 })

@@ -5,11 +5,14 @@ import { ValidationError, NetworkError } from '../errors'
 import { EncodeObject } from '@cosmjs/proto-signing'
 
 // Mock the provider
+const mockClient = {
+  searchTx: vi.fn()
+}
+
 const mockProvider = {
-  client: {
-    searchTx: vi.fn()
-  },
-  ensureConnected: vi.fn()
+  client: mockClient,
+  ensureConnected: vi.fn(),
+  getClient: vi.fn().mockReturnValue(mockClient)
 } as unknown as AkashProvider
 
 const mockWallet = {
@@ -470,7 +473,7 @@ describe('BatchBuilder', () => {
       batchBuilder.addDeployment('sdl1')
       expect(batchBuilder.getOperationCount()).toBe(1)
 
-      batchBuilder.addLease('123', 'provider1')
+      batchBuilder.addLease('123', 'akash1provider1234567890123456789012345')
       expect(batchBuilder.getOperationCount()).toBe(2)
 
       batchBuilder.addCertificate('cert1')
@@ -496,7 +499,7 @@ describe('BatchBuilder', () => {
   describe('clear', () => {
     it('should clear all operations', () => {
       batchBuilder.addDeployment('sdl1')
-      batchBuilder.addLease('123', 'provider1')
+      batchBuilder.addLease('123', 'akash1provider1234567890123456789012345')
       expect(batchBuilder.getOperationCount()).toBe(2)
 
       const result = batchBuilder.clear()
@@ -509,7 +512,7 @@ describe('BatchBuilder', () => {
     it('should allow adding after clear', () => {
       batchBuilder.addDeployment('sdl1')
       batchBuilder.clear()
-      batchBuilder.addLease('123', 'provider1')
+      batchBuilder.addLease('123', 'akash1provider1234567890123456789012345')
 
       expect(batchBuilder.getOperationCount()).toBe(1)
     })
@@ -518,7 +521,7 @@ describe('BatchBuilder', () => {
   describe('execute', () => {
     it('should execute batch successfully', async () => {
       batchBuilder.addDeployment('sdl1')
-      batchBuilder.addLease('123', 'provider1')
+      batchBuilder.addLease('123', 'akash1provider1234567890123456789012345')
 
       const result = await batchBuilder.execute()
 

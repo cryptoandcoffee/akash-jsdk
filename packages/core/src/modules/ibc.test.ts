@@ -4,12 +4,15 @@ import { AkashProvider } from '../providers/akash'
 import { Coin } from '@cryptoandcoffee/akash-jsdk-protobuf'
 
 // Mock the provider
+const mockClient = {
+  searchTx: vi.fn(),
+  getHeight: vi.fn()
+}
+
 const mockProvider = {
-  client: {
-    searchTx: vi.fn(),
-    getHeight: vi.fn()
-  },
-  ensureConnected: vi.fn()
+  client: mockClient,
+  ensureConnected: vi.fn(),
+  getClient: vi.fn().mockReturnValue(mockClient)
 } as unknown as AkashProvider
 
 describe('IBCManager', () => {
@@ -140,7 +143,7 @@ describe('IBCManager', () => {
         receiver: 'cosmos1receiveraddress123456'
       } as IBCTransferParams
 
-      await expect(ibcManager.transfer(params)).rejects.toThrow('Source channel is required')
+      await expect(ibcManager.transfer(params)).rejects.toThrow('Channel ID must be a non-empty string')
     })
 
     it('should throw validation error for missing token', async () => {
@@ -150,7 +153,7 @@ describe('IBCManager', () => {
         receiver: 'cosmos1receiveraddress123456'
       } as IBCTransferParams
 
-      await expect(ibcManager.transfer(params)).rejects.toThrow('Valid token with denom and amount is required')
+      await expect(ibcManager.transfer(params)).rejects.toThrow('Token is required')
     })
 
     it('should throw validation error for missing token denom', async () => {
@@ -160,7 +163,7 @@ describe('IBCManager', () => {
         receiver: 'cosmos1receiveraddress123456'
       } as IBCTransferParams
 
-      await expect(ibcManager.transfer(params)).rejects.toThrow('Valid token with denom and amount is required')
+      await expect(ibcManager.transfer(params)).rejects.toThrow('Coin denom must be a non-empty string')
     })
 
     it('should throw validation error for missing token amount', async () => {
@@ -170,7 +173,7 @@ describe('IBCManager', () => {
         receiver: 'cosmos1receiveraddress123456'
       } as IBCTransferParams
 
-      await expect(ibcManager.transfer(params)).rejects.toThrow('Valid token with denom and amount is required')
+      await expect(ibcManager.transfer(params)).rejects.toThrow('Coin amount must be a string')
     })
 
     it('should throw validation error for missing receiver', async () => {
@@ -180,7 +183,7 @@ describe('IBCManager', () => {
         receiver: ''
       } as IBCTransferParams
 
-      await expect(ibcManager.transfer(params)).rejects.toThrow('Receiver address is required')
+      await expect(ibcManager.transfer(params)).rejects.toThrow('Receiver address must be a non-empty')
     })
 
     it('should throw validation error for negative token amount', async () => {
@@ -193,7 +196,7 @@ describe('IBCManager', () => {
         receiver: 'cosmos1receiveraddress123456'
       }
 
-      await expect(ibcManager.transfer(params)).rejects.toThrow('Token amount must be positive')
+      await expect(ibcManager.transfer(params)).rejects.toThrow('Coin amount must be a numeric string')
     })
 
     it('should throw validation error for zero token amount', async () => {
@@ -206,7 +209,7 @@ describe('IBCManager', () => {
         receiver: 'cosmos1receiveraddress123456'
       }
 
-      await expect(ibcManager.transfer(params)).rejects.toThrow('Token amount must be positive')
+      await expect(ibcManager.transfer(params)).rejects.toThrow('Coin amount must be positive')
     })
 
     it('should throw validation error for past timeout', async () => {
