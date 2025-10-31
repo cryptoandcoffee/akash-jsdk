@@ -30,8 +30,8 @@ const mockProvider = {
 
 describe('StakingManager', () => {
   let stakingManager: StakingManager
-  const validValidatorAddress = 'akashvaloper1testvalidator1234567890123456789012'
-  const validDelegatorAddress = 'akash1testdelegator1234567890123456789012'
+  const validValidatorAddress = 'akashvaloper1testvalidator12345678901234567890123456'
+  const validDelegatorAddress = 'akash1testdelegator12345678901234567890123456'
 
   beforeEach(() => {
     stakingManager = new StakingManager(mockProvider)

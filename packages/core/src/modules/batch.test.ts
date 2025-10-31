@@ -105,8 +105,8 @@ describe('BatchManager', () => {
       expect(result).toMatchObject({
         transactionHash: expect.stringMatching(/^batch-tx-\d+$/),
         height: expect.any(Number),
-        gasUsed: expect.any(Number),
-        gasWanted: expect.any(Number),
+        gasUsed: expect.any(BigInt),
+        gasWanted: expect.any(BigInt),
         success: true,
         events: expect.any(Array)
       })
@@ -134,7 +134,7 @@ describe('BatchManager', () => {
 
       expect(result.success).toBe(true)
       expect(result.events).toHaveLength(3)
-      expect(result.gasUsed).toBe(150000) // 3 operations * 50000
+      expect(result.gasUsed).toBe(150000n) // 3 operations * 50000
     })
 
     it('should throw error if no wallet set', async () => {
@@ -187,7 +187,7 @@ describe('BatchManager', () => {
       ]
 
       const result = await batchManager.executeBatch(operations)
-      expect(result.gasWanted).toBe(100000) // 50000 * 2.0
+      expect(result.gasWanted).toBe(100000n) // 50000 * 2.0
     })
   })
 
@@ -389,7 +389,7 @@ describe('BatchBuilder', () => {
 
   describe('addLease', () => {
     it('should add lease to batch', () => {
-      const result = batchBuilder.addLease('123', 'akash1provider')
+      const result = batchBuilder.addLease('123', 'akash1provider123456789012345678901234567890')
 
       expect(result).toBe(batchBuilder)
       expect(batchBuilder.getOperationCount()).toBe(1)
@@ -398,8 +398,8 @@ describe('BatchBuilder', () => {
     })
 
     it('should throw error for empty dseq', () => {
-      expect(() => batchBuilder.addLease('', 'akash1provider')).toThrow(ValidationError)
-      expect(() => batchBuilder.addLease('', 'akash1provider')).toThrow(
+      expect(() => batchBuilder.addLease('', 'akash1provider123456789012345678901234567890')).toThrow(ValidationError)
+      expect(() => batchBuilder.addLease('', 'akash1provider123456789012345678901234567890')).toThrow(
         'dseq must be a non-empty string'
       )
     })
@@ -407,12 +407,12 @@ describe('BatchBuilder', () => {
     it('should throw error for empty provider', () => {
       expect(() => batchBuilder.addLease('123', '')).toThrow(ValidationError)
       expect(() => batchBuilder.addLease('123', '')).toThrow(
-        'provider must be a non-empty string'
+        'Address must be a non-empty string'
       )
     })
 
     it('should throw error for non-string parameters', () => {
-      expect(() => batchBuilder.addLease(null as any, 'akash1provider')).toThrow(ValidationError)
+      expect(() => batchBuilder.addLease(null as any, 'akash1provider123456789012345678901234567890')).toThrow(ValidationError)
       expect(() => batchBuilder.addLease('123', null as any)).toThrow(ValidationError)
     })
   })
@@ -473,7 +473,7 @@ describe('BatchBuilder', () => {
       batchBuilder.addDeployment('sdl1')
       expect(batchBuilder.getOperationCount()).toBe(1)
 
-      batchBuilder.addLease('123', 'akash1provider1234567890123456789012345')
+      batchBuilder.addLease('123', 'akash1provider123456789012345678901234567890')
       expect(batchBuilder.getOperationCount()).toBe(2)
 
       batchBuilder.addCertificate('cert1')
@@ -499,7 +499,7 @@ describe('BatchBuilder', () => {
   describe('clear', () => {
     it('should clear all operations', () => {
       batchBuilder.addDeployment('sdl1')
-      batchBuilder.addLease('123', 'akash1provider1234567890123456789012345')
+      batchBuilder.addLease('123', 'akash1provider123456789012345678901234567890')
       expect(batchBuilder.getOperationCount()).toBe(2)
 
       const result = batchBuilder.clear()
@@ -512,7 +512,7 @@ describe('BatchBuilder', () => {
     it('should allow adding after clear', () => {
       batchBuilder.addDeployment('sdl1')
       batchBuilder.clear()
-      batchBuilder.addLease('123', 'akash1provider1234567890123456789012345')
+      batchBuilder.addLease('123', 'akash1provider123456789012345678901234567890')
 
       expect(batchBuilder.getOperationCount()).toBe(1)
     })
@@ -521,7 +521,7 @@ describe('BatchBuilder', () => {
   describe('execute', () => {
     it('should execute batch successfully', async () => {
       batchBuilder.addDeployment('sdl1')
-      batchBuilder.addLease('123', 'akash1provider1234567890123456789012345')
+      batchBuilder.addLease('123', 'akash1provider123456789012345678901234567890')
 
       const result = await batchBuilder.execute()
 
@@ -548,7 +548,7 @@ describe('BatchBuilder', () => {
     it('should support method chaining', () => {
       const result = batchBuilder
         .addDeployment('sdl1')
-        .addLease('123', 'provider1')
+        .addLease('123', 'akash1provider123456789012345678901234567890')
         .addCertificate('cert1')
 
       expect(result).toBe(batchBuilder)
@@ -559,7 +559,7 @@ describe('BatchBuilder', () => {
       batchBuilder
         .addDeployment('sdl1')
         .addDeployment('sdl2')
-        .addLease('123', 'provider1')
+        .addLease('123', 'akash1provider123456789012345678901234567890')
         .addLease('124', 'provider2')
         .addCertificate('cert1')
 
@@ -580,7 +580,7 @@ describe('Integration tests', () => {
     // Build batch
     builder
       .addDeployment('version: "2.0"')
-      .addLease('123', 'akash1provider')
+      .addLease('123', 'akash1provider123456789012345678901234567890')
       .addCertificate('cert-data')
 
     // Validate
