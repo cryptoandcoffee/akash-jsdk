@@ -528,7 +528,7 @@ describe('BatchBuilder', () => {
       expect(result).toMatchObject({
         transactionHash: expect.stringMatching(/^batch-tx-\d+$/),
         height: expect.any(Number),
-        gasUsed: expect.any(Number),
+        gasUsed: expect.any(BigInt),
         success: true
       })
     })
@@ -560,7 +560,7 @@ describe('BatchBuilder', () => {
         .addDeployment('sdl1')
         .addDeployment('sdl2')
         .addLease('123', 'akash1provider123456789012345678901234567890')
-        .addLease('124', 'provider2')
+        .addLease('124', 'akash1provider223456789012345678901234567890')
         .addCertificate('cert1')
 
       expect(batchBuilder.getOperationCount()).toBe(5)

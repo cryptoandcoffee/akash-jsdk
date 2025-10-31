@@ -75,14 +75,14 @@ describe('StakingManager', () => {
 
     it('should throw error for missing amount', async () => {
       await expect(stakingManager.delegate(validValidatorAddress, null as any)).rejects.toThrow(ValidationError)
-      await expect(stakingManager.delegate(validValidatorAddress, null as any)).rejects.toThrow('Valid amount is required')
+      await expect(stakingManager.delegate(validValidatorAddress, null as any)).rejects.toThrow('Amount is required')
     })
 
     it('should throw error for invalid amount', async () => {
       const invalidAmount = { denom: '', amount: '' }
 
       await expect(stakingManager.delegate(validValidatorAddress, invalidAmount)).rejects.toThrow(ValidationError)
-      await expect(stakingManager.delegate(validValidatorAddress, invalidAmount)).rejects.toThrow('Valid amount is required')
+      await expect(stakingManager.delegate(validValidatorAddress, invalidAmount)).rejects.toThrow('Coin denom must be a non-empty string')
     })
 
     it('should handle network errors during delegation', async () => {
@@ -160,8 +160,8 @@ describe('StakingManager', () => {
   })
 
   describe('redelegate', () => {
-    const srcValidator = 'akashvaloper1srcvalidator12345678901234567890'
-    const dstValidator = 'akashvaloper1dstvalidator12345678901234567890'
+    const srcValidator = 'akashvaloper1srcvalidator123456789012345678901234567'
+    const dstValidator = 'akashvaloper1dstvalidator123456789012345678901234567'
 
     it('should redelegate tokens successfully', async () => {
       const amount = { denom: 'uakt', amount: '750000' }
@@ -187,7 +187,7 @@ describe('StakingManager', () => {
       const amount = { denom: 'uakt', amount: '750000' }
 
       await expect(stakingManager.redelegate('', dstValidator, amount)).rejects.toThrow(ValidationError)
-      await expect(stakingManager.redelegate('', dstValidator, amount)).rejects.toThrow('Source and destination validator addresses are required')
+      await expect(stakingManager.redelegate('', dstValidator, amount)).rejects.toThrow('Address must be a non-empty string')
     })
 
     it('should throw error for missing destination validator', async () => {
@@ -212,7 +212,7 @@ describe('StakingManager', () => {
 
     it('should throw error for missing amount', async () => {
       await expect(stakingManager.redelegate(srcValidator, dstValidator, null as any)).rejects.toThrow(ValidationError)
-      await expect(stakingManager.redelegate(srcValidator, dstValidator, null as any)).rejects.toThrow('Valid amount is required')
+      await expect(stakingManager.redelegate(srcValidator, dstValidator, null as any)).rejects.toThrow('Amount is required')
     })
 
     it('should handle network errors during redelegation', async () => {

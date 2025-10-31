@@ -243,7 +243,7 @@ describe('BaseProvider', () => {
         await provider.connect()
       } catch (error) {
         expect(error).toBeInstanceOf(NetworkError)
-        expect((error as NetworkError).details?.originalError).toBe(networkError)
+        expect((error as NetworkError).cause).toBe(networkError)
       }
     })
 

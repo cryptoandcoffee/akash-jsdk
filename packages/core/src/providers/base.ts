@@ -16,7 +16,8 @@ export abstract class BaseProvider {
     } catch (error) {
       throw new NetworkError(
         `Failed to connect to ${this.config.rpcEndpoint}`,
-        { originalError: error }
+        { originalError: error },
+        error as Error
       )
     }
   }

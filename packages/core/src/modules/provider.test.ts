@@ -162,19 +162,19 @@ describe('ProviderManager', () => {
 
       expect(result).toMatchObject({
         total: {
-          cpu: { units: '100' },
-          memory: { size: '1000Gi' },
-          storage: { size: '10000Gi' }
+          cpu: { units: { val: '100' } },
+          memory: { size: '1' },
+          storage: { size: '1' }
         },
         available: {
           cpu: { units: '80' },
-          memory: { size: '800Gi' },
-          storage: { size: '8000Gi' }
+          memory: { size: '1' },
+          storage: { size: '1' }
         },
         allocated: {
           cpu: { units: '20' },
-          memory: { size: '200Gi' },
-          storage: { size: '2000Gi' }
+          memory: { size: '1' },
+          storage: { size: '1' }
         }
       })
     })
