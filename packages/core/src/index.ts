@@ -1,10 +1,67 @@
+// Export types first
 export * from './types'
 export * from './providers'
 export * from './errors'
-export * from './utils'
-export * from './modules'
 export * from './cache'
-export * from './events'
+
+// Export events (selective to avoid conflicts)
+export type {
+  BaseEvent,
+  DeploymentEvent,
+  OrderEvent,
+  BidEvent,
+  LeaseEvent,
+  AkashEvent,
+  EventCallback,
+  EventFilter,
+  EventSubscription,
+  TendermintAttribute,
+  TendermintBlockchainEvent,
+  TendermintTxResultData,
+  TendermintEventData,
+  TendermintSubscriptionParams,
+  TendermintEvent,
+  WebSocketMessageResult,
+  WebSocketMessage,
+  ConnectionState,
+  EventStreamConfig
+} from './events'
+export { EventStreamManager } from './events/stream'
+
+// Export utils (selective to avoid conflicts)
+export {
+  validateConfig,
+  sleep,
+  retry,
+  formatAKT,
+  parseAKT
+} from './utils'
+export type { Logger } from './utils'
+export {
+  LogLevel,
+  ConsoleLogger,
+  NoOpLogger,
+  createDefaultLogger
+} from './utils'
+
+// Export specific modules to avoid conflicts
+export {
+  DeploymentManager,
+  CertificateManager,
+  EscrowManager,
+  AuditManager,
+  GovernanceManager,
+  MarketManager,
+  ProviderManager,
+  SDLManager,
+  WalletManager,
+  JWTAuthManager,
+  BatchManager,
+  IBCManager,
+  StakingManager,
+  WalletAdapter,
+  SupportedWallet
+} from './modules'
 
 import { AkashProvider } from './providers'
 import { AkashConfig } from './types'
