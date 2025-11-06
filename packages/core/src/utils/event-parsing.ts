@@ -1,9 +1,4 @@
-import { TendermintEvent } from '../events/types'
-
-export interface TendermintAttribute {
-  key: string
-  value: string
-}
+import { TendermintEvent, TendermintAttribute } from '../events/types'
 
 /**
  * Parses Tendermint event attributes into a Map

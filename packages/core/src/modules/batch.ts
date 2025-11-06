@@ -2,16 +2,10 @@ import { BaseProvider } from '../providers/base'
 import { ValidationError, NetworkError } from '../errors'
 import { EncodeObject } from '@cosmjs/proto-signing'
 import {
-  validateNonEmptyString,
   validateSDL,
   validateDseq,
   validateProviderAddress,
-  validateCertificate,
-  validateRequired,
-  validateNonEmptyArray,
-  validateGasPrice,
-  validatePositiveNumber,
-  validateTxHash
+  validateCertificate
 } from '../utils/validation'
 import { BatchResult } from '../types/results'
 import {

@@ -44,12 +44,12 @@ export function parseAKT(amount: string, decimals: number = 6): string {
 }
 
 // Export all validation utilities
-export * from './validation'
+export * from './validation-helpers'
 
 // Export logger components
-export { Logger, LogLevel, ConsoleLogger, NoOpLogger, createDefaultLogger } from './logger'
+export type { Logger } from './logger'
+export { LogLevel, ConsoleLogger, NoOpLogger, createDefaultLogger } from './logger'
 
 // Export new utilities
 export * from './event-parsing'
-export * from './validation-helpers'
 export * from './error-helpers'

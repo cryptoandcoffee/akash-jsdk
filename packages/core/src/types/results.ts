@@ -47,12 +47,6 @@ export interface IBCTransferResult extends BaseTransactionResult {
  * Staking operation result
  */
 export interface StakingResult extends BaseTransactionResult {
-  /** Gas used (as number for backward compatibility) */
-  gasUsed?: number
-
-  /** Gas wanted (as number for backward compatibility) */
-  gasWanted?: number
-
   /** Validator address */
   validatorAddress?: string
 
