@@ -15,7 +15,6 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
-      packages: write
       id-token: write
 
     steps:
@@ -57,26 +56,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish to GitHub Packages
-        if: steps.changesets.outputs.published == 'true'
-        run: |
-          # Configure npm to use GitHub Packages registry
-          echo "@cryptoandcoffee:registry=https://npm.pkg.github.com" > .npmrc
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
-
-          # Publish each package to GitHub Packages
-          for pkg in packages/*/; do
-            echo "Publishing $(basename $pkg) to GitHub Packages..."
-            cd "$pkg"
-            pnpm publish --registry https://npm.pkg.github.com --no-git-checks || echo "Already published or error"
-            cd ../..
-          done
-
-          # Clean up
-          rm .npmrc
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create unified GitHub release
         if: steps.changesets.outputs.published == 'true'
