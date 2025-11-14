@@ -1,59 +1,104 @@
-// Fallback market types
-import { proto3, ScalarType } from '@bufbuild/protobuf';
-
+// Fallback market types for @bufbuild/protobuf v2
+/**
+ * Lease State enum
+ * @generated from enum akash.market.v1beta4.Lease.State
+ */
 export enum Lease_State {
+  /**
+   * @generated from enum value: invalid = 0;
+   */
   invalid = 0,
+
+  /**
+   * @generated from enum value: active = 1;
+   */
   active = 1,
+
+  /**
+   * @generated from enum value: insufficient_funds = 2;
+   */
   insufficient_funds = 2,
+
+  /**
+   * @generated from enum value: closed = 3;
+   */
   closed = 3,
 }
 
-// Create enum type for Lease_State
-export const Lease_StateEnum = proto3.makeEnumType(
-  'akash.market.v1beta4.Lease.State',
-  [
-    { no: 0, name: 'invalid' },
-    { no: 1, name: 'active' },
-    { no: 2, name: 'insufficient_funds' },
-    { no: 3, name: 'closed' },
-  ]
-);
+/**
+ * LeaseID stores bid details
+ * @generated from message akash.market.v1beta4.LeaseID
+ */
+export type LeaseID = {
+  /**
+   * @generated from field: string owner = 1;
+   */
+  owner: string;
 
-// LeaseID message type
-export const LeaseID = proto3.makeMessageType(
-  'akash.market.v1beta4.LeaseID',
-  () => [
-    { no: 1, name: 'owner', kind: 'scalar', T: ScalarType.STRING },
-    { no: 2, name: 'dseq', kind: 'scalar', T: ScalarType.UINT64 },
-    { no: 3, name: 'gseq', kind: 'scalar', T: ScalarType.UINT32 },
-    { no: 4, name: 'oseq', kind: 'scalar', T: ScalarType.UINT32 },
-    { no: 5, name: 'provider', kind: 'scalar', T: ScalarType.STRING },
-  ]
-);
+  /**
+   * @generated from field: uint64 dseq = 2;
+   */
+  dseq: bigint;
 
-export type LeaseID = InstanceType<typeof LeaseID>;
+  /**
+   * @generated from field: uint32 gseq = 3;
+   */
+  gseq: number;
 
-// DecCoin message type (Cosmos SDK)
-export const DecCoin = proto3.makeMessageType(
-  'cosmos.base.v1beta1.DecCoin',
-  () => [
-    { no: 1, name: 'denom', kind: 'scalar', T: ScalarType.STRING },
-    { no: 2, name: 'amount', kind: 'scalar', T: ScalarType.STRING },
-  ]
-);
+  /**
+   * @generated from field: uint32 oseq = 4;
+   */
+  oseq: number;
 
-export type DecCoin = InstanceType<typeof DecCoin>;
+  /**
+   * @generated from field: string provider = 5;
+   */
+  provider: string;
+};
 
-// Lease message type
-export const Lease = proto3.makeMessageType(
-  'akash.market.v1beta4.Lease',
-  () => [
-    { no: 1, name: 'lease_id', kind: 'message', T: LeaseID },
-    { no: 2, name: 'state', kind: 'enum', T: Lease_StateEnum },
-    { no: 3, name: 'price', kind: 'message', T: DecCoin },
-    { no: 4, name: 'created_at', kind: 'scalar', T: ScalarType.INT64 },
-    { no: 5, name: 'closed_on', kind: 'scalar', T: ScalarType.INT64 },
-  ]
-);
+/**
+ * DecCoin defines a token with a denomination and a decimal amount
+ * @generated from message cosmos.base.v1beta1.DecCoin
+ */
+export type DecCoin = {
+  /**
+   * @generated from field: string denom = 1;
+   */
+  denom: string;
 
-export type Lease = InstanceType<typeof Lease>;
+  /**
+   * @generated from field: string amount = 2;
+   */
+  amount: string;
+};
+
+/**
+ * Lease stores lease details
+ * @generated from message akash.market.v1beta4.Lease
+ */
+export type Lease = {
+  /**
+   * @generated from field: akash.market.v1beta4.LeaseID lease_id = 1;
+   */
+  leaseId?: LeaseID;
+
+  /**
+   * @generated from field: akash.market.v1beta4.Lease.State state = 2;
+   */
+  state: Lease_State;
+
+  /**
+   * @generated from field: cosmos.base.v1beta1.DecCoin price = 3;
+   */
+  price?: DecCoin;
+
+  /**
+   * @generated from field: int64 created_at = 4;
+   */
+  createdAt: bigint;
+
+  /**
+   * @generated from field: int64 closed_on = 5;
+   */
+  closedOn: bigint;
+};
