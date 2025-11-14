@@ -80,8 +80,5 @@
     "labels": ["security"],
     "automerge": false,
     "schedule": ["at any time"]
-  },
-  "pnpm": {
-    "minimumVersion": "8.0.0"
   }
 }
