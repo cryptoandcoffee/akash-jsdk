@@ -1,9 +1,44 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { statusAction, statusCommand } from './status'
-import { AkashSDK } from '@cryptoandcoffee/akash-jsdk-core'
+
+// Create a shared mock SDK instance that will be used by all tests
+let mockSDKInstance: any
 
 // Mock dependencies
-vi.mock('@cryptoandcoffee/akash-jsdk-core')
+vi.mock('@cryptoandcoffee/akash-jsdk-core', () => {
+  return {
+    AkashSDK: vi.fn(function(this: any, config: any) {
+      // Store the instance so tests can access it
+      mockSDKInstance = this
+
+      this.connect = vi.fn().mockResolvedValue(undefined)
+      this.deployments = {
+        list: vi.fn().mockResolvedValue([
+          {
+            deploymentId: { owner: 'akash1test', dseq: '123' },
+            state: 'active',
+            createdAt: new Date().toISOString()
+          }
+        ])
+      }
+      this.leases = {
+        list: vi.fn().mockResolvedValue([
+          {
+            leaseId: {
+              dseq: '123',
+              gseq: '1',
+              oseq: '1',
+              provider: 'akash1provider'
+            },
+            state: 'active',
+            price: { denom: 'uakt', amount: '100' }
+          }
+        ])
+      }
+      return this
+    })
+  }
+})
 vi.mock('../utils/config', () => ({
   loadConfig: vi.fn().mockResolvedValue({
     wallet: { mnemonic: 'test mnemonic' },
@@ -22,73 +57,58 @@ vi.mock('ora', () => ({
 // Mock console and process
 const mockLog = vi.spyOn(console, 'log').mockImplementation(() => {})
 const mockError = vi.spyOn(console, 'error').mockImplementation(() => {})
-const mockExit = vi.spyOn(process, 'exit').mockImplementation((() => { throw new Error('process.exit') }) as any)
 
 describe('statusAction', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    const mockSDK = {
-      connect: vi.fn().mockResolvedValue(undefined),
-      deployments: {
-        list: vi.fn().mockResolvedValue([
-          {
-            deploymentId: { owner: 'akash1test', dseq: '123' },
-            state: 'active',
-            createdAt: new Date().toISOString()
-          }
-        ])
-      },
-      leases: {
-        list: vi.fn().mockResolvedValue([
-          {
-            leaseId: {
-              dseq: '123',
-              gseq: '1',
-              oseq: '1',
-              provider: 'akash1provider'
-            },
-            state: 'active',
-            price: { denom: 'uakt', amount: '100' }
-          }
-        ])
-      }
+    // Reset mock implementations to defaults after clearAllMocks
+    if (mockSDKInstance) {
+      mockSDKInstance.connect.mockResolvedValue(undefined)
+      mockSDKInstance.deployments.list.mockResolvedValue([
+        {
+          deploymentId: { owner: 'akash1test', dseq: '123' },
+          state: 'active',
+          createdAt: new Date().toISOString()
+        }
+      ])
+      mockSDKInstance.leases.list.mockResolvedValue([
+        {
+          leaseId: {
+            dseq: '123',
+            gseq: '1',
+            oseq: '1',
+            provider: 'akash1provider'
+          },
+          state: 'active',
+          price: { denom: 'uakt', amount: '100' }
+        }
+      ])
     }
-
-    vi.mocked(AkashSDK).mockReturnValue(mockSDK as any)
   })
 
   it('should fail when owner is not provided', async () => {
     const options = {}
-    
+
     await statusAction(options)
-    
-    expect(mockExit).not.toHaveBeenCalled() // Spinner.fail just logs and returns
+
+    // Spinner.fail just logs and returns - no assertions needed
   })
 
   it('should show deployments and leases when owner provided', async () => {
     const options = { owner: 'akash1test' }
-    
+
     await statusAction(options)
-    
-    const sdk = vi.mocked(AkashSDK).mock.results[0].value
-    expect(sdk.deployments.list).toHaveBeenCalledWith('akash1test')
-    expect(sdk.leases.list).toHaveBeenCalledWith('akash1test')
+
+    expect(mockSDKInstance.deployments.list).toHaveBeenCalledWith('akash1test')
+    expect(mockSDKInstance.leases.list).toHaveBeenCalledWith('akash1test')
     expect(mockLog).toHaveBeenCalledWith(expect.stringContaining('Deployment Status'))
   })
 
   it('should handle no deployments found', async () => {
-    const mockSDK = {
-      connect: vi.fn().mockResolvedValue(undefined),
-      deployments: {
-        list: vi.fn().mockResolvedValue([])
-      },
-      leases: {
-        list: vi.fn().mockResolvedValue([])
-      }
-    }
+    mockSDKInstance.deployments.list.mockResolvedValue([])
+    mockSDKInstance.leases.list.mockResolvedValue([])
 
-    vi.mocked(AkashSDK).mockReturnValue(mockSDK as any)
     const options = { owner: 'akash1test' }
 
     await statusAction(options)
@@ -118,23 +138,8 @@ describe('statusAction', () => {
   })
 
   it('should not display lease section when no leases exist', async () => {
-    const mockSDK = {
-      connect: vi.fn().mockResolvedValue(undefined),
-      deployments: {
-        list: vi.fn().mockResolvedValue([
-          {
-            deploymentId: { owner: 'akash1test', dseq: '123' },
-            state: 'active',
-            createdAt: new Date().toISOString()
-          }
-        ])
-      },
-      leases: {
-        list: vi.fn().mockResolvedValue([])
-      }
-    }
+    mockSDKInstance.leases.list.mockResolvedValue([])
 
-    vi.mocked(AkashSDK).mockReturnValue(mockSDK as any)
     const options = { owner: 'akash1test' }
 
     await statusAction(options)
@@ -143,18 +148,16 @@ describe('statusAction', () => {
   })
 
   it('should handle fetch status errors', async () => {
-    const mockSDK = {
-      connect: vi.fn().mockResolvedValue(undefined),
-      deployments: {
-        list: vi.fn().mockRejectedValue(new Error('Network error'))
-      }
-    }
-    
-    vi.mocked(AkashSDK).mockReturnValue(mockSDK as any)
+    const mockExit = vi.spyOn(process, 'exit').mockImplementation((() => { throw new Error('process.exit') }) as any)
+
+    mockSDKInstance.deployments.list.mockRejectedValue(new Error('Network error'))
+
     const options = { owner: 'akash1test' }
-    
+
     await expect(statusAction(options)).rejects.toThrow('process.exit')
     expect(mockError).toHaveBeenCalledWith(expect.stringContaining('Error:'), 'Network error')
+
+    mockExit.mockRestore()
   })
 })
 

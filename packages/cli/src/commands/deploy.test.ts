@@ -1,9 +1,24 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { deployAction, deployCommand } from './deploy'
-import { AkashSDK } from '@cryptoandcoffee/akash-jsdk-core'
+
+// Create a shared mock SDK instance that will be used by all tests
+let mockSDKInstance: any
 
 // Mock dependencies
-vi.mock('@cryptoandcoffee/akash-jsdk-core')
+vi.mock('@cryptoandcoffee/akash-jsdk-core', () => {
+  return {
+    AkashSDK: vi.fn(function(this: any, config: any) {
+      // Store the instance so tests can access it
+      mockSDKInstance = this
+
+      this.connect = vi.fn().mockResolvedValue(undefined)
+      this.deployments = {
+        create: vi.fn().mockResolvedValue('deployment-123')
+      }
+      return this
+    })
+  }
+})
 vi.mock('../utils/config-action', () => ({
   loadConfig: vi.fn().mockResolvedValue({
     rpcEndpoint: 'http://localhost:26657',
@@ -29,61 +44,45 @@ const mockLog = vi.spyOn(console, 'log').mockImplementation(() => {})
 describe('deployAction', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    
-    const mockSDK = {
-      connect: vi.fn().mockResolvedValue(undefined),
-      deployments: {
-        create: vi.fn().mockResolvedValue('deployment-123')
-      }
+
+    // Reset mock implementations to defaults after clearAllMocks
+    if (mockSDKInstance) {
+      mockSDKInstance.connect.mockResolvedValue(undefined)
+      mockSDKInstance.deployments.create.mockResolvedValue('deployment-123')
     }
-    
-    vi.mocked(AkashSDK).mockReturnValue(mockSDK as any)
   })
 
   it('should deploy from SDL file', async () => {
     const options = { config: '.akash/config.json' }
-    
+
     await deployAction('./test.sdl', options)
-    
-    const sdk = vi.mocked(AkashSDK).mock.results[0].value
-    expect(sdk.deployments.create).toHaveBeenCalled()
+
+    expect(mockSDKInstance.deployments.create).toHaveBeenCalled()
     expect(mockLog).toHaveBeenCalledWith(expect.stringContaining('✅ Deployment successful!'))
   })
 
   it('should load config with custom path', async () => {
     const { loadConfig } = await import('../utils/config-action')
     const options = { config: './custom-config.json' }
-    
+
     await deployAction('./test.sdl', options)
-    
+
     expect(loadConfig).toHaveBeenCalledWith('./custom-config.json')
   })
 
   it('should handle deployment errors', async () => {
-    const mockSDK = {
-      connect: vi.fn().mockResolvedValue(undefined),
-      deployments: {
-        create: vi.fn().mockRejectedValue(new Error('Insufficient funds'))
-      }
-    }
-    
-    vi.mocked(AkashSDK).mockReturnValue(mockSDK as any)
+    mockSDKInstance.deployments.create.mockRejectedValue(new Error('Insufficient funds'))
+
     const options = { config: '.akash/config.json' }
-    
+
     await expect(deployAction('./test.sdl', options)).rejects.toThrow('Insufficient funds')
   })
 
   it('should handle connection errors', async () => {
-    const mockSDK = {
-      connect: vi.fn().mockRejectedValue(new Error('Network unreachable')),
-      deployments: {
-        create: vi.fn()
-      }
-    }
-    
-    vi.mocked(AkashSDK).mockReturnValue(mockSDK as any)
+    mockSDKInstance.connect.mockRejectedValue(new Error('Network unreachable'))
+
     const options = { config: '.akash/config.json' }
-    
+
     await expect(deployAction('./test.sdl', options)).rejects.toThrow('Network unreachable')
   })
 })

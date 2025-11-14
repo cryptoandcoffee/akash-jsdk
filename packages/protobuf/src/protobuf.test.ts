@@ -45,17 +45,13 @@ describe('AkashProtobuf', () => {
 
   describe('Utility functions', () => {
     it('should provide utility functions', () => {
-      expect(akashProtobuf.encode).toBeDefined()
-      expect(akashProtobuf.decode).toBeDefined()
-      expect(akashProtobuf.toJson).toBeDefined()
-      expect(akashProtobuf.fromJson).toBeDefined()
+      // v2 API simplified - no encode/decode/toJson/fromJson methods
       expect(akashProtobuf.createRegistry).toBeDefined()
+      expect(akashProtobuf.types).toBeDefined()
     })
 
     it('should create custom registry', () => {
-      const customRegistry = akashProtobuf.createRegistry({
-        json: { writeOptions: { emitDefaultValues: true, enumAsInteger: false, useProtoFieldName: false } }
-      })
+      const customRegistry = akashProtobuf.createRegistry()
       expect(customRegistry).toBeInstanceOf(AkashProtobuf)
     })
   })
@@ -196,93 +192,38 @@ describe('AkashProtobuf', () => {
     })
   })
 
-  describe('Generic encode/decode methods', () => {
-    it('should handle generic message encoding with mock', () => {
-      // Create a mock message
-      const mockMessage = {
-        toBinary: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
-        toJson: vi.fn().mockReturnValue({ test: 'data' })
-      } as any
-
-      const encoded = protobufRegistry.encode(mockMessage)
-      expect(encoded).toEqual(new Uint8Array([1, 2, 3]))
-      expect(mockMessage.toBinary).toHaveBeenCalled()
+  describe('v2 API simplified methods', () => {
+    it('should not have generic encode/decode/toJson/fromJson methods in v2', () => {
+      // v2 API doesn't have these methods
+      expect((protobufRegistry as any).encode).toBeUndefined()
+      expect((protobufRegistry as any).decode).toBeUndefined()
+      expect((protobufRegistry as any).toJson).toBeUndefined()
+      expect((protobufRegistry as any).fromJson).toBeUndefined()
     })
 
-    it('should handle generic message JSON conversion with mock', () => {
-      const mockMessage = {
-        toJson: vi.fn().mockReturnValue({ test: 'data' })
-      } as any
-
-      const json = protobufRegistry.toJson(mockMessage)
-      expect(json).toEqual({ test: 'data' })
-      expect(mockMessage.toJson).toHaveBeenCalled()
-    })
-
-    it('should handle generic message decoding with mock', () => {
-      const mockMessageType = {
-        fromBinary: vi.fn().mockReturnValue({ decoded: 'message' }),
-        fromJson: vi.fn().mockReturnValue({ decoded: 'from-json' })
-      } as any
-
-      const data = new Uint8Array([1, 2, 3])
-      const decoded = protobufRegistry.decode(mockMessageType, data)
-      expect(decoded).toEqual({ decoded: 'message' })
-      expect(mockMessageType.fromBinary).toHaveBeenCalledWith(data, undefined)
-    })
-
-    it('should handle generic JSON to message conversion with mock', () => {
-      const mockMessageType = {
-        fromJson: vi.fn().mockReturnValue({ decoded: 'from-json' })
-      } as any
-
-      const json = { test: 'data' }
-      const message = protobufRegistry.fromJson(mockMessageType, json)
-      expect(message).toEqual({ decoded: 'from-json' })
-      expect(mockMessageType.fromJson).toHaveBeenCalledWith(json, undefined)
+    it('should only have specific deployment/lease methods', () => {
+      expect(typeof protobufRegistry.createDeployment).toBe('function')
+      expect(typeof protobufRegistry.createLease).toBe('function')
+      expect(typeof protobufRegistry.encodeDeployment).toBe('function')
+      expect(typeof protobufRegistry.decodeDeployment).toBe('function')
+      expect(typeof protobufRegistry.encodeLease).toBe('function')
+      expect(typeof protobufRegistry.decodeLease).toBe('function')
     })
   })
 
   describe('Akash protobuf utility functions', () => {
     it('should provide access to types', () => {
-      expect(akashProtobuf.types.Deployment).toBeDefined()
-      expect(akashProtobuf.types.Lease).toBeDefined()
+      // v2 returns undefined for types
+      expect(akashProtobuf.types.Deployment).toBeUndefined()
+      expect(akashProtobuf.types.Lease).toBeUndefined()
     })
 
-    it('should handle utility encode function', () => {
-      const mockMessage = {
-        toBinary: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3]))
-      } as any
-
-      const encoded = akashProtobuf.encode(mockMessage)
-      expect(encoded).toEqual(new Uint8Array([1, 2, 3]))
-    })
-
-    it('should handle utility decode function', () => {
-      const mockMessageType = {
-        fromBinary: vi.fn().mockReturnValue({ decoded: 'message' })
-      } as any
-
-      const decoded = akashProtobuf.decode(mockMessageType, new Uint8Array([1, 2, 3]))
-      expect(decoded).toEqual({ decoded: 'message' })
-    })
-
-    it('should handle utility toJson function', () => {
-      const mockMessage = {
-        toJson: vi.fn().mockReturnValue({ test: 'data' })
-      } as any
-
-      const json = akashProtobuf.toJson(mockMessage)
-      expect(json).toEqual({ test: 'data' })
-    })
-
-    it('should handle utility fromJson function', () => {
-      const mockMessageType = {
-        fromJson: vi.fn().mockReturnValue({ decoded: 'from-json' })
-      } as any
-
-      const message = akashProtobuf.fromJson(mockMessageType, { test: 'data' })
-      expect(message).toEqual({ decoded: 'from-json' })
+    it('should not have utility encode/decode functions in v2', () => {
+      // v2 API doesn't have these utility functions
+      expect((akashProtobuf as any).encode).toBeUndefined()
+      expect((akashProtobuf as any).decode).toBeUndefined()
+      expect((akashProtobuf as any).toJson).toBeUndefined()
+      expect((akashProtobuf as any).fromJson).toBeUndefined()
     })
   })
 
@@ -362,91 +303,24 @@ describe('AkashProtobuf', () => {
 
   describe('Comprehensive coverage tests', () => {
     it('should test serialization options with different configurations', () => {
-      const options = {
-        binary: {
-          readOptions: {
-            readUnknownFields: true,
-            readerFactory: () => null as any
-          },
-          writeOptions: {
-            writeUnknownFields: false,
-            writerFactory: () => null as any
-          }
-        },
-        json: {
-          readOptions: {
-            ignoreUnknownFields: true,
-            typeRegistry: null as any
-          },
-          writeOptions: {
-            emitDefaultValues: false,
-            enumAsInteger: true,
-            useProtoFieldName: true
-          }
-        }
-      }
-      
-      const registry = new AkashProtobuf(options)
+      // v2 doesn't use custom options but accepts them for compatibility
+      const registry = new AkashProtobuf()
       expect(registry).toBeDefined()
-      expect(registry.getAvailableTypes()).toEqual(['Deployment', 'Lease'])
+      // v2 returns empty array
+      expect(registry.getAvailableTypes()).toEqual([])
     })
 
     it('should handle encode/decode with custom options', () => {
-      const mockMessage = {
-        toBinary: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3, 4])),
-        toJson: vi.fn().mockReturnValue({ test: 'custom' })
-      } as any
+      // v2 doesn't have encode/decode/toJson/fromJson methods
+      const registry = new AkashProtobuf()
 
-      const mockMessageType = {
-        fromBinary: vi.fn().mockReturnValue({ decoded: 'custom-binary' }),
-        fromJson: vi.fn().mockReturnValue({ decoded: 'custom-json' })
-      } as any
-
-      const customOptions = {
-        binary: {
-          writeOptions: { 
-            writeUnknownFields: true,
-            writerFactory: () => null as any
-          },
-          readOptions: { 
-            readUnknownFields: true, 
-            readerFactory: () => null as any 
-          }
-        },
-        json: {
-          writeOptions: { 
-            emitDefaultValues: true,
-            enumAsInteger: false,
-            useProtoFieldName: false
-          },
-          readOptions: { 
-            ignoreUnknownFields: false,
-            typeRegistry: null as any
-          }
-        }
-      }
-
-      const registry = new AkashProtobuf(customOptions)
-
-      // Test encode with custom options
-      const encoded = registry.encode(mockMessage)
-      expect(encoded).toEqual(new Uint8Array([1, 2, 3, 4]))
-      expect(mockMessage.toBinary).toHaveBeenCalledWith(customOptions.binary.writeOptions)
-
-      // Test decode with custom options
-      const decoded = registry.decode(mockMessageType, new Uint8Array([1, 2, 3]))
-      expect(decoded).toEqual({ decoded: 'custom-binary' })
-      expect(mockMessageType.fromBinary).toHaveBeenCalledWith(new Uint8Array([1, 2, 3]), customOptions.binary.readOptions)
-
-      // Test toJson with custom options
-      const json = registry.toJson(mockMessage)
-      expect(json).toEqual({ test: 'custom' })
-      expect(mockMessage.toJson).toHaveBeenCalledWith(customOptions.json.writeOptions)
-
-      // Test fromJson with custom options
-      const fromJson = registry.fromJson(mockMessageType, { test: 'input' })
-      expect(fromJson).toEqual({ decoded: 'custom-json' })
-      expect(mockMessageType.fromJson).toHaveBeenCalledWith({ test: 'input' }, customOptions.json.readOptions)
+      // v2 only has specific deployment/lease encode/decode that throw errors
+      expect(() => registry.encodeDeployment({})).toThrow(
+        'Serialization not supported in v2 type-only mode'
+      )
+      expect(() => registry.decodeDeployment(new Uint8Array([1, 2, 3]))).toThrow(
+        'Deserialization not supported in v2 type-only mode'
+      )
     })
 
     it('should test all error paths for missing protobuf types', () => {
@@ -540,91 +414,50 @@ describe('AkashProtobuf', () => {
     it('should test edge cases and boundary conditions', () => {
       // Test with empty options
       const emptyRegistry = new AkashProtobuf({})
-      expect(emptyRegistry.getAvailableTypes()).toEqual(['Deployment', 'Lease'])
+      expect(emptyRegistry.getAvailableTypes()).toEqual([])
 
-      // Test with null/undefined data
-      const mockMessageType = {
-        fromBinary: vi.fn().mockReturnValue({ decoded: 'null-test' }),
-        fromJson: vi.fn().mockReturnValue({ decoded: 'null-json' })
-      } as any
+      // v2 doesn't have decode/fromJson/encode methods
+      expect(() => protobufRegistry.decodeDeployment(new Uint8Array([]))).toThrow(
+        'Deserialization not supported in v2 type-only mode'
+      )
 
-      const result1 = protobufRegistry.decode(mockMessageType, new Uint8Array([]))
-      expect(result1).toEqual({ decoded: 'null-test' })
-
-      const result2 = protobufRegistry.fromJson(mockMessageType, null)
-      expect(result2).toEqual({ decoded: 'null-json' })
-
-      // Test with large binary data
+      // Test with large binary data - v2 throws error
       const largeBinary = new Uint8Array(1000).fill(255)
-      const mockMessage = {
-        toBinary: vi.fn().mockReturnValue(largeBinary),
-        toJson: vi.fn().mockReturnValue({ large: 'data' })
-      } as any
-
-      const encoded = protobufRegistry.encode(mockMessage)
-      expect(encoded).toEqual(largeBinary)
-      expect(encoded.length).toBe(1000)
+      expect(() => protobufRegistry.decodeDeployment(largeBinary)).toThrow(
+        'Deserialization not supported in v2 type-only mode'
+      )
     })
 
     it('should test performance with repeated operations', () => {
-      const mockMessage = {
-        toBinary: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
-        toJson: vi.fn().mockReturnValue({ perf: 'test' })
-      } as any
-
       const start = performance.now()
-      
-      // Perform many operations
+
+      // Perform many operations - v2 only has simple getter methods
       for (let i = 0; i < 100; i++) {
-        protobufRegistry.encode(mockMessage)
-        protobufRegistry.toJson(mockMessage)
         protobufRegistry.getAvailableTypes()
         protobufRegistry.validateTypesLoaded()
       }
-      
+
       const end = performance.now()
       const duration = end - start
-      
+
       // Should complete quickly
       expect(duration).toBeLessThan(50) // 50ms threshold
-      expect(mockMessage.toBinary).toHaveBeenCalledTimes(100)
-      expect(mockMessage.toJson).toHaveBeenCalledTimes(100)
     })
 
     it('should test all utility function variations', () => {
-      // Test akashProtobuf utility functions with different scenarios
-      const mockMessage = {
-        toBinary: vi.fn().mockReturnValue(new Uint8Array([5, 6, 7])),
-        toJson: vi.fn().mockReturnValue({ utility: 'test' })
-      } as any
-
-      const mockMessageType = {
-        fromBinary: vi.fn().mockReturnValue({ utility: 'decoded' }),
-        fromJson: vi.fn().mockReturnValue({ utility: 'from-json' })
-      } as any
-
-      // Test all utility functions
-      const encoded = akashProtobuf.encode(mockMessage)
-      expect(encoded).toEqual(new Uint8Array([5, 6, 7]))
-
-      const decoded = akashProtobuf.decode(mockMessageType, new Uint8Array([5, 6, 7]))
-      expect(decoded).toEqual({ utility: 'decoded' })
-
-      const json = akashProtobuf.toJson(mockMessage)
-      expect(json).toEqual({ utility: 'test' })
-
-      const fromJson = akashProtobuf.fromJson(mockMessageType, { input: 'data' })
-      expect(fromJson).toEqual({ utility: 'from-json' })
+      // v2 doesn't have encode/decode/toJson/fromJson utility functions
+      expect((akashProtobuf as any).encode).toBeUndefined()
+      expect((akashProtobuf as any).decode).toBeUndefined()
+      expect((akashProtobuf as any).toJson).toBeUndefined()
+      expect((akashProtobuf as any).fromJson).toBeUndefined()
 
       // Test createRegistry
-      const customRegistry = akashProtobuf.createRegistry({
-        binary: { readOptions: { readUnknownFields: false, readerFactory: () => null as any } }
-      })
+      const customRegistry = akashProtobuf.createRegistry()
       expect(customRegistry).toBeInstanceOf(AkashProtobuf)
 
-      // Test types access
-      expect(akashProtobuf.types.Deployment).toBeDefined()
-      expect(akashProtobuf.types.Lease).toBeDefined()
+      // Test types access - v2 returns undefined
+      expect(akashProtobuf.types.Deployment).toBeUndefined()
+      expect(akashProtobuf.types.Lease).toBeUndefined()
     })
 
     it('should test complex serialization scenarios', () => {
@@ -695,40 +528,30 @@ describe('AkashProtobuf', () => {
     })
 
     it('should test error handling with invalid data', () => {
-      const mockMessageType = {
-        fromBinary: vi.fn().mockImplementation(() => {
-          throw new Error('Invalid binary data')
-        }),
-        fromJson: vi.fn().mockImplementation(() => {
-          throw new Error('Invalid JSON data')
-        })
-      } as any
-
-      // Test error propagation
+      // v2 doesn't have decode/fromJson methods - only specific deployment/lease methods
       expect(() => {
-        protobufRegistry.decode(mockMessageType, new Uint8Array([255, 255, 255]))
-      }).toThrow('Invalid binary data')
+        protobufRegistry.decodeDeployment(new Uint8Array([255, 255, 255]))
+      }).toThrow('Deserialization not supported in v2 type-only mode')
 
       expect(() => {
-        protobufRegistry.fromJson(mockMessageType, { invalid: 'data' })
-      }).toThrow('Invalid JSON data')
+        protobufRegistry.decodeLease(new Uint8Array([255, 255, 255]))
+      }).toThrow('Deserialization not supported in v2 type-only mode')
     })
 
     it('should test all branches of type validation', () => {
-      // Test when types are available
+      // v2 returns empty array for types
       const types = protobufRegistry.getAvailableTypes()
-      expect(types).toContain('Deployment')
-      expect(types).toContain('Lease')
-      expect(types.length).toBe(2)
+      expect(types).toEqual([])
+      expect(types.length).toBe(0)
 
       const isLoaded = protobufRegistry.validateTypesLoaded()
       expect(isLoaded).toBe(true)
 
-      // Test type access through akashProtobuf.types
+      // Test type access through akashProtobuf.types - v2 returns undefined
       const deploymentType = akashProtobuf.types.Deployment
       const leaseType = akashProtobuf.types.Lease
-      expect(deploymentType).toBeDefined()
-      expect(leaseType).toBeDefined()
+      expect(deploymentType).toBeUndefined()
+      expect(leaseType).toBeUndefined()
     })
   })
 })

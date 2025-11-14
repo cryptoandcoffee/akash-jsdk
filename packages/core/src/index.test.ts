@@ -24,27 +24,29 @@ vi.mock('isomorphic-ws', () => ({
 global.fetch = vi.fn()
 
 // Mock the AkashProvider
-vi.mock('./providers/akash', () => ({
-  AkashProvider: vi.fn().mockImplementation(() => ({
-    connect: vi.fn(),
-    disconnect: vi.fn(),
-    isConnected: vi.fn().mockReturnValue(true),
-    ensureConnected: vi.fn(),
-    getClient: vi.fn().mockReturnValue({ searchTx: vi.fn().mockResolvedValue([]) }),
-    config: {
-      rpcEndpoint: 'https://rpc.akashedge.com:443',
-      apiEndpoint: 'https://api.akashedge.com:443',
-      chainId: 'akashnet-2'
-    },
-    getDeployments: vi.fn().mockResolvedValue([]),
-    getDeployment: vi.fn().mockResolvedValue(undefined),
-    getLeases: vi.fn().mockResolvedValue([]),
-    getLeasesByDeployment: vi.fn().mockResolvedValue([]),
-    getProviders: vi.fn().mockResolvedValue([]),
-    createDeployment: vi.fn().mockResolvedValue('deployment-123'),
-    closeDeployment: vi.fn().mockResolvedValue(undefined)
-  }))
-}))
+vi.mock('./providers/akash', () => {
+  return {
+    AkashProvider: vi.fn(function(this: any, config: any) {
+      this.connect = vi.fn()
+      this.disconnect = vi.fn()
+      this.isConnected = vi.fn().mockReturnValue(true)
+      this.ensureConnected = vi.fn()
+      this.getClient = vi.fn().mockReturnValue({ searchTx: vi.fn().mockResolvedValue([]) })
+      this.config = config || {
+        rpcEndpoint: 'https://rpc.akashedge.com:443',
+        apiEndpoint: 'https://api.akashedge.com:443',
+        chainId: 'akashnet-2'
+      }
+      this.getDeployments = vi.fn().mockResolvedValue([])
+      this.getDeployment = vi.fn().mockResolvedValue(undefined)
+      this.getLeases = vi.fn().mockResolvedValue([])
+      this.getLeasesByDeployment = vi.fn().mockResolvedValue([])
+      this.getProviders = vi.fn().mockResolvedValue([])
+      this.createDeployment = vi.fn().mockResolvedValue('deployment-123')
+      this.closeDeployment = vi.fn().mockResolvedValue(undefined)
+    })
+  }
+})
 
 describe('AkashSDK', () => {
   const validConfig = {
