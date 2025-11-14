@@ -1,47 +1,50 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { statusCommand } from './status-action'
 
-// Create a shared mock SDK instance that will be used by all tests
-let mockSDKInstance: any
+// Create shared mock functions
+const mockConnect = vi.fn().mockResolvedValue(undefined)
+const mockDeploymentsGet = vi.fn().mockResolvedValue({
+  id: { owner: 'akash1test', dseq: '123' },
+  state: 'active',
+  version: '1.0.0',
+  createdAt: Date.now()
+})
+const mockDeploymentsList = vi.fn().mockResolvedValue([
+  {
+    deploymentId: { owner: 'akash1test', dseq: '123' },
+    state: 'active',
+    createdAt: Date.now()
+  },
+  {
+    deploymentId: { owner: 'akash1test', dseq: '456' },
+    state: 'closed',
+    createdAt: Date.now() - 86400000
+  }
+])
+const mockLeasesList = vi.fn().mockResolvedValue([
+  {
+    leaseId: { provider: 'akash1provider', dseq: '123', gseq: '1', oseq: '1' },
+    state: 'active',
+    price: { amount: '100', denom: 'uakt' }
+  }
+])
+
+const mockSDKInstance: any = {
+  connect: mockConnect,
+  deployments: {
+    get: mockDeploymentsGet,
+    list: mockDeploymentsList
+  },
+  leases: {
+    list: mockLeasesList
+  }
+}
 
 // Mock dependencies
 vi.mock('@cryptoandcoffee/akash-jsdk-core', () => {
   return {
     AkashSDK: vi.fn(function(this: any, config: any) {
-      // Store the instance so tests can access it
-      mockSDKInstance = this
-
-      this.connect = vi.fn().mockResolvedValue(undefined)
-      this.deployments = {
-        get: vi.fn().mockResolvedValue({
-          id: { owner: 'akash1test', dseq: '123' },
-          state: 'active',
-          version: '1.0.0',
-          createdAt: Date.now()
-        }),
-        list: vi.fn().mockResolvedValue([
-          {
-            deploymentId: { owner: 'akash1test', dseq: '123' },
-            state: 'active',
-            createdAt: Date.now()
-          },
-          {
-            deploymentId: { owner: 'akash1test', dseq: '456' },
-            state: 'closed',
-            createdAt: Date.now() - 86400000
-          }
-        ])
-      }
-      this.leases = {
-        list: vi.fn().mockResolvedValue([
-          {
-            leaseId: { provider: 'akash1provider', dseq: '123', gseq: '1', oseq: '1' },
-            state: 'active',
-            price: { amount: '100', denom: 'uakt' }
-          }
-        ])
-      }
-      return this
+      return mockSDKInstance
     })
   }
 })
@@ -81,34 +84,32 @@ describe('statusCommand (status-action)', () => {
     })
 
     // Reset mock implementations to defaults after clearAllMocks
-    if (mockSDKInstance) {
-      mockSDKInstance.connect.mockResolvedValue(undefined)
-      mockSDKInstance.deployments.get.mockResolvedValue({
-        id: { owner: 'akash1test', dseq: '123' },
+    mockConnect.mockResolvedValue(undefined)
+    mockDeploymentsGet.mockResolvedValue({
+      id: { owner: 'akash1test', dseq: '123' },
+      state: 'active',
+      version: '1.0.0',
+      createdAt: Date.now()
+    })
+    mockDeploymentsList.mockResolvedValue([
+      {
+        deploymentId: { owner: 'akash1test', dseq: '123' },
         state: 'active',
-        version: '1.0.0',
         createdAt: Date.now()
-      })
-      mockSDKInstance.deployments.list.mockResolvedValue([
-        {
-          deploymentId: { owner: 'akash1test', dseq: '123' },
-          state: 'active',
-          createdAt: Date.now()
-        },
-        {
-          deploymentId: { owner: 'akash1test', dseq: '456' },
-          state: 'closed',
-          createdAt: Date.now() - 86400000
-        }
-      ])
-      mockSDKInstance.leases.list.mockResolvedValue([
-        {
-          leaseId: { provider: 'akash1provider', dseq: '123', gseq: '1', oseq: '1' },
-          state: 'active',
-          price: { amount: '100', denom: 'uakt' }
-        }
-      ])
-    }
+      },
+      {
+        deploymentId: { owner: 'akash1test', dseq: '456' },
+        state: 'closed',
+        createdAt: Date.now() - 86400000
+      }
+    ])
+    mockLeasesList.mockResolvedValue([
+      {
+        leaseId: { provider: 'akash1provider', dseq: '123', gseq: '1', oseq: '1' },
+        state: 'active',
+        price: { amount: '100', denom: 'uakt' }
+      }
+    ])
   })
 
   it('should get specific deployment status by ID', async () => {
@@ -117,9 +118,9 @@ describe('statusCommand (status-action)', () => {
 
     await statusCommand(deploymentId, options)
 
-    expect(mockSDKInstance.connect).toHaveBeenCalled()
-    expect(mockSDKInstance.deployments.get).toHaveBeenCalledWith({ owner: 'akash1test', dseq: '123' })
-    expect(mockSDKInstance.leases.list).toHaveBeenCalledWith({ owner: 'akash1test', dseq: '123' })
+    expect(mockConnect).toHaveBeenCalled()
+    expect(mockDeploymentsGet).toHaveBeenCalledWith({ owner: 'akash1test', dseq: '123' })
+    expect(mockLeasesList).toHaveBeenCalledWith({ owner: 'akash1test', dseq: '123' })
     expect(mockLog).toHaveBeenCalledWith(expect.stringContaining('📋 Deployment Details'))
     expect(mockLog).toHaveBeenCalledWith(expect.stringContaining('Owner: akash1test'))
     expect(mockLog).toHaveBeenCalledWith(expect.stringContaining('DSEQ: 123'))
@@ -130,8 +131,8 @@ describe('statusCommand (status-action)', () => {
 
     await statusCommand(undefined, options)
 
-    expect(mockSDKInstance.connect).toHaveBeenCalled()
-    expect(mockSDKInstance.deployments.list).toHaveBeenCalled()
+    expect(mockConnect).toHaveBeenCalled()
+    expect(mockDeploymentsList).toHaveBeenCalled()
     expect(mockLog).toHaveBeenCalledWith(expect.stringContaining('📋 Deployments (2)'))
     expect(mockLog).toHaveBeenCalledWith(expect.stringContaining('akash1test/123'))
     expect(mockLog).toHaveBeenCalledWith(expect.stringContaining('akash1test/456'))
@@ -147,7 +148,7 @@ describe('statusCommand (status-action)', () => {
   })
 
   it('should handle deployment not found error', async () => {
-    mockSDKInstance.deployments.get.mockRejectedValue(new Error('deployment not found'))
+    mockDeploymentsGet.mockRejectedValueOnce(new Error('deployment not found'))
 
     const deploymentId = 'akash1test/999'
     const options = { config: '.akash/config.json' }
@@ -158,7 +159,7 @@ describe('statusCommand (status-action)', () => {
   })
 
   it('should handle deployment found but null response', async () => {
-    mockSDKInstance.deployments.get.mockResolvedValue(null)
+    mockDeploymentsGet.mockResolvedValueOnce(null)
 
     const deploymentId = 'akash1test/999'
     const options = { config: '.akash/config.json' }
@@ -169,7 +170,7 @@ describe('statusCommand (status-action)', () => {
   })
 
   it('should handle generic deployment get errors', async () => {
-    mockSDKInstance.deployments.get.mockRejectedValue(new Error('Network error'))
+    mockDeploymentsGet.mockRejectedValueOnce(new Error('Network error'))
 
     const deploymentId = 'akash1test/123'
     const options = { config: '.akash/config.json' }
@@ -178,7 +179,7 @@ describe('statusCommand (status-action)', () => {
   })
 
   it('should handle empty deployments list', async () => {
-    mockSDKInstance.deployments.list.mockResolvedValue([])
+    mockDeploymentsList.mockResolvedValueOnce([])
 
     const options = { config: '.akash/config.json' }
 
@@ -200,7 +201,7 @@ describe('statusCommand (status-action)', () => {
   })
 
   it('should handle no leases for deployment', async () => {
-    mockSDKInstance.leases.list.mockResolvedValue([])
+    mockLeasesList.mockResolvedValueOnce([])
 
     const deploymentId = 'akash1test/123'
     const options = { config: '.akash/config.json' }
@@ -211,7 +212,7 @@ describe('statusCommand (status-action)', () => {
   })
 
   it('should handle connection errors', async () => {
-    mockSDKInstance.connect.mockRejectedValue(new Error('Network unreachable'))
+    mockConnect.mockRejectedValueOnce(new Error('Network unreachable'))
 
     const options = { config: '.akash/config.json' }
 
@@ -238,7 +239,7 @@ describe('statusCommand (status-action)', () => {
 
   it('should format deployment creation date correctly', async () => {
     const testDate = new Date('2023-01-01T12:00:00Z')
-    mockSDKInstance.deployments.get.mockResolvedValue({
+    mockDeploymentsGet.mockResolvedValueOnce({
       id: { owner: 'akash1test', dseq: '123' },
       state: 'active',
       version: '1.0.0',
@@ -254,7 +255,7 @@ describe('statusCommand (status-action)', () => {
   })
 
   it('should handle missing deployment version gracefully', async () => {
-    mockSDKInstance.deployments.get.mockResolvedValue({
+    mockDeploymentsGet.mockResolvedValueOnce({
       id: { owner: 'akash1test', dseq: '123' },
       state: 'active',
       createdAt: Date.now()
@@ -276,11 +277,11 @@ describe('statusCommand (status-action)', () => {
     await statusCommand(deploymentId, options)
 
     // Should split on first slash only
-    expect(mockSDKInstance.deployments.get).toHaveBeenCalledWith({
+    expect(mockDeploymentsGet).toHaveBeenCalledWith({
       owner: 'akash1test',
       dseq: '123/extra'
     })
-    expect(mockSDKInstance.leases.list).toHaveBeenCalledWith({
+    expect(mockLeasesList).toHaveBeenCalledWith({
       owner: 'akash1test',
       dseq: '123/extra'
     })

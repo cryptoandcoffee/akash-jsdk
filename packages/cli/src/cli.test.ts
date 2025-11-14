@@ -2,58 +2,34 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createCLI } from './cli'
 import chalk from 'chalk'
 
-// Mock command modules to return Command instances with names
-vi.mock('./commands/init', () => ({
-  initCommand: {
-    name: vi.fn().mockReturnValue('init'),
-    _name: 'init',
-    description: vi.fn().mockReturnThis(),
-    option: vi.fn().mockReturnThis(),
-    action: vi.fn().mockReturnThis(),
-    alias: vi.fn().mockReturnThis(),
-    argument: vi.fn().mockReturnThis(),
-    addCommand: vi.fn().mockReturnThis()
+// Mock command modules to return actual Command instances
+vi.mock('./commands/init', async () => {
+  const { Command } = await import('commander')
+  return {
+    initCommand: new Command('init').description('Initialize a new Akash SDK project')
   }
-}))
+})
 
-vi.mock('./commands/deploy', () => ({
-  deployCommand: {
-    name: vi.fn().mockReturnValue('deploy'),
-    _name: 'deploy',
-    description: vi.fn().mockReturnThis(),
-    option: vi.fn().mockReturnThis(),
-    action: vi.fn().mockReturnThis(),
-    alias: vi.fn().mockReturnThis(),
-    argument: vi.fn().mockReturnThis(),
-    addCommand: vi.fn().mockReturnThis()
+vi.mock('./commands/deploy', async () => {
+  const { Command } = await import('commander')
+  return {
+    deployCommand: new Command('deploy').description('Deploy to Akash Network')
   }
-}))
+})
 
-vi.mock('./commands/status', () => ({
-  statusCommand: {
-    name: vi.fn().mockReturnValue('status'),
-    _name: 'status',
-    description: vi.fn().mockReturnThis(),
-    option: vi.fn().mockReturnThis(),
-    action: vi.fn().mockReturnThis(),
-    alias: vi.fn().mockReturnThis(),
-    argument: vi.fn().mockReturnThis(),
-    addCommand: vi.fn().mockReturnThis()
+vi.mock('./commands/status', async () => {
+  const { Command } = await import('commander')
+  return {
+    statusCommand: new Command('status').description('Check deployment status')
   }
-}))
+})
 
-vi.mock('./commands/close', () => ({
-  closeCommand: {
-    name: vi.fn().mockReturnValue('close'),
-    _name: 'close',
-    description: vi.fn().mockReturnThis(),
-    option: vi.fn().mockReturnThis(),
-    action: vi.fn().mockReturnThis(),
-    alias: vi.fn().mockReturnThis(),
-    argument: vi.fn().mockReturnThis(),
-    addCommand: vi.fn().mockReturnThis()
+vi.mock('./commands/close', async () => {
+  const { Command } = await import('commander')
+  return {
+    closeCommand: new Command('close').description('Close deployment')
   }
-}))
+})
 
 describe('CLI', () => {
   beforeEach(() => {

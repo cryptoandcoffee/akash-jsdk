@@ -2,26 +2,29 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { closeCommand } from './close-action'
 
 // Create a shared mock SDK instance that will be used by all tests
-let mockSDKInstance: any
+const mockConnect = vi.fn().mockResolvedValue(undefined)
+const mockDeploymentsGet = vi.fn().mockResolvedValue({
+  id: { owner: 'akash1test', dseq: '123' },
+  state: 'active',
+  version: '1.0.0',
+  createdAt: Date.now()
+})
+const mockDeploymentsClose = vi.fn().mockResolvedValue(undefined)
+
+const mockSDKInstance: any = {
+  connect: mockConnect,
+  deployments: {
+    get: mockDeploymentsGet,
+    close: mockDeploymentsClose
+  }
+}
 
 // Mock dependencies
 vi.mock('@cryptoandcoffee/akash-jsdk-core', () => {
   return {
     AkashSDK: vi.fn(function(this: any, config: any) {
-      // Store the instance so tests can access it
-      mockSDKInstance = this
-
-      this.connect = vi.fn().mockResolvedValue(undefined)
-      this.deployments = {
-        get: vi.fn().mockResolvedValue({
-          id: { owner: 'akash1test', dseq: '123' },
-          state: 'active',
-          version: '1.0.0',
-          createdAt: Date.now()
-        }),
-        close: vi.fn().mockResolvedValue(undefined)
-      }
-      return this
+      // Return the shared mock instance
+      return mockSDKInstance
     })
   }
 })
@@ -56,16 +59,14 @@ describe('closeCommand (close-action)', () => {
     })
 
     // Reset mock implementations to defaults after clearAllMocks
-    if (mockSDKInstance) {
-      mockSDKInstance.connect.mockResolvedValue(undefined)
-      mockSDKInstance.deployments.get.mockResolvedValue({
-        id: { owner: 'akash1test', dseq: '123' },
-        state: 'active',
-        version: '1.0.0',
-        createdAt: Date.now()
-      })
-      mockSDKInstance.deployments.close.mockResolvedValue(undefined)
-    }
+    mockConnect.mockResolvedValue(undefined)
+    mockDeploymentsGet.mockResolvedValue({
+      id: { owner: 'akash1test', dseq: '123' },
+      state: 'active',
+      version: '1.0.0',
+      createdAt: Date.now()
+    })
+    mockDeploymentsClose.mockResolvedValue(undefined)
   })
 
   it('should close deployment successfully', async () => {
@@ -74,9 +75,9 @@ describe('closeCommand (close-action)', () => {
 
     await closeCommand(deploymentId, options)
 
-    expect(mockSDKInstance.connect).toHaveBeenCalled()
-    expect(mockSDKInstance.deployments.get).toHaveBeenCalledWith({ owner: 'akash1test', dseq: '123' })
-    expect(mockSDKInstance.deployments.close).toHaveBeenCalledWith({ owner: 'akash1test', dseq: '123' })
+    expect(mockConnect).toHaveBeenCalled()
+    expect(mockDeploymentsGet).toHaveBeenCalledWith({ owner: 'akash1test', dseq: '123' })
+    expect(mockDeploymentsClose).toHaveBeenCalledWith({ owner: 'akash1test', dseq: '123' })
     expect(mockLog).toHaveBeenCalledWith(expect.stringContaining('✅ Deployment akash1test/123 has been closed'))
   })
 
@@ -90,7 +91,7 @@ describe('closeCommand (close-action)', () => {
   })
 
   it('should handle deployment not found error', async () => {
-    mockSDKInstance.deployments.get.mockRejectedValue(new Error('deployment not found'))
+    mockDeploymentsGet.mockRejectedValueOnce(new Error('deployment not found'))
 
     const deploymentId = 'akash1test/999'
     const options = { config: '.akash/config.json' }
@@ -99,11 +100,11 @@ describe('closeCommand (close-action)', () => {
       'Deployment akash1test/999 not found'
     )
 
-    expect(mockSDKInstance.deployments.close).not.toHaveBeenCalled()
+    expect(mockDeploymentsClose).not.toHaveBeenCalled()
   })
 
   it('should handle deployment get returning null', async () => {
-    mockSDKInstance.deployments.get.mockResolvedValue(null)
+    mockDeploymentsGet.mockResolvedValueOnce(null)
 
     const deploymentId = 'akash1test/123'
     const options = { config: '.akash/config.json' }
@@ -112,11 +113,11 @@ describe('closeCommand (close-action)', () => {
       'Deployment akash1test/123 not found'
     )
 
-    expect(mockSDKInstance.deployments.close).not.toHaveBeenCalled()
+    expect(mockDeploymentsClose).not.toHaveBeenCalled()
   })
 
   it('should handle already closed deployment', async () => {
-    mockSDKInstance.deployments.get.mockResolvedValue({
+    mockDeploymentsGet.mockResolvedValueOnce({
       id: { owner: 'akash1test', dseq: '123' },
       state: 2, // DeploymentState.CLOSED = 2
       version: '1.0.0',
@@ -128,22 +129,21 @@ describe('closeCommand (close-action)', () => {
 
     await closeCommand(deploymentId, options)
 
-    expect(mockSDKInstance.deployments.close).not.toHaveBeenCalled()
-    // Should warn that deployment is already closed
+    expect(mockDeploymentsClose).not.toHaveBeenCalled()
   })
 
   it('should handle generic deployment get errors', async () => {
-    mockSDKInstance.deployments.get.mockRejectedValue(new Error('Network error'))
+    mockDeploymentsGet.mockRejectedValueOnce(new Error('Network error'))
 
     const deploymentId = 'akash1test/123'
     const options = { config: '.akash/config.json' }
 
     await expect(closeCommand(deploymentId, options)).rejects.toThrow('Network error')
-    expect(mockSDKInstance.deployments.close).not.toHaveBeenCalled()
+    expect(mockDeploymentsClose).not.toHaveBeenCalled()
   })
 
   it('should handle deployment close errors', async () => {
-    mockSDKInstance.deployments.close.mockRejectedValue(new Error('Insufficient funds'))
+    mockDeploymentsClose.mockRejectedValueOnce(new Error('Insufficient funds'))
 
     const deploymentId = 'akash1test/123'
     const options = { config: '.akash/config.json' }
@@ -152,14 +152,14 @@ describe('closeCommand (close-action)', () => {
   })
 
   it('should handle connection errors', async () => {
-    mockSDKInstance.connect.mockRejectedValue(new Error('Network unreachable'))
+    mockConnect.mockRejectedValueOnce(new Error('Network unreachable'))
 
     const deploymentId = 'akash1test/123'
     const options = { config: '.akash/config.json' }
 
     await expect(closeCommand(deploymentId, options)).rejects.toThrow('Network unreachable')
-    expect(mockSDKInstance.deployments.get).not.toHaveBeenCalled()
-    expect(mockSDKInstance.deployments.close).not.toHaveBeenCalled()
+    expect(mockDeploymentsGet).not.toHaveBeenCalled()
+    expect(mockDeploymentsClose).not.toHaveBeenCalled()
   })
 
   it('should load config with custom path', async () => {
@@ -188,11 +188,11 @@ describe('closeCommand (close-action)', () => {
 
     await closeCommand(deploymentId, options)
 
-    expect(mockSDKInstance.deployments.get).toHaveBeenCalledWith({
+    expect(mockDeploymentsGet).toHaveBeenCalledWith({
       owner: 'akash1longaddress123',
       dseq: '456789'
     })
-    expect(mockSDKInstance.deployments.close).toHaveBeenCalledWith({
+    expect(mockDeploymentsClose).toHaveBeenCalledWith({
       owner: 'akash1longaddress123',
       dseq: '456789'
     })
@@ -205,7 +205,7 @@ describe('closeCommand (close-action)', () => {
     await closeCommand(deploymentId, options)
 
     // Should split on first slash only
-    expect(mockSDKInstance.deployments.get).toHaveBeenCalledWith({
+    expect(mockDeploymentsGet).toHaveBeenCalledWith({
       owner: 'akash1test',
       dseq: '123/extra'
     })
@@ -217,7 +217,7 @@ describe('closeCommand (close-action)', () => {
 
     await closeCommand(deploymentId, options)
 
-    expect(mockSDKInstance.deployments.get).toHaveBeenCalledWith({
+    expect(mockDeploymentsGet).toHaveBeenCalledWith({
       owner: '',
       dseq: '123'
     })
@@ -229,7 +229,7 @@ describe('closeCommand (close-action)', () => {
     for (const state of testStates) {
       vi.clearAllMocks()
 
-      mockSDKInstance.deployments.get.mockResolvedValue({
+      mockDeploymentsGet.mockResolvedValue({
         id: { owner: 'akash1test', dseq: '123' },
         state: state,
         version: '1.0.0',
@@ -241,7 +241,7 @@ describe('closeCommand (close-action)', () => {
 
       await closeCommand(deploymentId, options)
 
-      expect(mockSDKInstance.deployments.close).toHaveBeenCalled()
+      expect(mockDeploymentsClose).toHaveBeenCalled()
     }
   })
 })

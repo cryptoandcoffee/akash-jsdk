@@ -1,21 +1,22 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { deployAction, deployCommand } from './deploy'
 
-// Create a shared mock SDK instance that will be used by all tests
-let mockSDKInstance: any
+// Create shared mock functions
+const mockConnect = vi.fn().mockResolvedValue(undefined)
+const mockDeploymentsCreate = vi.fn().mockResolvedValue('deployment-123')
+
+const mockSDKInstance: any = {
+  connect: mockConnect,
+  deployments: {
+    create: mockDeploymentsCreate
+  }
+}
 
 // Mock dependencies
 vi.mock('@cryptoandcoffee/akash-jsdk-core', () => {
   return {
     AkashSDK: vi.fn(function(this: any, config: any) {
-      // Store the instance so tests can access it
-      mockSDKInstance = this
-
-      this.connect = vi.fn().mockResolvedValue(undefined)
-      this.deployments = {
-        create: vi.fn().mockResolvedValue('deployment-123')
-      }
-      return this
+      return mockSDKInstance
     })
   }
 })
@@ -46,10 +47,8 @@ describe('deployAction', () => {
     vi.clearAllMocks()
 
     // Reset mock implementations to defaults after clearAllMocks
-    if (mockSDKInstance) {
-      mockSDKInstance.connect.mockResolvedValue(undefined)
-      mockSDKInstance.deployments.create.mockResolvedValue('deployment-123')
-    }
+    mockConnect.mockResolvedValue(undefined)
+    mockDeploymentsCreate.mockResolvedValue('deployment-123')
   })
 
   it('should deploy from SDL file', async () => {
@@ -57,7 +56,7 @@ describe('deployAction', () => {
 
     await deployAction('./test.sdl', options)
 
-    expect(mockSDKInstance.deployments.create).toHaveBeenCalled()
+    expect(mockDeploymentsCreate).toHaveBeenCalled()
     expect(mockLog).toHaveBeenCalledWith(expect.stringContaining('✅ Deployment successful!'))
   })
 
@@ -71,7 +70,7 @@ describe('deployAction', () => {
   })
 
   it('should handle deployment errors', async () => {
-    mockSDKInstance.deployments.create.mockRejectedValue(new Error('Insufficient funds'))
+    mockDeploymentsCreate.mockRejectedValueOnce(new Error('Insufficient funds'))
 
     const options = { config: '.akash/config.json' }
 
@@ -79,7 +78,7 @@ describe('deployAction', () => {
   })
 
   it('should handle connection errors', async () => {
-    mockSDKInstance.connect.mockRejectedValue(new Error('Network unreachable'))
+    mockConnect.mockRejectedValueOnce(new Error('Network unreachable'))
 
     const options = { config: '.akash/config.json' }
 
