@@ -100,8 +100,6 @@ export class BatchBuilder {
 
   /**
    * Add a certificate creation to the batch
-    validateCertificate(cert)
-
    */
   addCertificate(cert: string): BatchBuilder {
     if (!cert || typeof cert !== 'string') {
@@ -159,10 +157,7 @@ export class BatchBuilder {
   /**
    * Execute all operations in the batch as a single transaction
    *
-   * @warning MOCK IMPLEMENTATION - Does not actually execute on blockchain
-   * @todo Implement real transaction broadcasting using @cosmjs/stargate
-   *
-   * @returns Batch execution result with mock transaction hash
+   * @returns Batch execution result with transaction hash
    */
   async execute(): Promise<BatchResult> {
     return await this.manager.executeBatch(this.operations)

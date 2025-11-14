@@ -2,10 +2,6 @@ import { AkashConfig } from '../types'
 import { ValidationError } from '../errors'
 
 export function validateConfig(config: AkashConfig): void {
-  console.error('validateConfig called with:', JSON.stringify(config, null, 2))
-  console.error('config.rpcEndpoint:', config.rpcEndpoint)
-  console.error('config.chainId:', config.chainId)
-
   if (!config.rpcEndpoint) {
     throw new ValidationError('rpcEndpoint is required')
   }

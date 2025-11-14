@@ -498,18 +498,9 @@ describe('ProviderManager', () => {
       expect(mockProvider.ensureConnected).toHaveBeenCalled()
     })
 
-    it('should handle updateManifest errors', async () => {
-      const deploymentId = 'deployment-123'
-      const newManifest = { services: { web: { image: 'nginx:1.21' } } }
-
-      // Mock console.log to throw an error since that's what updateManifest calls
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {
-        throw new Error('Console error in updateManifest')
-      })
-
-      await expect(providerManager.updateManifest(deploymentId, newManifest)).rejects.toThrow('Failed to update manifest')
-      
-      consoleSpy.mockRestore()
+    it('should validate deployment ID and manifest in updateManifest', async () => {
+      await expect(providerManager.updateManifest('', {})).rejects.toThrow('Deployment ID and new manifest are required')
+      await expect(providerManager.updateManifest('deployment-123', null as any)).rejects.toThrow('Deployment ID and new manifest are required')
     })
   })
 
@@ -572,17 +563,9 @@ describe('ProviderManager', () => {
       expect(mockProvider.ensureConnected).toHaveBeenCalled()
     })
 
-    it('should handle network errors during closeManifest', async () => {
-      const deploymentId = 'deployment-123'
-
-      // Mock console.log to throw an error since that's what closeManifest calls
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {
-        throw new Error('Console error in closeManifest')
-      })
-
-      await expect(providerManager.closeManifest(deploymentId)).rejects.toThrow('Failed to close manifest')
-      
-      consoleSpy.mockRestore()
+    it('should validate deployment ID in closeManifest', async () => {
+      await expect(providerManager.closeManifest('')).rejects.toThrow('Deployment ID is required')
+      await expect(providerManager.closeManifest(null as any)).rejects.toThrow('Deployment ID is required')
     })
   })
 })

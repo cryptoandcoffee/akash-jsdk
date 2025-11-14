@@ -362,7 +362,7 @@ export class ProviderManager {
 
     try {
       // In a real implementation, this would update provider pricing configuration
-      console.log(`Updated pricing for provider ${owner}:`, pricing)
+      // Pricing update would be persisted here
     } catch (error) {
       throw new NetworkError('Failed to update resource pricing', { error })
     }
@@ -408,7 +408,7 @@ export class ProviderManager {
 
     try {
       // In a real implementation, this would update the Kubernetes deployment
-      console.log(`Updated manifest for deployment ${deploymentId}`)
+      // Manifest update would be applied here
     } catch (error) {
       throw new NetworkError('Failed to update manifest', { error })
     }
@@ -447,7 +447,7 @@ export class ProviderManager {
 
     try {
       // In a real implementation, this would terminate the Kubernetes deployment
-      console.log(`Closed manifest for deployment ${deploymentId}`)
+      // Manifest would be closed/removed here
     } catch (error) {
       throw new NetworkError('Failed to close manifest', { error })
     }
