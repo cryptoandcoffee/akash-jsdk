@@ -1,8 +1,8 @@
 // Export our compatibility types (includes Deployment, Lease, etc.)
 export * from './official-types.js'
 
-// Generated types are available via: import { X } from '@cryptoandcoffee' + '/akash-jsdk-protobuf/generated'
-// but not re-exported here to avoid conflicts with official-types
+// Generated types can be imported via the /generated subpath export
+// but are not re-exported here to avoid conflicts with official-types
 
 /**
  * Simple Akash Network Protobuf Type Registry
