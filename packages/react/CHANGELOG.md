@@ -1,5 +1,18 @@
 # @cryptoandcoffee/akash-jsdk-react
 
+## 3.5.2
+
+### Patch Changes
+
+- ca53258: Release v3.6.0 - Fix automated publishing workflow
+
+  This release ensures proper npm package publication through GitHub Actions workflow. Previous v3.5.1 packages were versioned but not published to npm registry. This patch release triggers the automated publish workflow to ensure all packages are available on npm.
+
+  No code changes - workflow fix only.
+
+- Updated dependencies [ca53258]
+  - @cryptoandcoffee/akash-jsdk-core@3.5.2
+
 ## 3.5.1
 
 ### Patch Changes
