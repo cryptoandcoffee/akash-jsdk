@@ -4,7 +4,7 @@ A modern, fully-featured JavaScript SDK for Akash Network built from scratch wit
 
 ## 🚀 Features
 
-- **Modern TypeScript**: Full type safety with strict TypeScript 5.3+ configuration
+- **Modern TypeScript**: Full type safety with strict TypeScript 5.9+ configuration
 - **Monorepo Architecture**: pnpm workspaces with modular, tree-shakeable packages
 - **React Integration**: Custom hooks and provider for seamless React development  
 - **CLI Tools**: Command-line interface for deployment and management operations
@@ -12,34 +12,22 @@ A modern, fully-featured JavaScript SDK for Akash Network built from scratch wit
 - **Comprehensive Testing**: Enterprise-grade testing with 1,280 tests passing across all packages
 - **Performance First**: ES2022 target, ESM modules, incremental builds
 
-## What's New in v3.6.1 - Major Dependency Updates
+## What's New in v3.6.1
 
-Version 3.6.1 brings major dependency updates and production-ready implementations across all modules:
+Version 3.6.1 adds GitHub Packages registry support:
 
-### JWT Authentication (AEP-63)
-Replace certificate-based authentication with modern JWT tokens for simplified provider communication. Features include:
-- ES256K (secp256k1) signature algorithm compatible with Cosmos SDK
-- Granular permission scopes for lease operations
-- Configurable token expiration and access levels
-- Bearer token authentication for HTTP requests
+### GitHub Packages Integration
+- Published to both npm and GitHub Packages registries
+- Added repository field to all package.json files
+- Updated release workflow for dual registry publishing
+- Users can now install from either npm (default) or GitHub Packages
 
-### Multi-Depositor Escrow (AEP-75)
-Enable flexible funding sources for deployments with support for:
-- Multiple depositor addresses per escrow account
-- Balance, grant, and delegated deposit sources
-- Improved escrow account management
-- Enhanced deposit tracking and auditing
-
-### Lease Termination Tracking (AEP-39)
-Track and understand why leases end with detailed close reasons:
-- Manifest timeout
-- Unstable workload
-- Insufficient funds
-- User-requested termination
-- Unspecified reasons
-
-### Cosmos SDK v0.53 Compatibility
-Full compatibility with the latest Cosmos SDK features and improvements for enhanced performance and security.
+### All Mainnet 14 Features Available
+This release includes full support for Akash Network Mainnet 14 features:
+- **JWT Authentication (AEP-63)**: Modern JWT tokens with ES256K signatures
+- **Multi-Depositor Escrow (AEP-75)**: Flexible funding sources for deployments
+- **Lease Termination Tracking (AEP-39)**: Detailed lease close reasons
+- **Cosmos SDK v0.53 Compatibility**: Latest SDK features and improvements
 
 ## ✅ Production Ready
 
@@ -148,9 +136,9 @@ function Dashboard() {
     <div>
       <h2>Deployments ({deployments.length})</h2>
       {deployments.map(deployment => (
-        <div key={deployment.id.dseq}>
-          Deployment {deployment.id.dseq} - {deployment.state}
-          <button onClick={() => closeDeployment(deployment.id)}>
+        <div key={deployment.deploymentId.dseq}>
+          Deployment {deployment.deploymentId.dseq} - {deployment.state}
+          <button onClick={() => closeDeployment(deployment.deploymentId)}>
             Close
           </button>
         </div>
@@ -502,7 +490,7 @@ const costs = sdlManager.estimateResourceCosts(sdl)
 ### System Requirements
 
 - **Node.js**: 18+ (ESM modules required)
-- **TypeScript**: 5.3+ for development
+- **TypeScript**: 5.9+ for development
 - **Package Manager**: pnpm (recommended) or npm
 
 ### Monorepo Setup
