@@ -372,7 +372,7 @@ This package is built with TypeScript 5.3+ and exports full type definitions:
 ## Compatibility
 
 This package is compatible with:
-- **@cryptoandcoffee/akash-jsdk-core** v3.5.0+
+- **@cryptoandcoffee/akash-jsdk-core** v3.6.1+
 - **@cosmjs/stargate** v0.32.0+
 - **@cosmjs/proto-signing** v0.32.0+
 
@@ -426,4 +426,4 @@ Apache License 2.0
 
 ---
 
-**Part of the Akash JSDK v3.5.0 - Modern Protobuf Type Definitions**
+**Part of the Akash JSDK v3.6.1 - Modern Protobuf Type Definitions**

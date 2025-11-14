@@ -12,9 +12,9 @@ A modern, fully-featured JavaScript SDK for Akash Network built from scratch wit
 - **Comprehensive Testing**: Enterprise-grade testing with 1,280 tests passing across all packages
 - **Performance First**: ES2022 target, ESM modules, incremental builds
 
-## What's New in v3.5.0 - Major Dependency Updates
+## What's New in v3.6.1 - Major Dependency Updates
 
-Version 3.5.0 brings major dependency updates and production-ready implementations across all modules:
+Version 3.6.1 brings major dependency updates and production-ready implementations across all modules:
 
 ### JWT Authentication (AEP-63)
 Replace certificate-based authentication with modern JWT tokens for simplified provider communication. Features include:
