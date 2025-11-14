@@ -29,7 +29,9 @@
     "@cosmjs/encoding": "^0.32.2",
     "@cosmjs/proto-signing": "^0.32.2",
     "@cosmjs/stargate": "^0.32.2",
-    "@cryptoandcoffee/akash-jsdk-protobuf": "workspace:*"
+    "@cryptoandcoffee/akash-jsdk-protobuf": "workspace:*",
+    "elliptic": "^6.5.4",
+    "isomorphic-ws": "^5.0.0"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
