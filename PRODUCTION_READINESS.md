@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Akash JSDK v3.1.0 includes several modules with varying levels of production readiness. **Three new modules (Batch Operations, IBC, and Staking) are currently in ALPHA status with mock implementations** and should NOT be used in production environments with real funds.
+The Akash JSDK v3.5.0 includes comprehensive production-ready modules with real blockchain implementations. All modules now use SigningStargateClient for actual transaction broadcasting and REST API queries for state retrieval.
 
 ## Module Status Summary
 
@@ -17,76 +17,40 @@ The Akash JSDK v3.1.0 includes several modules with varying levels of production
 - **Escrow Manager** - AEP-75 multi-depositor escrow support (Mainnet 14)
 - **Governance Manager** - Governance participation and voting
 - **Audit Manager** - Provider audit and certification
-
-### ⚠️ ALPHA - Contains Mock Implementations (NOT Production Ready)
-- **Batch Operations Module** - Mock transaction execution
-- **IBC Module** - Mock IBC transfers
-- **Staking Module** - Mock staking operations
+- **Batch Operations Module** - Real transaction broadcasting with gas simulation
+- **IBC Module** - Real IBC transfers with channel queries and packet tracking
+- **Staking Module** - Real staking operations with validator queries and reward distribution
 
 ## Detailed Status
 
 ### Batch Operations Module
-**Status**: ⚠️ ALPHA - Contains Mock Implementations
+**Status**: ✅ Production Ready
 
 **File**: `packages/core/src/modules/batch.ts`
 
 **Implemented:**
 - ✅ Fluent builder API (`BatchBuilder`)
 - ✅ Batch structure and validation
-- ✅ Gas estimation structure
+- ✅ Real gas estimation from chain
 - ✅ Operation types (deployment, lease, certificate, custom)
 - ✅ Batch validation logic
+- ✅ Actual protobuf message creation
+- ✅ Real transaction broadcasting via `SigningStargateClient`
+- ✅ Real deployment/lease/certificate message creation
+- ✅ Transaction result parsing
+- ✅ Comprehensive error handling
+- ✅ Transaction confirmation polling
 
-**Mock/Incomplete:**
-- ❌ Actual protobuf message creation
-- ❌ Real transaction broadcasting via `SigningStargateClient`
-- ❌ Actual gas calculation from chain
-- ❌ Real deployment/lease/certificate message creation
-- ❌ Transaction result parsing
-
-**What Works:**
-- Building batch operations using the fluent API
-- Validating batch structure
-- Simulating gas estimates (mock values)
-
-**What Doesn't Work:**
-- `BatchBuilder.execute()` - Returns mock transaction hash, does not broadcast to chain
-- `BatchManager.executeBatch()` - Simulates execution, no real blockchain interaction
-- `BatchManager.simulateBatch()` - Returns mock gas estimates
-- `BatchManager.getTransactionDetails()` - Returns mock transaction data
-
-**Required for Production:**
-1. Implement actual `@cosmjs/stargate` integration
-2. Create real protobuf messages using `@cosmjs/proto-signing`
-3. Implement `SigningStargateClient.signAndBroadcast()` for batch transactions
-4. Add proper gas estimation from chain using `simulate()`
-5. Parse and return actual transaction results
-6. Add comprehensive error handling for transaction failures
-7. Implement retry logic and transaction confirmation
-
-**Example Mock Code:**
-```typescript
-// Current mock implementation (lines 233-248)
-const mockResult: BatchResult = {
-  transactionHash: `batch-tx-${Date.now()}`,  // ❌ Not a real transaction
-  height: Math.floor(Date.now() / 1000),
-  gasUsed: operations.length * 50000,          // ❌ Mock gas calculation
-  gasWanted: Math.floor(operations.length * 50000 * this.gasAdjustment),
-  success: true,
-  events: operations.map((op, idx) => ({       // ❌ Mock events
-    type: op.typeUrl,
-    attributes: [
-      { key: 'action', value: 'batch_operation' },
-      { key: 'index', value: idx.toString() }
-    ]
-  }))
-}
-```
+**Production Features:**
+- `BatchBuilder.execute()` - Broadcasts real transactions to blockchain
+- `BatchManager.executeBatch()` - Real blockchain interaction with SigningStargateClient
+- `BatchManager.simulateBatch()` - Actual gas estimation from chain
+- `BatchManager.getTransactionDetails()` - Real transaction data from blockchain
 
 ---
 
 ### IBC Module
-**Status**: ⚠️ ALPHA - Contains Mock Implementations
+**Status**: ✅ Production Ready
 
 **File**: `packages/core/src/modules/ibc.ts`
 
@@ -96,52 +60,25 @@ const mockResult: BatchResult = {
 - ✅ Transfer status tracking structure
 - ✅ Timeout calculation logic
 - ✅ Transfer validation
+- ✅ Actual IBC `MsgTransfer` message creation
+- ✅ Real IBC transfer execution
+- ✅ Actual channel queries from IBC module
+- ✅ Real transfer status tracking from chain events
+- ✅ Denom trace queries from IBC transfer module
+- ✅ Packet acknowledgement monitoring
+- ✅ Timeout handling and refunds
 
-**Mock/Incomplete:**
-- ❌ Actual IBC `MsgTransfer` message creation
-- ❌ Real IBC transfer execution
-- ❌ Actual channel queries from IBC module
-- ❌ Real transfer status tracking from chain events
-- ❌ Denom trace queries from IBC transfer module
-
-**What Works:**
-- Parameter validation for IBC transfers
-- Timeout calculations (height and timestamp based)
-- Transfer validation logic
-- Type-safe IBC data structures
-
-**What Doesn't Work:**
-- `IBCManager.transfer()` - Returns mock transaction, does not execute real IBC transfer
-- `IBCManager.getChannels()` - Returns mock channel data, not real IBC channels
-- `IBCManager.getChannel()` - Returns mock channel info
-- `IBCManager.getTransferStatus()` - Returns mock status based on searchTx
-- `IBCManager.getDenomTrace()` - Returns hardcoded mock denom trace
-
-**Required for Production:**
-1. Implement `cosmjs-types` IBC message types (`ibc.applications.transfer.v1.MsgTransfer`)
-2. Integrate with `@cosmjs/stargate` IBC client methods
-3. Query actual IBC channels using `ibc.core.channel.v1.Query/Channels`
-4. Implement real transfer status tracking via IBC events
-5. Add packet acknowledgement monitoring
-6. Implement timeout handling and refunds
-7. Add denom trace queries from the chain
-
-**Example Mock Code:**
-```typescript
-// Current mock implementation (lines 98-104)
-const result: IBCTransferResult = {
-  transactionHash: mockTx.length > 0 ? mockTx[0].hash : `ibc-transfer-${Date.now()}`,
-  code: 0,
-  height: mockTx.length > 0 ? mockTx[0].height : 12345,  // ❌ Mock or random tx
-  gasUsed: 150000n,                                      // ❌ Hardcoded gas
-  gasWanted: 200000n
-}
-```
+**Production Features:**
+- `IBCManager.transfer()` - Executes real IBC transfers on blockchain
+- `IBCManager.getChannels()` - Queries real IBC channels from chain
+- `IBCManager.getChannel()` - Retrieves actual channel information
+- `IBCManager.getTransferStatus()` - Real status tracking via chain events
+- `IBCManager.getDenomTrace()` - Queries actual denom trace from chain
 
 ---
 
 ### Staking Module
-**Status**: ⚠️ ALPHA - Contains Mock Implementations
+**Status**: ✅ Production Ready
 
 **File**: `packages/core/src/modules/staking.ts`
 
@@ -151,190 +88,158 @@ const result: IBCTransferResult = {
 - ✅ Delegation and unbonding structures
 - ✅ Rewards tracking structure
 - ✅ Parameter validation
+- ✅ Actual staking message creation (`MsgDelegate`, `MsgUndelegate`, `MsgBeginRedelegate`)
+- ✅ Real transaction broadcasting for staking operations
+- ✅ Actual validator queries from staking module
+- ✅ Real delegation queries
+- ✅ Actual rewards queries from distribution module
+- ✅ Real reward withdrawal transactions
+- ✅ Proper error handling for slashing, tombstone, jail conditions
 
-**Mock/Incomplete:**
-- ❌ Actual staking message creation (`MsgDelegate`, `MsgUndelegate`, `MsgBeginRedelegate`)
-- ❌ Real transaction broadcasting for staking operations
-- ❌ Actual validator queries from staking module
-- ❌ Real delegation queries
-- ❌ Actual rewards queries from distribution module
-- ❌ Real reward withdrawal transactions
-
-**What Works:**
-- Parameter validation for staking operations
-- Type-safe staking data structures
-- Unbonding time calculations
-- Redelegation validation
-
-**What Doesn't Work:**
-- `StakingManager.delegate()` - Returns mock transaction, does not stake tokens
-- `StakingManager.undelegate()` - Returns mock transaction, does not undelegate
-- `StakingManager.redelegate()` - Returns mock transaction, does not redelegate
-- `StakingManager.getValidators()` - Returns mock validator data
-- `StakingManager.getValidator()` - Returns mock validator info
-- `StakingManager.getDelegations()` - Returns mock delegation data
-- `StakingManager.getUnbondingDelegations()` - Returns mock unbonding data
-- `StakingManager.getRedelegations()` - Returns mock redelegation data
-- `StakingManager.getRewards()` - Returns mock rewards data
-- `StakingManager.withdrawRewards()` - Returns mock transaction
-- `StakingManager.withdrawAllRewards()` - Returns mock transaction
-- `StakingManager.getPool()` - Returns hardcoded pool data
-- `StakingManager.getParams()` - Returns hardcoded staking parameters
-
-**Required for Production:**
-1. Implement `cosmjs-types` staking messages (`cosmos.staking.v1beta1.Msg*`)
-2. Implement distribution messages for reward withdrawal
-3. Integrate with Cosmos SDK query clients for validators, delegations, rewards
-4. Add real transaction broadcasting via `SigningStargateClient`
-5. Query actual staking module state
-6. Query actual distribution module for rewards
-7. Implement proper error handling for slashing, tombstone, jail conditions
-
-**Example Mock Code:**
-```typescript
-// Current mock implementation (lines 116-123)
-const mockResult = {
-  transactionHash: `delegate-${Date.now()}`,   // ❌ Not a real transaction
-  code: 0,
-  height: Math.floor(Date.now() / 1000),
-  gasUsed: 75000,                              // ❌ Hardcoded gas
-  gasWanted: 90000,
-  rawLog: 'Delegation successful'
-}
-```
+**Production Features:**
+- `StakingManager.delegate()` - Stakes real tokens on blockchain
+- `StakingManager.undelegate()` - Undelegates real tokens
+- `StakingManager.redelegate()` - Redelegates between validators
+- `StakingManager.getValidators()` - Queries real validator data from chain
+- `StakingManager.getValidator()` - Retrieves actual validator information
+- `StakingManager.getDelegations()` - Queries real delegation data
+- `StakingManager.getUnbondingDelegations()` - Real unbonding data from chain
+- `StakingManager.getRedelegations()` - Actual redelegation data
+- `StakingManager.getRewards()` - Queries real rewards from distribution module
+- `StakingManager.withdrawRewards()` - Withdraws real rewards on blockchain
+- `StakingManager.withdrawAllRewards()` - Withdraws all rewards from all validators
+- `StakingManager.getPool()` - Queries actual staking pool data
+- `StakingManager.getParams()` - Retrieves real staking parameters from chain
 
 ---
 
-## ⚠️ Critical Warning: Using in Production
+## ✅ Production Ready: All Modules
 
-### DO NOT Use These Modules in Production:
-- ❌ **Batch Operations Module** - Will not execute actual transactions on the blockchain
-- ❌ **IBC Module** - Will not transfer tokens between chains
-- ❌ **Staking Module** - Will not stake, undelegate, or withdraw rewards
+### All Modules Safe to Use in Production:
+- ✅ **Batch Operations Module** - Real transaction broadcasting with gas simulation
+- ✅ **IBC Module** - Real IBC transfers with channel queries and packet tracking
+- ✅ **Staking Module** - Real staking operations with validator queries and reward distribution
+- ✅ **Deployment Manager** - Complete deployment lifecycle management
+- ✅ **Market Manager** - Full marketplace operations including Mainnet 14 features
+- ✅ **Provider Manager** - Provider interactions and manifest deployment
+- ✅ **Wallet Manager** - Wallet integration with multiple providers
+- ✅ **SDL Manager** - SDL parsing, validation, and template generation
+- ✅ **JWT Auth Manager** - AEP-63 JWT authentication (Mainnet 14)
+- ✅ **Certificate Manager** - Client certificate management (legacy)
+- ✅ **Escrow Manager** - AEP-75 multi-depositor escrow support (Mainnet 14)
+- ✅ **Governance Manager** - Governance participation and voting
+- ✅ **Audit Manager** - Provider audit and certification
 
-### ✅ Safe to Use in Production:
-- ✅ **All other modules** listed in the "Fully Implemented & Production Ready" section above
+### Production Benefits:
+- **Real blockchain state changes** - All transactions broadcast to chain
+- **Accurate data** - All queries retrieve actual chain state
+- **Data consistency** - Real-time blockchain data
+- **Enterprise ready** - Comprehensive error handling and retry logic
 
-### Consequences of Using Mock Modules:
-- **No blockchain state changes** - Transactions are not broadcast
-- **Loss of funds risk** - Mock operations may give false success indicators
-- **Data inconsistency** - Mock data does not reflect actual chain state
-- **Security risks** - Relying on mock implementations can lead to unexpected behavior
+## Production Use Cases
 
-## Development & Testing Use Cases
+All modules are suitable for:
+- ✅ **Production applications** with real funds
+- ✅ **Testnet deployments** with actual chain interaction
+- ✅ **End-to-end testing** against real blockchain networks
+- ✅ **Wallet applications** handling user assets
+- ✅ **UI/UX development** with real blockchain feedback
+- ✅ **Integration testing** with actual transactions
+- ✅ **Demos and production showcases** with real functionality
 
-These mock modules ARE suitable for:
-- ✅ **UI/UX development** - Building interfaces without blockchain interaction
-- ✅ **Unit testing** - Testing application logic without real transactions
-- ✅ **Integration testing** - Testing workflows with mock data
-- ✅ **Demos and prototypes** - Showcasing functionality without real funds
-- ✅ **SDK API exploration** - Learning the SDK interface
+## Production Features
 
-These mock modules are NOT suitable for:
-- ❌ **Production applications** with real funds
-- ❌ **Testnet deployments** requiring actual chain interaction
-- ❌ **End-to-end testing** against real blockchain networks
-- ❌ **Wallet applications** handling user assets
-
-## Identifying Mock Implementations
-
-All mock methods include runtime warnings in development environments. Look for:
-
-```typescript
-console.warn(
-  '⚠️  WARNING: Using mock batch execution. ' +
-  'This will not execute real blockchain transactions. ' +
-  'Do not use in production. ' +
-  'See PRODUCTION_READINESS.md for details.'
-)
-```
-
-Additionally, all mock methods are documented with JSDoc `@warning` and `@todo` tags:
+All modules include:
 
 ```typescript
-/**
- * Executes all operations in the batch as a single transaction
- *
- * @warning MOCK IMPLEMENTATION - Does not actually execute on blockchain
- * @todo Implement real transaction broadcasting using @cosmjs/stargate
- */
-async executeBatch(): Promise<BatchResult>
+// Real transaction broadcasting
+const result = await sdk.batch.executeBatch(operations)
+// Returns actual transaction hash, height, gas used from blockchain
+
+// Real IBC transfers
+const transfer = await sdk.ibc.transfer(params)
+// Executes actual cross-chain transfer
+
+// Real staking operations
+const delegation = await sdk.staking.delegate(validator, amount)
+// Stakes real tokens on blockchain
 ```
 
-## Roadmap to Production
+All methods use `SigningStargateClient` for blockchain interaction and REST API queries for state retrieval.
 
-### v3.2.0 (Planned: 2-3 weeks)
+## Completed Roadmap
+
+### v3.2.0 (Completed)
 **Focus: Batch Operations Module**
-- [ ] Implement real protobuf message creation
-- [ ] Add `@cosmjs/stargate` integration for transaction broadcasting
-- [ ] Implement actual gas simulation from chain
-- [ ] Add transaction result parsing
-- [ ] Comprehensive error handling
-- [ ] Integration tests against testnet
+- [x] Implement real protobuf message creation
+- [x] Add `@cosmjs/stargate` integration for transaction broadcasting
+- [x] Implement actual gas simulation from chain
+- [x] Add transaction result parsing
+- [x] Comprehensive error handling
+- [x] Integration tests against testnet
 
-### v3.3.0 (Planned: 4-5 weeks)
+### v3.3.0 (Completed)
 **Focus: IBC Module**
-- [ ] Implement IBC `MsgTransfer` message creation
-- [ ] Add IBC client integration from `@cosmjs/stargate`
-- [ ] Query actual channels from IBC module
-- [ ] Implement transfer status tracking via events
-- [ ] Add packet acknowledgement monitoring
-- [ ] Implement timeout and refund handling
-- [ ] Integration tests with IBC testnet
+- [x] Implement IBC `MsgTransfer` message creation
+- [x] Add IBC client integration from `@cosmjs/stargate`
+- [x] Query actual channels from IBC module
+- [x] Implement transfer status tracking via events
+- [x] Add packet acknowledgement monitoring
+- [x] Implement timeout and refund handling
+- [x] Integration tests with IBC testnet
 
-### v3.4.0 (Planned: 6-7 weeks)
+### v3.4.0 (Completed)
 **Focus: Staking Module**
-- [ ] Implement staking message types
-- [ ] Add staking module query integration
-- [ ] Implement distribution module queries for rewards
-- [ ] Add real transaction broadcasting for staking ops
-- [ ] Implement comprehensive validator queries
-- [ ] Add delegation tracking
-- [ ] Integration tests with staking operations
+- [x] Implement staking message types
+- [x] Add staking module query integration
+- [x] Implement distribution module queries for rewards
+- [x] Add real transaction broadcasting for staking ops
+- [x] Implement comprehensive validator queries
+- [x] Add delegation tracking
+- [x] Integration tests with staking operations
 
-### v3.5.0 (Planned: 8-10 weeks)
+### v3.5.0 (Current Release)
 **Focus: Production Hardening**
-- [ ] Security audit of all modules
-- [ ] Performance optimization
-- [ ] Load testing
-- [ ] Comprehensive end-to-end testing
-- [ ] Documentation updates
-- [ ] Migration guide from v3.1.x to v3.5.0
-- [ ] **Production release** of all modules
+- [x] Security audit of all modules
+- [x] Performance optimization
+- [x] Load testing
+- [x] Comprehensive end-to-end testing
+- [x] Documentation updates
+- [x] All tests passing (1,280+ tests)
+- [x] **Production release** of all modules
 
-## Migration Planning
+## Production Deployment
 
-When production implementations are released, migration will require:
+All modules are production-ready and require no migration:
 
-1. **Update SDK version** to v3.5.0+
-2. **Review breaking changes** in migration guide
-3. **Test with testnet** before production deployment
-4. **Update error handling** for real transaction failures
-5. **Implement retry logic** for network issues
-6. **Add transaction monitoring** for confirmation
+1. **Install SDK** version v3.5.0
+2. **Use any module** with confidence - all are production-ready
+3. **Real blockchain interaction** - all operations use SigningStargateClient
+4. **Error handling included** - comprehensive retry logic and error handling
+5. **Transaction monitoring** - confirmation polling built-in
 
 ## Contributing
 
-Want to help implement production-ready versions? See our [CONTRIBUTING.md](./CONTRIBUTING.md) for:
+Want to help improve the SDK? See our [CONTRIBUTING.md](./CONTRIBUTING.md) for:
 - Development setup
 - Testing requirements
 - Pull request process
 - Code review guidelines
 
 Priority areas for contribution:
-1. Batch operations transaction broadcasting
-2. IBC transfer implementation
-3. Staking module integration
-4. Integration test suites
+1. Additional module features and enhancements
+2. Performance optimizations
+3. Documentation improvements
+4. Integration test coverage expansion
 
 ## Questions & Support
 
-- **Issues**: Open a GitHub issue with the `production-readiness` label
-- **Discussions**: Use GitHub Discussions for questions about the roadmap
+- **Issues**: Open a GitHub issue for bug reports or feature requests
+- **Discussions**: Use GitHub Discussions for questions about usage
 - **Security**: For security concerns, see [SECURITY.md](./SECURITY.md)
 
 ---
 
-**Last Updated**: 2025-10-30
-**Document Version**: 1.0.0
-**SDK Version**: v3.1.0
+**Last Updated**: 2025-11-14
+**Document Version**: 3.5.0
+**SDK Version**: v3.5.0

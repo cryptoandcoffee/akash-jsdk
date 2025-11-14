@@ -6,7 +6,7 @@
 
 ### Register as Provider
 ```javascript
-import { AkashSDK } from 'cryptoandcoffee/akash-jsdk-core'
+import { AkashSDK } from '@cryptoandcoffee/akash-jsdk-core'
 
 const sdk = new AkashSDK({
   rpcEndpoint: 'https://rpc.akashedge.com:443',
