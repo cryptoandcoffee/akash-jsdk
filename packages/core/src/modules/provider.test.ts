@@ -10,16 +10,26 @@ const mockClient = {
 
 const mockProvider = {
   client: mockClient,
+  config: {
+    rpcEndpoint: 'https://rpc.akashedge.com:443',
+    apiEndpoint: 'https://api.akashedge.com:443',
+    chainId: 'akashnet-test'
+  },
   ensureConnected: vi.fn(),
   getClient: vi.fn().mockReturnValue(mockClient)
 } as unknown as AkashProvider
 
 describe('ProviderManager', () => {
   let providerManager: ProviderManager
+  let mockFetch: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
     providerManager = new ProviderManager(mockProvider)
     vi.clearAllMocks()
+
+    // Reset fetch mock
+    mockFetch = vi.fn()
+    global.fetch = mockFetch
   })
 
   describe('createProvider', () => {
@@ -67,17 +77,23 @@ describe('ProviderManager', () => {
   describe('getProvider', () => {
     it('should get provider by owner', async () => {
       const owner = 'akash1provider'
-      const mockTxs = [
-        {
-          height: 12345,
-          hash: 'provider-tx-hash',
-          gasUsed: 50000,
-          gasWanted: 60000,
-          events: []
-        }
-      ]
 
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue(mockTxs)
+      // Mock fetch response for getProvider
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          provider: {
+            owner,
+            hostUri: 'https://provider.akash.network',
+            attributes: [
+              { key: 'region', value: 'us-west' },
+              { key: 'tier', value: 'datacenter' }
+            ],
+            info: {}
+          }
+        })
+      })
 
       const result = await providerManager.getProvider(owner)
 
@@ -89,30 +105,47 @@ describe('ProviderManager', () => {
           { key: 'tier', value: 'datacenter' }
         ])
       })
+      expect(mockFetch).toHaveBeenCalledWith(
+        `https://api.akashedge.com:443/akash/provider/v1beta3/providers/${owner}`
+      )
     })
 
     it('should return null for non-existent provider', async () => {
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([])
+      // Mock fetch response for non-existent provider (404)
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: async () => ({})
+      })
 
       const result = await providerManager.getProvider('akash1nonexistent')
 
       expect(result).toBeNull()
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.akashedge.com:443/akash/provider/v1beta3/providers/akash1nonexistent'
+      )
     })
   })
 
   describe('listProviders', () => {
     it('should list all providers', async () => {
-      const mockTxs = [
-        {
-          height: 12345,
-          hash: 'provider-tx-1',
-          gasUsed: 50000,
-          gasWanted: 60000,
-          events: []
-        }
-      ]
-
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue(mockTxs)
+      // Mock fetch response for listProviders
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          providers: [
+            {
+              owner: 'akash1mock',
+              hostUri: 'https://provider1.akash.network',
+              attributes: [
+                { key: 'region', value: 'us-west' }
+              ],
+              info: {}
+            }
+          ]
+        })
+      })
 
       const result = await providerManager.listProviders()
 
@@ -122,25 +155,42 @@ describe('ProviderManager', () => {
         hostUri: expect.any(String),
         attributes: expect.any(Array)
       })
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.akashedge.com:443/akash/provider/v1beta3/providers'
+      )
     })
   })
 
   describe('getProviderStatus', () => {
     it('should get provider status', async () => {
       const owner = 'akash1provider'
-      
-      // Mock provider exists and active leases
-      vi.mocked(mockProvider['client']!.searchTx)
-        .mockResolvedValueOnce([{
-          height: 12345,
-          hash: 'provider-tx',
-          gasUsed: 50000,
-          gasWanted: 60000,
-          events: []
-        }])
-        .mockResolvedValueOnce([
-          { height: 1, hash: 'lease-1', gasUsed: 50000, gasWanted: 60000, events: [] }
-        ])
+
+      // Mock fetch responses for getProviderStatus
+      // First call: GET leases
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          leases: [
+            { id: 'lease-1' }
+          ]
+        })
+      })
+      // Second call: GET provider info
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          provider: {
+            owner,
+            hostUri: 'https://provider.akash.network',
+            attributes: [
+              { key: 'version', value: '1.0.0' }
+            ],
+            info: {}
+          }
+        })
+      })
 
       const result = await providerManager.getProviderStatus(owner)
 
@@ -151,6 +201,15 @@ describe('ProviderManager', () => {
         totalCapacity: expect.any(Object),
         availableCapacity: expect.any(Object)
       })
+      expect(mockFetch).toHaveBeenCalledTimes(2)
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        `https://api.akashedge.com:443/akash/market/v1beta4/leases/list?filters.provider=${owner}&filters.state=active`
+      )
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        `https://api.akashedge.com:443/akash/provider/v1beta3/providers/${owner}`
+      )
     })
   })
 
@@ -160,23 +219,29 @@ describe('ProviderManager', () => {
 
       const result = await providerManager.getProviderCapacity(owner)
 
+      // Verify structure matches what the implementation returns
       expect(result).toMatchObject({
         total: {
-          cpu: { units: { val: '100' } },
-          memory: { size: '1' },
-          storage: { size: '1' }
+          cpu: { units: { val: expect.any(Uint8Array) } },
+          memory: { quantity: { val: expect.any(Uint8Array) } },
+          storage: expect.any(Array)
         },
         available: {
-          cpu: { units: '80' },
-          memory: { size: '1' },
-          storage: { size: '1' }
+          cpu: { units: { val: expect.any(Uint8Array) } },
+          memory: { quantity: { val: expect.any(Uint8Array) } },
+          storage: expect.any(Array)
         },
         allocated: {
-          cpu: { units: '20' },
-          memory: { size: '1' },
-          storage: { size: '1' }
+          cpu: { units: { val: expect.any(Uint8Array) } },
+          memory: { quantity: { val: expect.any(Uint8Array) } },
+          storage: expect.any(Array)
         }
       })
+
+      // Verify the actual values
+      expect(result.total.cpu.units.val[0]).toBe(100)
+      expect(result.available.cpu.units.val[0]).toBe(80)
+      expect(result.allocated.cpu.units.val[0]).toBe(20)
     })
 
   })

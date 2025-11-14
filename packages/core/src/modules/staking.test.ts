@@ -51,8 +51,8 @@ describe('StakingManager', () => {
       expect(result.code).toBe(0)
       expect(result.transactionHash).toContain('delegate-')
       expect(result.height).toBeGreaterThan(0)
-      expect(result.gasUsed).toBe(75000)
-      expect(result.gasWanted).toBe(90000)
+      expect(result.gasUsed).toBe(75000n)
+      expect(result.gasWanted).toBe(90000n)
       expect(mockProvider['client']!.searchTx).toHaveBeenCalledWith([
         { key: 'message.module', value: 'staking' },
         { key: 'message.action', value: 'delegate' }
@@ -109,8 +109,8 @@ describe('StakingManager', () => {
       expect(result.code).toBe(0)
       expect(result.transactionHash).toContain('undelegate-')
       expect(result.height).toBeGreaterThan(0)
-      expect(result.gasUsed).toBe(85000)
-      expect(result.gasWanted).toBe(100000)
+      expect(result.gasUsed).toBe(85000n)
+      expect(result.gasWanted).toBe(100000n)
       expect(result.unbondingTime).toBeDefined()
       expect(new Date(result.unbondingTime!).getTime()).toBeGreaterThan(Date.now())
     })
@@ -175,8 +175,8 @@ describe('StakingManager', () => {
       expect(result.code).toBe(0)
       expect(result.transactionHash).toContain('redelegate-')
       expect(result.height).toBeGreaterThan(0)
-      expect(result.gasUsed).toBe(95000)
-      expect(result.gasWanted).toBe(110000)
+      expect(result.gasUsed).toBe(95000n)
+      expect(result.gasWanted).toBe(110000n)
       expect(mockProvider['client']!.searchTx).toHaveBeenCalledWith([
         { key: 'message.module', value: 'staking' },
         { key: 'message.action', value: 'begin_redelegate' }
@@ -520,8 +520,8 @@ describe('StakingManager', () => {
       expect(result.code).toBe(0)
       expect(result.transactionHash).toContain('withdraw-')
       expect(result.height).toBeGreaterThan(0)
-      expect(result.gasUsed).toBe(65000)
-      expect(result.gasWanted).toBe(80000)
+      expect(result.gasUsed).toBe(65000n)
+      expect(result.gasWanted).toBe(80000n)
       expect(mockProvider['client']!.searchTx).toHaveBeenCalledWith([
         { key: 'message.module', value: 'distribution' },
         { key: 'message.action', value: 'withdraw_delegator_reward' }

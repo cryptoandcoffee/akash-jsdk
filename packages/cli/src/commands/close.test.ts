@@ -29,18 +29,18 @@ const mockExit = vi.spyOn(process, 'exit').mockImplementation((() => { throw new
 describe('closeAction', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    
+
     const mockSDK = {
       connect: vi.fn().mockResolvedValue(undefined),
       deployments: {
         close: vi.fn().mockResolvedValue(undefined),
         list: vi.fn().mockResolvedValue([
-          { id: { dseq: '123' }, state: 'active' },
-          { id: { dseq: '456' }, state: 'active' }
+          { deploymentId: { dseq: '123' }, state: 'active' },
+          { deploymentId: { dseq: '456' }, state: 'active' }
         ])
       }
     }
-    
+
     vi.mocked(AkashSDK).mockReturnValue(mockSDK as any)
   })
 
@@ -65,26 +65,39 @@ describe('closeAction', () => {
     const mockSDK = {
       connect: vi.fn().mockResolvedValue(undefined),
       deployments: {
-        list: vi.fn().mockResolvedValue([])
+        list: vi.fn().mockResolvedValue([]),
+        close: vi.fn()
       }
     }
-    
+
     vi.mocked(AkashSDK).mockReturnValue(mockSDK as any)
     const options = { owner: 'akash1test' }
-    
+
     await closeAction(options)
-    
+
     expect(mockLog).toHaveBeenCalledWith(expect.stringContaining('No deployments found'))
   })
 
   it('should prompt for deployment selection when not provided', async () => {
+    const mockSDK = {
+      connect: vi.fn().mockResolvedValue(undefined),
+      deployments: {
+        close: vi.fn().mockResolvedValue(undefined),
+        list: vi.fn().mockResolvedValue([
+          { deploymentId: { dseq: '123' }, state: 'active' },
+          { deploymentId: { dseq: '456' }, state: 'active' }
+        ])
+      }
+    }
+
+    vi.mocked(AkashSDK).mockReturnValue(mockSDK as any)
     vi.mocked(inquirer.prompt).mockResolvedValueOnce({ deploymentId: '123' })
     vi.mocked(inquirer.prompt).mockResolvedValueOnce({ proceed: true })
-    
+
     const options = { owner: 'akash1test' }
-    
+
     await closeAction(options)
-    
+
     expect(inquirer.prompt).toHaveBeenCalledWith([
       expect.objectContaining({
         type: 'list',
@@ -111,13 +124,25 @@ describe('closeAction', () => {
   })
 
   it('should cancel operation when user declines confirmation', async () => {
+    const mockSDK = {
+      connect: vi.fn().mockResolvedValue(undefined),
+      deployments: {
+        close: vi.fn().mockResolvedValue(undefined),
+        list: vi.fn().mockResolvedValue([
+          { deploymentId: { dseq: '123' }, state: 'active' }
+        ])
+      }
+    }
+
+    vi.mocked(AkashSDK).mockReturnValue(mockSDK as any)
     vi.mocked(inquirer.prompt).mockResolvedValueOnce({ proceed: false })
-    
+
     const options = { owner: 'akash1test', deployment: '123' }
-    
+
     await closeAction(options)
-    
+
     expect(mockLog).toHaveBeenCalledWith(expect.stringContaining('Operation cancelled'))
+    expect(mockSDK.deployments.close).not.toHaveBeenCalled()
   })
 
   it('should skip confirmation with --yes flag', async () => {

@@ -118,20 +118,20 @@ describe('closeCommand (close-action)', () => {
       deployments: {
         get: vi.fn().mockResolvedValue({
           id: { owner: 'akash1test', dseq: '123' },
-          state: 'closed',
+          state: 2, // DeploymentState.CLOSED = 2
           version: '1.0.0',
           createdAt: Date.now()
         }),
         close: vi.fn()
       }
     }
-    
+
     vi.mocked(AkashSDK).mockReturnValue(mockSDK as any)
     const deploymentId = 'akash1test/123'
     const options = { config: '.akash/config.json' }
-    
+
     await closeCommand(deploymentId, options)
-    
+
     expect(mockSDK.deployments.close).not.toHaveBeenCalled()
     // Should warn that deployment is already closed
   })

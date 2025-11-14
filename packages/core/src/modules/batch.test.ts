@@ -4,6 +4,40 @@ import { AkashProvider } from '../providers/akash'
 import { ValidationError, NetworkError } from '../errors'
 import { EncodeObject } from '@cosmjs/proto-signing'
 
+// Valid SDL for testing
+const VALID_SDL = `version: "2.0"
+services:
+  web:
+    image: nginx:latest
+    expose:
+      - port: 80
+        as: 80
+        to:
+          - global: true
+profiles:
+  compute:
+    web:
+      resources:
+        cpu:
+          units: 0.5
+        memory:
+          size: 512Mi
+        storage:
+          size: 1Gi
+  placement:
+    default:
+      attributes:
+        region: us-west
+      pricing:
+        web:
+          denom: uakt
+          amount: 100
+deployment:
+  web:
+    default:
+      profile: web
+      count: 1`
+
 // Mock the provider
 const mockClient = {
   searchTx: vi.fn()
@@ -470,7 +504,7 @@ describe('BatchBuilder', () => {
     })
 
     it('should return correct count', () => {
-      batchBuilder.addDeployment('sdl1')
+      batchBuilder.addDeployment(VALID_SDL)
       expect(batchBuilder.getOperationCount()).toBe(1)
 
       batchBuilder.addLease('123', 'akash1provider123456789012345678901234567890')
@@ -483,7 +517,7 @@ describe('BatchBuilder', () => {
 
   describe('getOperations', () => {
     it('should return copy of operations', () => {
-      batchBuilder.addDeployment('sdl1')
+      batchBuilder.addDeployment(VALID_SDL)
       const ops1 = batchBuilder.getOperations()
       const ops2 = batchBuilder.getOperations()
 
@@ -498,7 +532,7 @@ describe('BatchBuilder', () => {
 
   describe('clear', () => {
     it('should clear all operations', () => {
-      batchBuilder.addDeployment('sdl1')
+      batchBuilder.addDeployment(VALID_SDL)
       batchBuilder.addLease('123', 'akash1provider123456789012345678901234567890')
       expect(batchBuilder.getOperationCount()).toBe(2)
 
@@ -510,7 +544,7 @@ describe('BatchBuilder', () => {
     })
 
     it('should allow adding after clear', () => {
-      batchBuilder.addDeployment('sdl1')
+      batchBuilder.addDeployment(VALID_SDL)
       batchBuilder.clear()
       batchBuilder.addLease('123', 'akash1provider123456789012345678901234567890')
 
@@ -520,7 +554,7 @@ describe('BatchBuilder', () => {
 
   describe('execute', () => {
     it('should execute batch successfully', async () => {
-      batchBuilder.addDeployment('sdl1')
+      batchBuilder.addDeployment(VALID_SDL)
       batchBuilder.addLease('123', 'akash1provider123456789012345678901234567890')
 
       const result = await batchBuilder.execute()
@@ -535,7 +569,7 @@ describe('BatchBuilder', () => {
 
     it('should pass operations to manager', async () => {
       const executeSpy = vi.spyOn(batchManager, 'executeBatch')
-      batchBuilder.addDeployment('sdl1')
+      batchBuilder.addDeployment(VALID_SDL)
 
       await batchBuilder.execute()
 
@@ -547,7 +581,7 @@ describe('BatchBuilder', () => {
   describe('builder pattern', () => {
     it('should support method chaining', () => {
       const result = batchBuilder
-        .addDeployment('sdl1')
+        .addDeployment(VALID_SDL)
         .addLease('123', 'akash1provider123456789012345678901234567890')
         .addCertificate('cert1')
 
@@ -557,8 +591,8 @@ describe('BatchBuilder', () => {
 
     it('should create complex batch', () => {
       batchBuilder
-        .addDeployment('sdl1')
-        .addDeployment('sdl2')
+        .addDeployment(VALID_SDL)
+        .addDeployment(VALID_SDL)
         .addLease('123', 'akash1provider123456789012345678901234567890')
         .addLease('124', 'akash1provider223456789012345678901234567890')
         .addCertificate('cert1')
@@ -606,7 +640,7 @@ describe('Integration tests', () => {
     const builder = await manager.createBatch()
 
     // Add invalid operation
-    builder.addDeployment('sdl1')
+    builder.addDeployment(VALID_SDL)
     const operations = builder.getOperations()
     operations.push({ typeUrl: '', value: {} })
 
