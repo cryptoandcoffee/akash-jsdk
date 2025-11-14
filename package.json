@@ -8,14 +8,16 @@
   "scripts": {
     "build": "pnpm run --recursive build",
     "dev": "pnpm run --recursive dev",
-    "test": "pnpm run --recursive test",
+    "test": "node scripts/check-dependencies.js && pnpm run --recursive test",
+    "test:ci": "pnpm run --recursive test",
     "lint": "pnpm run --recursive lint",
     "format": "pnpm run --recursive format",
     "typecheck": "pnpm run --recursive typecheck",
     "clean": "pnpm run --recursive clean",
     "release": "changeset publish",
     "changeset": "changeset",
-    "version-packages": "changeset version"
+    "version-packages": "changeset version",
+    "check-deps": "node scripts/check-dependencies.js"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.7",
