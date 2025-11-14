@@ -1,0 +1,87 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    "group:monorepos"
+  ],
+  "labels": ["dependencies"],
+  "prConcurrentLimit": 10,
+  "prCreation": "not-pending",
+  "separateMinorPatch": true,
+  "separateMajorMinor": true,
+  "separateMultipleMajor": true,
+  "packageRules": [
+    {
+      "description": "Group all CosmJS packages together",
+      "groupName": "CosmJS packages",
+      "matchPackagePrefixes": ["@cosmjs/"],
+      "matchUpdateTypes": ["major", "minor", "patch"],
+      "schedule": ["before 10am on Monday"]
+    },
+    {
+      "description": "Group all dev dependencies together - auto-merge patches",
+      "groupName": "Dev dependencies (non-major)",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "automergeType": "branch",
+      "schedule": ["before 10am on Monday"]
+    },
+    {
+      "description": "Separate major dev dependency updates for review",
+      "groupName": "Dev dependencies (major)",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "schedule": ["before 10am on the first day of the month"]
+    },
+    {
+      "description": "Group testing packages",
+      "groupName": "Testing packages",
+      "matchPackagePatterns": ["vitest", "^@vitest/"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "automergeType": "branch"
+    },
+    {
+      "description": "Group TypeScript and build tools",
+      "groupName": "Build tooling",
+      "matchPackagePatterns": ["typescript", "vite", "^vite-plugin-"],
+      "matchUpdateTypes": ["minor", "patch"]
+    },
+    {
+      "description": "Auto-merge patch updates for production dependencies",
+      "matchDepTypes": ["dependencies"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "Weekly schedule for minor updates",
+      "matchUpdateTypes": ["minor"],
+      "schedule": ["before 10am on Monday"]
+    },
+    {
+      "description": "Monthly schedule for major updates",
+      "matchUpdateTypes": ["major"],
+      "schedule": ["before 10am on the first day of the month"]
+    },
+    {
+      "description": "Pin workspace protocol packages",
+      "matchDepTypes": ["dependencies"],
+      "matchPackagePatterns": ["^@cryptoandcoffee/akash-jsdk-"],
+      "enabled": false
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "labels": ["security"],
+    "automerge": false,
+    "schedule": ["at any time"]
+  },
+  "pnpm": {
+    "minimumVersion": "8.0.0"
+  }
+}
