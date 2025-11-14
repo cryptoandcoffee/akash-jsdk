@@ -72,10 +72,10 @@ These mock modules are NOT suitable for:
 
 | Package | Description | Version |
 |---------|-------------|---------|
-| `@cryptoandcoffee/akash-jsdk-core` | Core SDK with deployment, market, provider, and wallet management | 3.3.0 |
-| `@cryptoandcoffee/akash-jsdk-react` | React hooks and context provider for seamless integration | 3.3.0 |
-| `@cryptoandcoffee/akash-jsdk-cli` | Command-line tools for project initialization and deployment | 3.3.0 |
-| `@cryptoandcoffee/akash-jsdk-protobuf` | Custom protobuf definitions with TypeScript support | 3.3.0 |
+| `@cryptoandcoffee/akash-jsdk-core` | Core SDK with deployment, market, provider, and wallet management | 3.3.1 |
+| `@cryptoandcoffee/akash-jsdk-react` | React hooks and context provider for seamless integration | 3.3.1 |
+| `@cryptoandcoffee/akash-jsdk-cli` | Command-line tools for project initialization and deployment | 3.3.1 |
+| `@cryptoandcoffee/akash-jsdk-protobuf` | Custom protobuf definitions with TypeScript support | 3.3.1 |
 
 ## 🔧 Installation
 
@@ -553,21 +553,20 @@ pnpm run typecheck
 ## 📊 Comprehensive Test Results
 
 ### Overall Statistics
-- **Total Tests**: 1,145 tests passing
-- **Test Files**: 70+ comprehensive test suites
-- **Coverage**: 100% statements, functions, and lines across all packages
-- **Branch Coverage**: 100% (3 packages), 98.15% (core package)
-- **Test Duration**: ~15 seconds total
+- **Total Tests**: 1,288 tests passing
+- **Test Files**: 53 comprehensive test suites
+- **Coverage**: 100% pass rate across all packages
+- **Test Duration**: ~5 seconds total
 - **Source Lines**: 25,000+ lines of production code
 
 ### Package-Level Coverage
 
-| Package | Tests | Coverage | Features Tested |
-|---------|-------|----------|----------------|
-| **Core** | 700+ tests | 100% statements/functions/lines, 98.15% branches | SDK modules, JWT auth, multi-depositor escrow, lease tracking, providers, error handling |
-| **CLI** | 183 tests | 100% all metrics | Commands, config management, CLI execution, subprocess testing |
-| **React** | 145 tests | 100% all metrics | Hooks, context, component lifecycle, error boundaries |
-| **Protobuf** | 117 tests | 100% all metrics | Type generation, serialization, Mainnet 14 types, error conditions |
+| Package | Tests | Test Files | Status |
+|---------|-------|------------|--------|
+| **Protobuf** | 111 tests | 5 files | ✅ 100% passing |
+| **Core** | 888 tests | 30 files | ✅ 100% passing |
+| **CLI** | 148 tests | 13 files | ✅ 100% passing |
+| **React** | 141 tests | 5 files | ✅ 100% passing |
 
 ### Testing Infrastructure
 
