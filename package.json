@@ -31,6 +31,29 @@
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"
   },
+  "keywords": [
+    "akash",
+    "akash-network",
+    "blockchain",
+    "cosmos",
+    "cosmos-sdk",
+    "web3",
+    "decentralized-cloud",
+    "cloud-computing",
+    "deployment",
+    "docker",
+    "kubernetes",
+    "IBC",
+    "staking",
+    "jwt-auth",
+    "typescript",
+    "javascript",
+    "sdk"
+  ],
+  "homepage": "https://github.com/cryptoandcoffee/akash-jsdk#readme",
+  "bugs": {
+    "url": "https://github.com/cryptoandcoffee/akash-jsdk/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/cryptoandcoffee/akash-jsdk.git"

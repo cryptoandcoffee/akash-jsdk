@@ -45,10 +45,35 @@
   "peerDependencies": {
     "react": ">=18.0.0"
   },
+  "keywords": [
+    "akash",
+    "akash-network",
+    "react",
+    "react-hooks",
+    "hooks",
+    "blockchain",
+    "cosmos",
+    "web3",
+    "decentralized-cloud",
+    "deployment",
+    "provider",
+    "typescript",
+    "frontend",
+    "ui"
+  ],
+  "homepage": "https://github.com/cryptoandcoffee/akash-jsdk/tree/main/packages/react#readme",
+  "bugs": {
+    "url": "https://github.com/cryptoandcoffee/akash-jsdk/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/cryptoandcoffee/akash-jsdk.git",
     "directory": "packages/react"
+  },
+  "license": "Apache-2.0",
+  "author": {
+    "name": "CryptoAndCoffee",
+    "url": "https://github.com/cryptoandcoffee"
   },
   "publishConfig": {
     "access": "public"

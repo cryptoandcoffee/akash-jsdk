@@ -41,10 +41,36 @@
     "vite-plugin-dts": "^4.5.4",
     "vitest": "^4.0.9"
   },
+  "keywords": [
+    "akash",
+    "akash-network",
+    "cli",
+    "command-line",
+    "terminal",
+    "blockchain",
+    "cosmos",
+    "web3",
+    "decentralized-cloud",
+    "deployment",
+    "devops",
+    "sdl",
+    "docker",
+    "kubernetes",
+    "typescript"
+  ],
+  "homepage": "https://github.com/cryptoandcoffee/akash-jsdk/tree/main/packages/cli#readme",
+  "bugs": {
+    "url": "https://github.com/cryptoandcoffee/akash-jsdk/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/cryptoandcoffee/akash-jsdk.git",
     "directory": "packages/cli"
+  },
+  "license": "Apache-2.0",
+  "author": {
+    "name": "CryptoAndCoffee",
+    "url": "https://github.com/cryptoandcoffee"
   },
   "publishConfig": {
     "access": "public"

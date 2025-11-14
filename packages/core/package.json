@@ -42,10 +42,38 @@
     "vite-plugin-dts": "^4.5.4",
     "vitest": "^4.0.9"
   },
+  "keywords": [
+    "akash",
+    "akash-network",
+    "blockchain",
+    "cosmos",
+    "cosmos-sdk",
+    "cosmjs",
+    "web3",
+    "decentralized-cloud",
+    "cloud-computing",
+    "deployment",
+    "staking",
+    "ibc",
+    "jwt-authentication",
+    "provider",
+    "escrow",
+    "typescript",
+    "sdk"
+  ],
+  "homepage": "https://github.com/cryptoandcoffee/akash-jsdk/tree/main/packages/core#readme",
+  "bugs": {
+    "url": "https://github.com/cryptoandcoffee/akash-jsdk/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/cryptoandcoffee/akash-jsdk.git",
     "directory": "packages/core"
+  },
+  "license": "Apache-2.0",
+  "author": {
+    "name": "CryptoAndCoffee",
+    "url": "https://github.com/cryptoandcoffee"
   },
   "publishConfig": {
     "access": "public"

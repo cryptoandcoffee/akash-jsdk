@@ -40,10 +40,35 @@
     "vite-plugin-dts": "^4.5.4",
     "vitest": "^4.0.9"
   },
+  "keywords": [
+    "akash",
+    "akash-network",
+    "protobuf",
+    "protocol-buffers",
+    "grpc",
+    "blockchain",
+    "cosmos",
+    "cosmos-sdk",
+    "types",
+    "typescript",
+    "bufbuild",
+    "ibc",
+    "deployment",
+    "staking"
+  ],
+  "homepage": "https://github.com/cryptoandcoffee/akash-jsdk/tree/main/packages/protobuf#readme",
+  "bugs": {
+    "url": "https://github.com/cryptoandcoffee/akash-jsdk/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/cryptoandcoffee/akash-jsdk.git",
     "directory": "packages/protobuf"
+  },
+  "license": "Apache-2.0",
+  "author": {
+    "name": "CryptoAndCoffee",
+    "url": "https://github.com/cryptoandcoffee"
   },
   "publishConfig": {
     "access": "public"

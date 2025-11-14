@@ -1,0 +1,122 @@
+name: Bug Report
+description: File a bug report to help us improve
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      description: Which package is affected?
+      options:
+        - "@cryptoandcoffee/akash-jsdk-core"
+        - "@cryptoandcoffee/akash-jsdk-react"
+        - "@cryptoandcoffee/akash-jsdk-cli"
+        - "@cryptoandcoffee/akash-jsdk-protobuf"
+        - "Other / Multiple"
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: What version of the package are you using?
+      placeholder: "3.6.1"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is
+      placeholder: Tell us what you see!
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Initialize SDK with '...'
+        2. Call method '....'
+        3. Observe error '....'
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+      placeholder: Tell us what should have happened
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+      placeholder: Tell us what actually happened
+    validations:
+      required: true
+
+  - type: textarea
+    id: code
+    attributes:
+      label: Code Sample
+      description: Please provide a minimal code sample that reproduces the issue
+      render: typescript
+      placeholder: |
+        import { AkashSDK } from '@cryptoandcoffee/akash-jsdk-core'
+
+        const sdk = new AkashSDK(/* ... */)
+        // Your code here
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Information about your environment
+      placeholder: |
+        - OS: [e.g. Ubuntu 22.04, macOS 14.0, Windows 11]
+        - Node.js version: [e.g. 20.10.0]
+        - Package manager: [e.g. pnpm 8.15.0]
+        - Browser (if applicable): [e.g. Chrome 120]
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Logs
+      description: Please copy and paste any relevant error logs
+      render: shell
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      description: Please confirm the following
+      options:
+        - label: I have searched for similar issues before creating this one
+          required: true
+        - label: I have provided all required information
+          required: true
+        - label: I am using the latest version of the package
+          required: false
