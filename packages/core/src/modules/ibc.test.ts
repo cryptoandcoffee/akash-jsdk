@@ -3,6 +3,24 @@ import { IBCManager, IBCTransferParams, Height } from './ibc'
 import { AkashProvider } from '../providers/akash'
 import { Coin } from '@cryptoandcoffee/akash-jsdk-protobuf'
 
+// Mock SigningStargateClient
+vi.mock('@cosmjs/stargate', () => ({
+  SigningStargateClient: {
+    connect: vi.fn(),
+    connectWithSigner: vi.fn()
+  },
+  calculateFee: vi.fn((gas, gasPrice) => ({
+    amount: [{ denom: 'uakt', amount: '5000' }],
+    gas: gas.toString()
+  })),
+  GasPrice: {
+    fromString: vi.fn(() => ({ denom: 'uakt', amount: '0.025' }))
+  }
+}))
+
+// Mock global fetch
+global.fetch = vi.fn()
+
 // Mock the provider
 const mockClient = {
   searchTx: vi.fn(),
@@ -12,19 +30,101 @@ const mockClient = {
 const mockProvider = {
   client: mockClient,
   ensureConnected: vi.fn(),
-  getClient: vi.fn().mockReturnValue(mockClient)
+  getClient: vi.fn().mockReturnValue(mockClient),
+  config: {
+    rpcEndpoint: 'http://localhost:26657',
+    apiEndpoint: 'http://localhost:1317'
+  }
 } as unknown as AkashProvider
 
 describe('IBCManager', () => {
   let ibcManager: IBCManager
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    const { SigningStargateClient } = await import('@cosmjs/stargate')
+
+    const mockClient = {
+      signAndBroadcast: vi.fn().mockResolvedValue({
+        transactionHash: 'mock-tx-hash',
+        code: 0,
+        height: 12345,
+        gasUsed: 150000,
+        gasWanted: 200000,
+        rawLog: '',
+        events: []
+      }),
+      simulate: vi.fn().mockResolvedValue(50000),
+      getTx: vi.fn().mockResolvedValue({
+        hash: 'mock-tx-hash',
+        height: 12345,
+        code: 0,
+        events: [
+          {
+            type: 'acknowledge_packet',
+            attributes: [{ key: 'packet_ack', value: 'AQ==' }]
+          }
+        ]
+      }),
+      getBlock: vi.fn().mockResolvedValue({
+        header: {
+          time: new Date().toISOString()
+        }
+      })
+    }
+
+    vi.mocked(SigningStargateClient.connect).mockResolvedValue(mockClient as any)
+    vi.mocked(SigningStargateClient.connectWithSigner).mockResolvedValue(mockClient as any)
+
+    // Reset mockClient.getHeight mock
+    vi.mocked(mockProvider['client']!.getHeight).mockResolvedValue(12345)
+
+    // Mock fetch for API calls
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        channels: [
+          {
+            channel_id: 'channel-0',
+            port_id: 'transfer',
+            state: 'STATE_OPEN',
+            ordering: 'ORDER_UNORDERED',
+            counterparty: { port_id: 'transfer', channel_id: 'channel-0' },
+            connection_hops: ['connection-0'],
+            version: 'ics20-1'
+          }
+        ],
+        channel: {
+          state: 'STATE_OPEN',
+          ordering: 'ORDER_UNORDERED',
+          counterparty: { port_id: 'transfer', channel_id: 'channel-0' },
+          connection_hops: ['connection-0'],
+          version: 'ics20-1'
+        },
+        denom_trace: {
+          path: 'transfer/channel-0',
+          base_denom: 'uakt'
+        }
+      })
+    } as Response)
+
     ibcManager = new IBCManager(mockProvider)
     vi.clearAllMocks()
+
+    // Re-setup mocks after clearAllMocks
+    vi.mocked(SigningStargateClient.connect).mockResolvedValue(mockClient as any)
+    vi.mocked(SigningStargateClient.connectWithSigner).mockResolvedValue(mockClient as any)
+    vi.mocked(mockProvider['client']!.getHeight).mockResolvedValue(12345)
   })
 
   describe('transfer', () => {
     it('should execute IBC transfer successfully', async () => {
+      const mockWallet = {
+        getAccounts: vi.fn().mockResolvedValue([
+          { address: 'akash1senderaddress123456' }
+        ])
+      }
+
       const params: IBCTransferParams = {
         sourceChannel: 'channel-0',
         token: {
@@ -32,42 +132,28 @@ describe('IBCManager', () => {
           amount: '1000000'
         },
         receiver: 'cosmos1receiveraddress123456',
-        memo: 'Test transfer'
+        memo: 'Test transfer',
+        wallet: mockWallet
       }
-
-      const mockTx = {
-        height: 12345,
-        txIndex: 0,
-        hash: 'ibc-transfer-hash',
-        code: 0,
-        events: [],
-        rawLog: '',
-        tx: new Uint8Array(),
-        msgResponses: [],
-        gasUsed: 150000n,
-        gasWanted: 200000n
-      }
-
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([mockTx])
 
       const result = await ibcManager.transfer(params)
 
       expect(result).toMatchObject({
-        transactionHash: 'ibc-transfer-hash',
+        transactionHash: 'mock-tx-hash',
         code: 0,
         height: 12345,
         gasUsed: 150000n,
         gasWanted: 200000n
       })
-
-      expect(mockProvider['client']!.searchTx).toHaveBeenCalledWith([
-        { key: 'message.module', value: 'ibc' },
-        { key: 'message.action', value: 'transfer' }
-      ])
     })
 
     it('should execute transfer with custom timeout timestamp', async () => {
       const futureTimeout = BigInt(Date.now() + 600000) * 1_000_000n // 10 minutes from now
+      const mockWallet = {
+        getAccounts: vi.fn().mockResolvedValue([
+          { address: 'akash1senderaddress123456' }
+        ])
+      }
 
       const params: IBCTransferParams = {
         sourceChannel: 'channel-1',
@@ -76,27 +162,13 @@ describe('IBCManager', () => {
           amount: '500000'
         },
         receiver: 'cosmos1receiveraddress123456',
-        timeoutTimestamp: futureTimeout
+        timeoutTimestamp: futureTimeout,
+        wallet: mockWallet
       }
-
-      const mockTx = {
-        height: 12346,
-        txIndex: 0,
-        hash: 'ibc-custom-timeout-hash',
-        code: 0,
-        events: [],
-        rawLog: '',
-        tx: new Uint8Array(),
-        msgResponses: [],
-        gasUsed: 150000n,
-        gasWanted: 200000n
-      }
-
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([mockTx])
 
       const result = await ibcManager.transfer(params)
 
-      expect(result.transactionHash).toBe('ibc-custom-timeout-hash')
+      expect(result.transactionHash).toBe('mock-tx-hash')
       expect(result.code).toBe(0)
     })
 
@@ -104,6 +176,11 @@ describe('IBCManager', () => {
       const timeoutHeight: Height = {
         revisionNumber: 0n,
         revisionHeight: 12500n
+      }
+      const mockWallet = {
+        getAccounts: vi.fn().mockResolvedValue([
+          { address: 'akash1senderaddress123456' }
+        ])
       }
 
       const params: IBCTransferParams = {
@@ -113,27 +190,13 @@ describe('IBCManager', () => {
           amount: '250000'
         },
         receiver: 'cosmos1receiveraddress123456',
-        timeoutHeight
+        timeoutHeight,
+        wallet: mockWallet
       }
-
-      const mockTx = {
-        height: 12347,
-        txIndex: 0,
-        hash: 'ibc-height-timeout-hash',
-        code: 0,
-        events: [],
-        rawLog: '',
-        tx: new Uint8Array(),
-        msgResponses: [],
-        gasUsed: 150000n,
-        gasWanted: 200000n
-      }
-
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([mockTx])
 
       const result = await ibcManager.transfer(params)
 
-      expect(result.transactionHash).toBe('ibc-height-timeout-hash')
+      expect(result.transactionHash).toBe('mock-tx-hash')
     })
 
     it('should throw validation error for missing source channel', async () => {
@@ -229,36 +292,43 @@ describe('IBCManager', () => {
     })
 
     it('should throw network error when transaction fails', async () => {
+      const mockWallet = {
+        getAccounts: vi.fn().mockRejectedValue(new Error('Network connection failed'))
+      }
+
       const params: IBCTransferParams = {
         sourceChannel: 'channel-0',
         token: {
           denom: 'uakt',
           amount: '1000000'
         },
-        receiver: 'cosmos1receiveraddress123456'
+        receiver: 'cosmos1receiveraddress123456',
+        wallet: mockWallet
       }
-
-      const networkError = new Error('Network connection failed')
-      vi.mocked(mockProvider['client']!.searchTx).mockRejectedValue(networkError)
 
       await expect(ibcManager.transfer(params)).rejects.toThrow('Failed to execute IBC transfer')
     })
 
     it('should generate transaction hash when no transactions found', async () => {
+      const mockWallet = {
+        getAccounts: vi.fn().mockResolvedValue([
+          { address: 'akash1senderaddress123456' }
+        ])
+      }
+
       const params: IBCTransferParams = {
         sourceChannel: 'channel-0',
         token: {
           denom: 'uakt',
           amount: '1000000'
         },
-        receiver: 'cosmos1receiveraddress123456'
+        receiver: 'cosmos1receiveraddress123456',
+        wallet: mockWallet
       }
-
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([])
 
       const result = await ibcManager.transfer(params)
 
-      expect(result.transactionHash).toMatch(/^ibc-transfer-\d+$/)
+      expect(result.transactionHash).toBe('mock-tx-hash')
       expect(result.code).toBe(0)
       expect(result.height).toBe(12345)
     })
@@ -266,24 +336,9 @@ describe('IBCManager', () => {
 
   describe('getChannels', () => {
     it('should list all IBC channels', async () => {
-      const mockTxs = Array(5).fill(null).map((_, index) => ({
-        height: 12345 + index,
-        txIndex: index,
-        hash: `channel-tx-${index}`,
-        code: 0,
-        events: [],
-        rawLog: '',
-        tx: new Uint8Array(),
-        msgResponses: [],
-        gasUsed: 50000n,
-        gasWanted: 60000n
-      }))
-
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue(mockTxs)
-
       const result = await ibcManager.getChannels()
 
-      expect(result).toHaveLength(5)
+      expect(result).toHaveLength(1)
       expect(result[0]).toMatchObject({
         id: 'channel-0',
         portId: 'transfer',
@@ -291,28 +346,22 @@ describe('IBCManager', () => {
         ordering: 'ORDER_UNORDERED',
         version: 'ics20-1'
       })
-
-      expect(mockProvider['client']!.searchTx).toHaveBeenCalledWith([
-        { key: 'message.module', value: 'ibc' }
-      ])
     })
 
     it('should return default channel when no transactions found', async () => {
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([])
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ channels: [] })
+      } as Response)
 
       const result = await ibcManager.getChannels()
 
-      expect(result).toHaveLength(1)
-      expect(result[0]).toMatchObject({
-        id: 'channel-0',
-        portId: 'transfer',
-        state: 'STATE_OPEN'
-      })
+      expect(result).toHaveLength(0)
     })
 
     it('should throw network error when query fails', async () => {
-      const networkError = new Error('Query failed')
-      vi.mocked(mockProvider['client']!.searchTx).mockRejectedValue(networkError)
+      vi.mocked(global.fetch).mockRejectedValueOnce(new Error('Query failed'))
 
       await expect(ibcManager.getChannels()).rejects.toThrow('Failed to get IBC channels')
     })
@@ -320,23 +369,6 @@ describe('IBCManager', () => {
 
   describe('getChannel', () => {
     it('should get specific channel details', async () => {
-      const mockTxs = [
-        {
-          height: 12345,
-          txIndex: 0,
-          hash: 'channel-tx',
-          code: 0,
-          events: [],
-          rawLog: '',
-          tx: new Uint8Array(),
-          msgResponses: [],
-          gasUsed: 50000n,
-          gasWanted: 60000n
-        }
-      ]
-
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue(mockTxs)
-
       const result = await ibcManager.getChannel('channel-0')
 
       expect(result).toMatchObject({
@@ -348,15 +380,12 @@ describe('IBCManager', () => {
     })
 
     it('should return mock channel for non-existent channel', async () => {
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([])
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: false,
+        status: 404
+      } as Response)
 
-      const result = await ibcManager.getChannel('channel-99')
-
-      expect(result).toMatchObject({
-        id: 'channel-99',
-        portId: 'transfer',
-        state: 'STATE_OPEN'
-      })
+      await expect(ibcManager.getChannel('channel-99')).rejects.toThrow('Channel channel-99 not found')
     })
 
     it('should throw validation error for missing channel ID', async () => {
@@ -364,8 +393,7 @@ describe('IBCManager', () => {
     })
 
     it('should throw network error when query fails', async () => {
-      const networkError = new Error('Channel query failed')
-      vi.mocked(mockProvider['client']!.searchTx).mockRejectedValue(networkError)
+      vi.mocked(global.fetch).mockRejectedValueOnce(new Error('Channel query failed'))
 
       await expect(ibcManager.getChannel('channel-0')).rejects.toThrow('Failed to get IBC channel')
     })
@@ -373,22 +401,7 @@ describe('IBCManager', () => {
 
   describe('getTransferStatus', () => {
     it('should get successful transfer status', async () => {
-      const txHash = 'success-tx-hash'
-
-      const mockTx = {
-        height: 12345,
-        txIndex: 0,
-        hash: txHash,
-        code: 0,
-        events: [],
-        rawLog: '',
-        tx: new Uint8Array(),
-        msgResponses: [],
-        gasUsed: 150000n,
-        gasWanted: 200000n
-      }
-
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([mockTx])
+      const txHash = 'mock-tx-hash'
 
       const result = await ibcManager.getTransferStatus(txHash)
 
@@ -403,21 +416,20 @@ describe('IBCManager', () => {
 
     it('should get failed transfer status', async () => {
       const txHash = 'failed-tx-hash'
+      const { SigningStargateClient } = await import('@cosmjs/stargate')
 
-      const mockTx = {
-        height: 12346,
-        txIndex: 0,
-        hash: txHash,
-        code: 1,
-        events: [],
-        rawLog: '',
-        tx: new Uint8Array(),
-        msgResponses: [],
-        gasUsed: 100000n,
-        gasWanted: 200000n
-      }
-
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([mockTx])
+      vi.mocked(SigningStargateClient.connect).mockResolvedValueOnce({
+        getTx: vi.fn().mockResolvedValue({
+          hash: txHash,
+          height: 12346,
+          code: 1,
+          rawLog: 'Transfer failed',
+          events: []
+        }),
+        getBlock: vi.fn().mockResolvedValue({
+          header: { time: new Date().toISOString() }
+        })
+      } as any)
 
       const result = await ibcManager.getTransferStatus(txHash)
 
@@ -432,8 +444,12 @@ describe('IBCManager', () => {
 
     it('should return pending status for non-existent transaction', async () => {
       const txHash = 'nonexistent-tx-hash'
+      const { SigningStargateClient } = await import('@cosmjs/stargate')
 
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([])
+      vi.mocked(SigningStargateClient.connect).mockResolvedValueOnce({
+        getTx: vi.fn().mockResolvedValue(null),
+        getBlock: vi.fn()
+      } as any)
 
       const result = await ibcManager.getTransferStatus(txHash)
 
@@ -449,8 +465,9 @@ describe('IBCManager', () => {
     })
 
     it('should throw network error when query fails', async () => {
-      const networkError = new Error('Status query failed')
-      vi.mocked(mockProvider['client']!.searchTx).mockRejectedValue(networkError)
+      const { SigningStargateClient } = await import('@cosmjs/stargate')
+
+      vi.mocked(SigningStargateClient.connect).mockRejectedValueOnce(new Error('Status query failed'))
 
       await expect(ibcManager.getTransferStatus('some-hash')).rejects.toThrow('Failed to get transfer status')
     })
@@ -458,28 +475,20 @@ describe('IBCManager', () => {
 
   describe('calculateTimeoutHeight', () => {
     it('should calculate timeout height successfully', async () => {
-      const currentHeight = 12345
-
-      vi.mocked(mockProvider['client']!.getHeight).mockResolvedValue(currentHeight)
-
       const result = await ibcManager.calculateTimeoutHeight(100)
 
       expect(result).toEqual({
         revisionNumber: 0n,
-        revisionHeight: BigInt(currentHeight + 100)
+        revisionHeight: 12445n // 12345 + 100
       })
     })
 
     it('should use default blocks in future', async () => {
-      const currentHeight = 12345
-
-      vi.mocked(mockProvider['client']!.getHeight).mockResolvedValue(currentHeight)
-
       const result = await ibcManager.calculateTimeoutHeight()
 
       expect(result).toEqual({
         revisionNumber: 0n,
-        revisionHeight: BigInt(currentHeight + 100)
+        revisionHeight: 12445n // 12345 + 100
       })
     })
 
@@ -489,8 +498,7 @@ describe('IBCManager', () => {
     })
 
     it('should throw network error when height query fails', async () => {
-      const networkError = new Error('Height query failed')
-      vi.mocked(mockProvider['client']!.getHeight).mockRejectedValue(networkError)
+      vi.mocked(mockClient.getHeight).mockRejectedValueOnce(new Error('Height query failed'))
 
       await expect(ibcManager.calculateTimeoutHeight()).rejects.toThrow('Failed to calculate timeout height')
     })
@@ -506,21 +514,6 @@ describe('IBCManager', () => {
         },
         receiver: 'cosmos1receiveraddress123456'
       }
-
-      const mockTx = {
-        height: 12345,
-        txIndex: 0,
-        hash: 'channel-tx',
-        code: 0,
-        events: [],
-        rawLog: '',
-        tx: new Uint8Array(),
-        msgResponses: [],
-        gasUsed: 50000n,
-        gasWanted: 60000n
-      }
-
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([mockTx])
 
       const result = await ibcManager.validateTransfer(params)
 
@@ -538,8 +531,6 @@ describe('IBCManager', () => {
         receiver: 'cosmos1receiveraddress123456'
       }
 
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([])
-
       const result = await ibcManager.validateTransfer(params)
 
       // The mock channel will be open, so check if validation passes
@@ -556,8 +547,6 @@ describe('IBCManager', () => {
         receiver: 'cosmos1receiveraddress123456'
       }
 
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([])
-
       const result = await ibcManager.validateTransfer(params)
 
       expect(result.valid).toBe(false)
@@ -573,8 +562,6 @@ describe('IBCManager', () => {
         },
         receiver: 'short'
       }
-
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([])
 
       const result = await ibcManager.validateTransfer(params)
 
@@ -595,8 +582,6 @@ describe('IBCManager', () => {
         timeoutTimestamp: pastTimeout
       }
 
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([])
-
       const result = await ibcManager.validateTransfer(params)
 
       expect(result.valid).toBe(false)
@@ -613,8 +598,6 @@ describe('IBCManager', () => {
         receiver: 'short'
       }
 
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([])
-
       const result = await ibcManager.validateTransfer(params)
 
       expect(result.valid).toBe(false)
@@ -630,8 +613,6 @@ describe('IBCManager', () => {
         },
         receiver: 'cosmos1receiveraddress123456'
       }
-
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([])
 
       const result = await ibcManager.validateTransfer(params)
 
@@ -680,29 +661,21 @@ describe('IBCManager', () => {
 
   describe('edge cases', () => {
     it('should handle very large token amounts', async () => {
+      const mockWallet = {
+        getAccounts: vi.fn().mockResolvedValue([
+          { address: 'akash1senderaddress123456' }
+        ])
+      }
+
       const params: IBCTransferParams = {
         sourceChannel: 'channel-0',
         token: {
           denom: 'uakt',
           amount: '999999999999999999999999'
         },
-        receiver: 'cosmos1receiveraddress123456'
+        receiver: 'cosmos1receiveraddress123456',
+        wallet: mockWallet
       }
-
-      const mockTx = {
-        height: 12345,
-        txIndex: 0,
-        hash: 'large-amount-tx',
-        code: 0,
-        events: [],
-        rawLog: '',
-        tx: new Uint8Array(),
-        msgResponses: [],
-        gasUsed: 150000n,
-        gasWanted: 200000n
-      }
-
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([mockTx])
 
       const result = await ibcManager.transfer(params)
 
@@ -710,8 +683,6 @@ describe('IBCManager', () => {
     })
 
     it('should handle channel IDs with various formats', async () => {
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([])
-
       const channel1 = await ibcManager.getChannel('channel-0')
       const channel2 = await ibcManager.getChannel('channel-999')
 
@@ -720,6 +691,12 @@ describe('IBCManager', () => {
     })
 
     it('should handle memo with special characters', async () => {
+      const mockWallet = {
+        getAccounts: vi.fn().mockResolvedValue([
+          { address: 'akash1senderaddress123456' }
+        ])
+      }
+
       const params: IBCTransferParams = {
         sourceChannel: 'channel-0',
         token: {
@@ -727,23 +704,9 @@ describe('IBCManager', () => {
           amount: '1000000'
         },
         receiver: 'cosmos1receiveraddress123456',
-        memo: 'Special chars: !@#$%^&*()_+{}[]|\\:";\'<>?,./'
+        memo: 'Special chars: !@#$%^&*()_+{}[]|\\:";\'<>?,./',
+        wallet: mockWallet
       }
-
-      const mockTx = {
-        height: 12345,
-        txIndex: 0,
-        hash: 'special-memo-tx',
-        code: 0,
-        events: [],
-        rawLog: '',
-        tx: new Uint8Array(),
-        msgResponses: [],
-        gasUsed: 150000n,
-        gasWanted: 200000n
-      }
-
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([mockTx])
 
       const result = await ibcManager.transfer(params)
 
