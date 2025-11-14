@@ -2,25 +2,27 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { closeAction, closeCommand } from './close'
 import inquirer from 'inquirer'
 
-// Create a shared mock SDK instance that will be used by all tests
-let mockSDKInstance: any
+// Create shared mock functions
+const mockConnect = vi.fn().mockResolvedValue(undefined)
+const mockDeploymentsClose = vi.fn().mockResolvedValue(undefined)
+const mockDeploymentsList = vi.fn().mockResolvedValue([
+  { deploymentId: { dseq: '123' }, state: 'active' },
+  { deploymentId: { dseq: '456' }, state: 'active' }
+])
+
+const mockSDKInstance: any = {
+  connect: mockConnect,
+  deployments: {
+    close: mockDeploymentsClose,
+    list: mockDeploymentsList
+  }
+}
 
 // Mock dependencies
 vi.mock('@cryptoandcoffee/akash-jsdk-core', () => {
   return {
     AkashSDK: vi.fn(function(this: any, config: any) {
-      // Store the instance so tests can access it
-      mockSDKInstance = this
-
-      this.connect = vi.fn().mockResolvedValue(undefined)
-      this.deployments = {
-        close: vi.fn().mockResolvedValue(undefined),
-        list: vi.fn().mockResolvedValue([
-          { deploymentId: { dseq: '123' }, state: 'active' },
-          { deploymentId: { dseq: '456' }, state: 'active' }
-        ])
-      }
-      return this
+      return mockSDKInstance
     })
   }
 })
@@ -49,14 +51,12 @@ describe('closeAction', () => {
     vi.clearAllMocks()
 
     // Reset mock implementations to defaults after clearAllMocks
-    if (mockSDKInstance) {
-      mockSDKInstance.connect.mockResolvedValue(undefined)
-      mockSDKInstance.deployments.close.mockResolvedValue(undefined)
-      mockSDKInstance.deployments.list.mockResolvedValue([
-        { deploymentId: { dseq: '123' }, state: 'active' },
-        { deploymentId: { dseq: '456' }, state: 'active' }
-      ])
-    }
+    mockConnect.mockResolvedValue(undefined)
+    mockDeploymentsClose.mockResolvedValue(undefined)
+    mockDeploymentsList.mockResolvedValue([
+      { deploymentId: { dseq: '123' }, state: 'active' },
+      { deploymentId: { dseq: '456' }, state: 'active' }
+    ])
   })
 
   it('should close deployment successfully with deployment ID', async () => {
@@ -64,7 +64,7 @@ describe('closeAction', () => {
 
     await closeAction(options)
 
-    expect(mockSDKInstance.deployments.close).toHaveBeenCalledWith('123')
+    expect(mockDeploymentsClose).toHaveBeenCalledWith('123')
   })
 
   it('should fail when owner is not provided', async () => {
@@ -76,7 +76,7 @@ describe('closeAction', () => {
   })
 
   it('should handle no deployments found', async () => {
-    mockSDKInstance.deployments.list.mockResolvedValue([])
+    mockDeploymentsList.mockResolvedValueOnce([])
 
     const options = { owner: 'akash1test' }
 
@@ -126,7 +126,7 @@ describe('closeAction', () => {
     await closeAction(options)
 
     expect(mockLog).toHaveBeenCalledWith(expect.stringContaining('Operation cancelled'))
-    expect(mockSDKInstance.deployments.close).not.toHaveBeenCalled()
+    expect(mockDeploymentsClose).not.toHaveBeenCalled()
   })
 
   it('should skip confirmation with --yes flag', async () => {
@@ -140,7 +140,7 @@ describe('closeAction', () => {
   it('should handle close operation errors', async () => {
     const mockExit = vi.spyOn(process, 'exit').mockImplementation((() => { throw new Error('process.exit') }) as any)
 
-    mockSDKInstance.deployments.close.mockRejectedValue(new Error('Network error'))
+    mockDeploymentsClose.mockRejectedValueOnce(new Error('Network error'))
 
     const options = { owner: 'akash1test', deployment: '123', yes: true }
 

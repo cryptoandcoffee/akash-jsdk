@@ -5,14 +5,15 @@ import React from 'react'
 
 // Mock the core SDK
 vi.mock('@cryptoandcoffee/akash-jsdk-core', () => ({
-  AkashSDK: vi.fn().mockImplementation(() => ({
-    connect: vi.fn().mockResolvedValue(undefined),
-    disconnect: vi.fn().mockResolvedValue(undefined),
-    isConnected: vi.fn().mockReturnValue(false),
-    wallet: {
+  AkashSDK: vi.fn(function(this: any, config: any) {
+    this.connect = vi.fn().mockResolvedValue(undefined)
+    this.disconnect = vi.fn().mockResolvedValue(undefined)
+    this.isConnected = vi.fn().mockReturnValue(false)
+    this.wallet = {
       getAddress: vi.fn().mockReturnValue('akash1test')
     }
-  }))
+    return this
+  })
 }))
 
 const mockConfig = {
@@ -61,7 +62,9 @@ describe('AkashProvider', () => {
       disconnect: vi.fn(),
       isConnected: vi.fn().mockReturnValue(false).mockReturnValueOnce(false).mockReturnValue(true)
     }
-    vi.mocked(AkashSDK).mockReturnValue(mockInstance as any)
+    vi.mocked(AkashSDK).mockImplementation(function(this: any) {
+      return mockInstance as any
+    })
     
     render(
       <AkashProvider config={mockConfig} autoConnect>
@@ -77,14 +80,16 @@ describe('AkashProvider', () => {
   it('should handle connection errors', async () => {
     const connectError = new Error('Connection failed')
     const { AkashSDK } = await import('@cryptoandcoffee/akash-jsdk-core')
-    
+
     const mockSDK = {
       connect: vi.fn().mockRejectedValue(connectError),
       disconnect: vi.fn(),
       isConnected: vi.fn().mockReturnValue(false)
     }
-    
-    vi.mocked(AkashSDK).mockImplementation(() => mockSDK as any)
+
+    vi.mocked(AkashSDK).mockImplementation(function(this: any) {
+      return mockSDK as any
+    })
     
     render(
       <AkashProvider config={mockConfig}>
@@ -150,7 +155,9 @@ describe('AkashProvider', () => {
         .mockReturnValueOnce(true)  // After connect
         .mockReturnValue(true)      // During cleanup
     }
-    vi.mocked(AkashSDK).mockReturnValue(mockInstance as any)
+    vi.mocked(AkashSDK).mockImplementation(function(this: any) {
+      return mockInstance as any
+    })
     
     const { unmount } = render(
       <AkashProvider config={mockConfig}>
@@ -186,7 +193,9 @@ describe('AkashProvider', () => {
           .mockReturnValueOnce(true)  // Before disconnect
           .mockReturnValue(false)     // After disconnect
       }
-      vi.mocked(AkashSDK).mockReturnValue(mockInstance as any)
+      vi.mocked(AkashSDK).mockImplementation(function(this: any) {
+      return mockInstance as any
+    })
       
       render(
         <AkashProvider config={mockConfig}>
@@ -224,7 +233,9 @@ describe('AkashProvider', () => {
         disconnect: vi.fn().mockResolvedValue(undefined),
         isConnected: vi.fn().mockReturnValue(false)
       }
-      vi.mocked(AkashSDK).mockReturnValue(mockInstance as any)
+      vi.mocked(AkashSDK).mockImplementation(function(this: any) {
+      return mockInstance as any
+    })
       
       render(
         <AkashProvider config={mockConfig}>
@@ -252,7 +263,9 @@ describe('AkashProvider', () => {
           .mockReturnValueOnce(true)  // After connect
           .mockReturnValue(true)      // Before disconnect (stays true due to error)
       }
-      vi.mocked(AkashSDK).mockReturnValue(mockInstance as any)
+      vi.mocked(AkashSDK).mockImplementation(function(this: any) {
+      return mockInstance as any
+    })
       
       render(
         <AkashProvider config={mockConfig}>
@@ -304,7 +317,9 @@ describe('AkashProvider', () => {
         }),
         off: vi.fn()
       }
-      vi.mocked(AkashSDK).mockReturnValue(mockInstance as any)
+      vi.mocked(AkashSDK).mockImplementation(function(this: any) {
+      return mockInstance as any
+    })
       
       render(
         <AkashProvider config={mockConfig} autoConnect>
@@ -340,7 +355,9 @@ describe('AkashProvider', () => {
         }),
         off: vi.fn()
       }
-      vi.mocked(AkashSDK).mockReturnValue(mockInstance as any)
+      vi.mocked(AkashSDK).mockImplementation(function(this: any) {
+      return mockInstance as any
+    })
       
       render(
         <AkashProvider config={mockConfig} autoConnect>
@@ -380,7 +397,9 @@ describe('AkashProvider', () => {
         }),
         off: vi.fn()
       }
-      vi.mocked(AkashSDK).mockReturnValue(mockInstance as any)
+      vi.mocked(AkashSDK).mockImplementation(function(this: any) {
+      return mockInstance as any
+    })
       
       render(
         <AkashProvider config={mockConfig} autoConnect>
@@ -410,7 +429,9 @@ describe('AkashProvider', () => {
         on: vi.fn(),
         off: vi.fn()
       }
-      vi.mocked(AkashSDK).mockReturnValue(mockInstance as any)
+      vi.mocked(AkashSDK).mockImplementation(function(this: any) {
+      return mockInstance as any
+    })
       
       const { unmount } = render(
         <AkashProvider config={mockConfig} autoConnect>
@@ -441,7 +462,9 @@ describe('AkashProvider', () => {
         on: vi.fn()
         // No off method
       }
-      vi.mocked(AkashSDK).mockReturnValue(mockInstance as any)
+      vi.mocked(AkashSDK).mockImplementation(function(this: any) {
+      return mockInstance as any
+    })
       
       const { unmount } = render(
         <AkashProvider config={mockConfig} autoConnect>
@@ -467,7 +490,9 @@ describe('AkashProvider', () => {
           .mockReturnValueOnce(false) // Before first connect
           .mockReturnValue(true)      // After first connect and subsequent calls
       }
-      vi.mocked(AkashSDK).mockReturnValue(mockInstance as any)
+      vi.mocked(AkashSDK).mockImplementation(function(this: any) {
+      return mockInstance as any
+    })
       
       render(
         <AkashProvider config={mockConfig}>
@@ -509,7 +534,9 @@ describe('AkashProvider', () => {
         disconnect: vi.fn().mockResolvedValue(undefined),
         isConnected: vi.fn().mockReturnValue(false)
       }
-      vi.mocked(AkashSDK).mockReturnValue(mockInstance as any)
+      vi.mocked(AkashSDK).mockImplementation(function(this: any) {
+      return mockInstance as any
+    })
       
       render(
         <AkashProvider config={mockConfig}>
@@ -551,7 +578,9 @@ describe('AkashProvider', () => {
         isConnected: vi.fn().mockReturnValue(true)
         // No disconnect method
       }
-      vi.mocked(AkashSDK).mockReturnValue(mockInstance as any)
+      vi.mocked(AkashSDK).mockImplementation(function(this: any) {
+      return mockInstance as any
+    })
       
       const { unmount } = render(
         <AkashProvider config={mockConfig}>
@@ -579,7 +608,9 @@ describe('AkashProvider', () => {
           .mockReturnValueOnce(false) // Before second connect
           .mockReturnValue(true)      // After second connect (success)
       }
-      vi.mocked(AkashSDK).mockReturnValue(mockInstance as any)
+      vi.mocked(AkashSDK).mockImplementation(function(this: any) {
+      return mockInstance as any
+    })
       
       render(
         <AkashProvider config={mockConfig}>
@@ -621,7 +652,9 @@ describe('AkashProvider', () => {
           .mockReturnValueOnce(true)  // After connect
           .mockReturnValue(true)      // During cleanup
       }
-      vi.mocked(AkashSDK).mockReturnValue(mockInstance as any)
+      vi.mocked(AkashSDK).mockImplementation(function(this: any) {
+      return mockInstance as any
+    })
       
       const { unmount } = render(
         <AkashProvider config={mockConfig}>
@@ -662,7 +695,9 @@ describe('AkashProvider', () => {
           .mockReturnValueOnce(true)  // After connect
           .mockReturnValue(true)      // During cleanup
       }
-      vi.mocked(AkashSDK).mockReturnValue(mockInstance as any)
+      vi.mocked(AkashSDK).mockImplementation(function(this: any) {
+      return mockInstance as any
+    })
       
       const { unmount } = render(
         <AkashProvider config={mockConfig}>
@@ -703,7 +738,9 @@ describe('AkashProvider', () => {
           .mockReturnValueOnce(true)  // After connect
           .mockReturnValue(true)      // During cleanup
       }
-      vi.mocked(AkashSDK).mockReturnValue(mockInstance as any)
+      vi.mocked(AkashSDK).mockImplementation(function(this: any) {
+      return mockInstance as any
+    })
       
       const { unmount } = render(
         <AkashProvider config={mockConfig}>
@@ -749,7 +786,9 @@ describe('AkashProvider', () => {
         }),
         off: vi.fn()
       }
-      vi.mocked(AkashSDK).mockReturnValue(mockInstance as any)
+      vi.mocked(AkashSDK).mockImplementation(function(this: any) {
+      return mockInstance as any
+    })
       
       render(
         <AkashProvider config={mockConfig} autoConnect>
@@ -775,7 +814,9 @@ describe('AkashProvider', () => {
         on: vi.fn(),
         off: vi.fn()
       }
-      vi.mocked(AkashSDK).mockReturnValue(mockInstance as any)
+      vi.mocked(AkashSDK).mockImplementation(function(this: any) {
+      return mockInstance as any
+    })
       
       const { unmount } = render(
         <AkashProvider config={mockConfig}>

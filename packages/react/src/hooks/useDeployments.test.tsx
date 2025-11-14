@@ -56,7 +56,9 @@ const mockSDK = {
 
 // Mock the core SDK
 vi.mock('@cryptoandcoffee/akash-jsdk-core', () => ({
-  AkashSDK: vi.fn().mockImplementation(() => mockSDK)
+  AkashSDK: vi.fn(function(this: any) {
+    return mockSDK
+  })
 }))
 
 const mockConfig = {

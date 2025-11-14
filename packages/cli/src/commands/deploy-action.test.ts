@@ -2,24 +2,26 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { deployCommand } from './deploy-action'
 import fs from 'fs/promises'
 
-// Create a shared mock SDK instance that will be used by all tests
-let mockSDKInstance: any
+// Create shared mock functions
+const mockConnect = vi.fn().mockResolvedValue(undefined)
+const mockDeploymentsCreate = vi.fn().mockResolvedValue('deployment-456')
+const mockSDLValidate = vi.fn().mockReturnValue({ valid: true, errors: [] })
+
+const mockSDKInstance: any = {
+  connect: mockConnect,
+  deployments: {
+    create: mockDeploymentsCreate
+  },
+  sdl: {
+    validate: mockSDLValidate
+  }
+}
 
 // Mock dependencies
 vi.mock('@cryptoandcoffee/akash-jsdk-core', () => {
   return {
     AkashSDK: vi.fn(function(this: any, config: any) {
-      // Store the instance so tests can access it
-      mockSDKInstance = this
-
-      this.connect = vi.fn().mockResolvedValue(undefined)
-      this.deployments = {
-        create: vi.fn().mockResolvedValue('deployment-456')
-      }
-      this.sdl = {
-        validate: vi.fn().mockReturnValue({ valid: true, errors: [] })
-      }
-      return this
+      return mockSDKInstance
     })
   }
 })
@@ -56,13 +58,9 @@ describe('deployCommand (deploy-action)', () => {
     vi.mocked(fs.readFile).mockResolvedValue('version: "2.0"\nservices:\n  web:\n    image: nginx')
 
     // Reset mock implementations to defaults after clearAllMocks
-    if (mockSDKInstance) {
-      mockSDKInstance.connect.mockResolvedValue(undefined)
-      mockSDKInstance.deployments.create.mockResolvedValue('deployment-456')
-      mockSDKInstance.sdl = {
-        validate: vi.fn().mockReturnValue({ valid: true, errors: [] })
-      }
-    }
+    mockConnect.mockResolvedValue(undefined)
+    mockDeploymentsCreate.mockResolvedValue('deployment-456')
+    mockSDLValidate.mockReturnValue({ valid: true, errors: [] })
   })
 
   it('should deploy from SDL file successfully', async () => {
@@ -71,9 +69,9 @@ describe('deployCommand (deploy-action)', () => {
     const result = await deployCommand('./test.yaml', options)
 
     expect(fs.readFile).toHaveBeenCalledWith('./test.yaml', 'utf-8')
-    expect(mockSDKInstance.connect).toHaveBeenCalled()
-    expect(mockSDKInstance.sdl.validate).toHaveBeenCalled()
-    expect(mockSDKInstance.deployments.create).toHaveBeenCalled()
+    expect(mockConnect).toHaveBeenCalled()
+    expect(mockSDLValidate).toHaveBeenCalled()
+    expect(mockDeploymentsCreate).toHaveBeenCalled()
     expect(result).toBe('deployment-456')
     expect(mockLog).toHaveBeenCalledWith(expect.stringContaining('✅ Deployment successful!'))
   })
@@ -95,7 +93,7 @@ describe('deployCommand (deploy-action)', () => {
   })
 
   it('should handle SDL validation errors', async () => {
-    mockSDKInstance.sdl.validate.mockReturnValue({
+    mockSDLValidate.mockReturnValueOnce({
       valid: false,
       errors: ['Invalid service configuration', 'Missing required field']
     })
@@ -106,11 +104,11 @@ describe('deployCommand (deploy-action)', () => {
       'Invalid SDL: Invalid service configuration, Missing required field'
     )
 
-    expect(mockSDKInstance.deployments.create).not.toHaveBeenCalled()
+    expect(mockDeploymentsCreate).not.toHaveBeenCalled()
   })
 
   it('should handle deployment creation errors', async () => {
-    mockSDKInstance.deployments.create.mockRejectedValue(new Error('Insufficient funds'))
+    mockDeploymentsCreate.mockRejectedValueOnce(new Error('Insufficient funds'))
 
     const options = { config: '.akash/config.json' }
 
@@ -118,25 +116,29 @@ describe('deployCommand (deploy-action)', () => {
   })
 
   it('should handle connection errors', async () => {
-    mockSDKInstance.connect.mockRejectedValue(new Error('Network unreachable'))
+    mockConnect.mockRejectedValueOnce(new Error('Network unreachable'))
 
     const options = { config: '.akash/config.json' }
 
     await expect(deployCommand('./test.yaml', options)).rejects.toThrow('Network unreachable')
-    expect(mockSDKInstance.sdl.validate).not.toHaveBeenCalled()
-    expect(mockSDKInstance.deployments.create).not.toHaveBeenCalled()
+    expect(mockSDLValidate).not.toHaveBeenCalled()
+    expect(mockDeploymentsCreate).not.toHaveBeenCalled()
   })
 
   it('should handle missing SDL validation method gracefully', async () => {
+    const originalSDL = mockSDKInstance.sdl
     mockSDKInstance.sdl = undefined
 
     const options = { config: '.akash/config.json' }
-    mockSDKInstance.deployments.create.mockResolvedValue('deployment-789')
+    mockDeploymentsCreate.mockResolvedValueOnce('deployment-789')
 
     const result = await deployCommand('./test.yaml', options)
 
     expect(result).toBe('deployment-789')
-    expect(mockSDKInstance.deployments.create).toHaveBeenCalled()
+    expect(mockDeploymentsCreate).toHaveBeenCalled()
+
+    // Restore SDL for other tests
+    mockSDKInstance.sdl = originalSDL
   })
 
   it('should handle config loading errors', async () => {
@@ -158,12 +160,14 @@ describe('deployCommand (deploy-action)', () => {
 
   it('should validate SDL content when validation is available', async () => {
     const mockSDLContent = 'version: "2.0"\nservices:\n  web:\n    image: nginx'
-    vi.mocked(fs.readFile).mockResolvedValue(mockSDLContent)
+    vi.mocked(fs.readFile).mockResolvedValueOnce(mockSDLContent)
 
     const options = { config: '.akash/config.json' }
 
     await deployCommand('./test.yaml', options)
 
-    expect(mockSDKInstance.sdl.validate).toHaveBeenCalledWith(mockSDLContent)
+    // Check if it was called at all first
+    expect(mockSDLValidate).toHaveBeenCalled()
+    expect(mockSDLValidate).toHaveBeenCalledWith(mockSDLContent)
   })
 })
