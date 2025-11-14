@@ -26,13 +26,11 @@ export class DeploymentManager {
   }
 
   async create(request: CreateDeploymentRequest, wallet?: any): Promise<DeploymentID> {
-    console.log('DEBUG: Starting deployment creation')
     this.provider.ensureConnected()
 
     if (!request.sdl || request.sdl.trim().length === 0) {
       throw new ValidationError('SDL is required')
     }
-    console.log('DEBUG: SDL validated')
 
     if (!wallet) {
       throw new ValidationError('Wallet is required for real deployment creation')
@@ -68,7 +66,6 @@ export class DeploymentManager {
         ? (typeof signerAccounts[0] === 'string' ? signerAccounts[0] : signerAccounts[0]?.address)
         : null
 
-      console.log('DEBUG: owner =', owner)
       if (!owner || typeof owner !== 'string' || owner.trim().length === 0) {
         throw new ValidationError(`Failed to get wallet address: ${owner}`)
       }
@@ -292,8 +289,7 @@ export class DeploymentManager {
       ])
 
       if (response.length === 0) {
-        // Simulate the close operation
-        console.log(`Closing deployment: ${deploymentId.owner}/${deploymentId.dseq}`)
+        // Deployment not found or already closed
       }
     } catch (error) {
       throw new DeploymentError('Failed to close deployment', { error })
