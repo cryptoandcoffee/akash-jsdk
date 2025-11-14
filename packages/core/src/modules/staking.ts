@@ -7,6 +7,8 @@ import {
   validateRequired
 } from '../utils/validation'
 import { StakingResult } from '../types/results'
+import { SigningStargateClient } from '@cosmjs/stargate'
+import { Registry } from '@cosmjs/proto-signing'
 
 export interface Validator {
   operatorAddress: string
@@ -89,45 +91,70 @@ export class StakingManager {
   /**
    * Delegate tokens to a validator
    */
-  async delegate(validatorAddress: string, amount: Coin, _delegatorAddress?: string): Promise<StakingResult> {
+  async delegate(validatorAddress: string, amount: Coin, wallet?: any): Promise<StakingResult> {
     this.provider.ensureConnected()
 
     validateValidatorAddress(validatorAddress)
     validateRequired(amount, 'Amount')
     validateCoinAmount(amount)
 
+    if (!wallet) {
+      throw new ValidationError('Wallet is required for delegation')
+    }
+
     try {
-      // In a real implementation, this would:
-      // 1. Create MsgDelegate message
-      // 2. Sign and broadcast the transaction
-      // For now, return mock result
-
-      // Runtime warning for mock implementation
-      if (process.env.NODE_ENV !== 'test') {
-        console.warn(
-          '⚠️  WARNING: Using mock staking delegation. ' +
-          'This will not execute real blockchain transactions. ' +
-          'Do not use in production. ' +
-          'See PRODUCTION_READINESS.md for details.'
-        )
+      // Get wallet signer
+      let actualSigner: any = wallet
+      if (wallet.connectedWallet) {
+        actualSigner = wallet.connectedWallet
+      }
+      if (actualSigner.wallet) {
+        actualSigner = actualSigner.wallet
       }
 
-      const mockResult = {
-        transactionHash: `delegate-${Date.now()}`,
-        code: 0,
-        height: Math.floor(Date.now() / 1000),
-        gasUsed: 75000n,
-        gasWanted: 90000n,
-        rawLog: 'Delegation successful'
+      // Get delegator address
+      const accounts = await actualSigner.getAccounts()
+      const delegatorAddress = accounts[0].address
+
+      // Create registry
+      const registry = new Registry()
+
+      // Connect with signer
+      const client = await SigningStargateClient.connectWithSigner(
+        (this.provider as any).config.rpcEndpoint,
+        actualSigner,
+        { registry }
+      )
+
+      // Create MsgDelegate message
+      const msg = {
+        typeUrl: '/cosmos.staking.v1beta1.MsgDelegate',
+        value: {
+          delegatorAddress,
+          validatorAddress,
+          amount
+        }
       }
 
-      // Simulate network call
-      await this.provider.getClient().searchTx([
-        { key: 'message.module', value: 'staking' },
-        { key: 'message.action', value: 'delegate' }
-      ])
+      // Broadcast transaction
+      const result = await client.signAndBroadcast(
+        delegatorAddress,
+        [msg],
+        'auto'
+      )
 
-      return mockResult
+      if (result.code !== 0) {
+        throw new NetworkError(`Transaction failed: ${result.rawLog}`)
+      }
+
+      return {
+        transactionHash: result.transactionHash,
+        code: result.code,
+        height: result.height,
+        gasUsed: BigInt(result.gasUsed),
+        gasWanted: BigInt(result.gasWanted),
+        rawLog: result.rawLog
+      }
     } catch (error) {
       throw new NetworkError('Failed to delegate tokens', { error })
     }
@@ -136,45 +163,75 @@ export class StakingManager {
   /**
    * Undelegate tokens from a validator
    */
-  async undelegate(validatorAddress: string, amount: Coin, _delegatorAddress?: string): Promise<StakingResult> {
+  async undelegate(validatorAddress: string, amount: Coin, wallet?: any): Promise<StakingResult> {
     this.provider.ensureConnected()
 
     validateValidatorAddress(validatorAddress)
     validateRequired(amount, 'Amount')
     validateCoinAmount(amount)
 
+    if (!wallet) {
+      throw new ValidationError('Wallet is required for undelegation')
+    }
 
     try {
-      // Runtime warning for mock implementation
-      if (process.env.NODE_ENV !== 'test') {
-        console.warn(
-          '⚠️  WARNING: Using mock staking undelegation. ' +
-          'This will not execute real blockchain transactions. ' +
-          'Do not use in production. ' +
-          'See PRODUCTION_READINESS.md for details.'
-        )
+      // Get wallet signer
+      let actualSigner: any = wallet
+      if (wallet.connectedWallet) {
+        actualSigner = wallet.connectedWallet
+      }
+      if (actualSigner.wallet) {
+        actualSigner = actualSigner.wallet
       }
 
+      // Get delegator address
+      const accounts = await actualSigner.getAccounts()
+      const delegatorAddress = accounts[0].address
+
+      // Create registry
+      const registry = new Registry()
+
+      // Connect with signer
+      const client = await SigningStargateClient.connectWithSigner(
+        (this.provider as any).config.rpcEndpoint,
+        actualSigner,
+        { registry }
+      )
+
+      // Create MsgUndelegate message
+      const msg = {
+        typeUrl: '/cosmos.staking.v1beta1.MsgUndelegate',
+        value: {
+          delegatorAddress,
+          validatorAddress,
+          amount
+        }
+      }
+
+      // Broadcast transaction
+      const result = await client.signAndBroadcast(
+        delegatorAddress,
+        [msg],
+        'auto'
+      )
+
+      if (result.code !== 0) {
+        throw new NetworkError(`Transaction failed: ${result.rawLog}`)
+      }
+
+      // Calculate unbonding completion time
       const currentTime = new Date()
       const unbondingTime = new Date(currentTime.getTime() + this.DEFAULT_UNBONDING_PERIOD_DAYS * 24 * 60 * 60 * 1000)
 
-      const mockResult = {
-        transactionHash: `undelegate-${Date.now()}`,
-        code: 0,
-        height: Math.floor(Date.now() / 1000),
-        gasUsed: 85000n,
-        gasWanted: 100000n,
+      return {
+        transactionHash: result.transactionHash,
+        code: result.code,
+        height: result.height,
+        gasUsed: BigInt(result.gasUsed),
+        gasWanted: BigInt(result.gasWanted),
         unbondingTime: unbondingTime.toISOString(),
-        rawLog: 'Unbonding delegation successful'
+        rawLog: result.rawLog
       }
-
-      // Simulate network call
-      await this.provider.getClient().searchTx([
-        { key: 'message.module', value: 'staking' },
-        { key: 'message.action', value: 'begin_unbonding' }
-      ])
-
-      return mockResult
     } catch (error) {
       throw new NetworkError('Failed to undelegate tokens', { error })
     }
@@ -187,7 +244,7 @@ export class StakingManager {
     srcValidator: string,
     dstValidator: string,
     amount: Coin,
-    _delegatorAddress?: string
+    wallet?: any
   ): Promise<StakingResult> {
     this.provider.ensureConnected()
 
@@ -200,73 +257,90 @@ export class StakingManager {
       throw new ValidationError('Source and destination validators must be different')
     }
 
+    if (!wallet) {
+      throw new ValidationError('Wallet is required for redelegation')
+    }
+
     try {
-      const mockResult = {
-        transactionHash: `redelegate-${Date.now()}`,
-        code: 0,
-        height: Math.floor(Date.now() / 1000),
-        gasUsed: 95000n,
-        gasWanted: 110000n,
-        rawLog: 'Redelegation successful'
+      // Get wallet signer
+      let actualSigner: any = wallet
+      if (wallet.connectedWallet) {
+        actualSigner = wallet.connectedWallet
+      }
+      if (actualSigner.wallet) {
+        actualSigner = actualSigner.wallet
       }
 
-      // Simulate network call
-      await this.provider.getClient().searchTx([
-        { key: 'message.module', value: 'staking' },
-        { key: 'message.action', value: 'begin_redelegate' }
-      ])
+      // Get delegator address
+      const accounts = await actualSigner.getAccounts()
+      const delegatorAddress = accounts[0].address
 
-      return mockResult
+      // Create registry
+      const registry = new Registry()
+
+      // Connect with signer
+      const client = await SigningStargateClient.connectWithSigner(
+        (this.provider as any).config.rpcEndpoint,
+        actualSigner,
+        { registry }
+      )
+
+      // Create MsgBeginRedelegate message
+      const msg = {
+        typeUrl: '/cosmos.staking.v1beta1.MsgBeginRedelegate',
+        value: {
+          delegatorAddress,
+          validatorSrcAddress: srcValidator,
+          validatorDstAddress: dstValidator,
+          amount
+        }
+      }
+
+      // Broadcast transaction
+      const result = await client.signAndBroadcast(
+        delegatorAddress,
+        [msg],
+        'auto'
+      )
+
+      if (result.code !== 0) {
+        throw new NetworkError(`Transaction failed: ${result.rawLog}`)
+      }
+
+      return {
+        transactionHash: result.transactionHash,
+        code: result.code,
+        height: result.height,
+        gasUsed: BigInt(result.gasUsed),
+        gasWanted: BigInt(result.gasWanted),
+        rawLog: result.rawLog
+      }
     } catch (error) {
       throw new NetworkError('Failed to redelegate tokens', { error })
     }
   }
 
   /**
-   * Get all validators or filter by status
+   * Get all validators or filter by status from the blockchain
+   * Queries the Cosmos staking module API endpoint
    */
   async getValidators(status?: 'BOND_STATUS_BONDED' | 'BOND_STATUS_UNBONDED' | 'BOND_STATUS_UNBONDING'): Promise<Validator[]> {
     this.provider.ensureConnected()
 
     try {
-      // Simulate network call
-      const response = await this.provider.getClient().searchTx([
-        { key: 'message.module', value: 'staking' }
-      ])
+      const apiEndpoint = (this.provider as any).config.apiEndpoint
+      const statusParam = status ? `?status=${status}` : ''
 
-      // Generate mock validators based on response
-      const validatorCount = Math.min(response.length || 5, 10)
-      const validators: Validator[] = []
+      const response = await fetch(
+        `${apiEndpoint}/cosmos/staking/v1beta1/validators${statusParam}`
+      )
 
-      for (let i = 0; i < validatorCount; i++) {
-        const validatorStatus = status || (i % 3 === 0 ? 'BOND_STATUS_UNBONDING' : 'BOND_STATUS_BONDED')
-
-        validators.push({
-          operatorAddress: `akashvaloper1${this.generateMockAddress()}`,
-          jailed: false,
-          status: validatorStatus,
-          tokens: `${(i + 1) * 1000000}000000`,
-          delegatorShares: `${(i + 1) * 1000000}000000.000000000000000000`,
-          description: {
-            moniker: `Validator ${i + 1}`,
-            identity: `identity${i + 1}`,
-            website: `https://validator${i + 1}.com`,
-            securityContact: `security@validator${i + 1}.com`,
-            details: `Test validator ${i + 1}`
-          },
-          commission: {
-            commissionRates: {
-              rate: '0.100000000000000000',
-              maxRate: '0.200000000000000000',
-              maxChangeRate: '0.010000000000000000'
-            },
-            updateTime: new Date().toISOString()
-          },
-          minSelfDelegation: '1000000'
-        })
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
       }
 
-      return validators
+      const data = await response.json()
+      return data.validators || []
     } catch (error) {
       throw new NetworkError('Failed to get validators', { error })
     }
@@ -280,40 +354,22 @@ export class StakingManager {
 
     validateValidatorAddress(address)
 
-    try{
-      // Simulate network call
-      const response = await this.provider.getClient().searchTx([
-        { key: 'message.module', value: 'staking' },
-        { key: 'message.validator', value: address }
-      ])
+    try {
+      const apiEndpoint = (this.provider as any).config.apiEndpoint
 
-      if (response.length === 0) {
-        throw new ValidationError(`Validator ${address} not found`)
+      const response = await fetch(
+        `${apiEndpoint}/cosmos/staking/v1beta1/validators/${address}`
+      )
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new ValidationError(`Validator ${address} not found`)
+        }
+        throw new Error(`API request failed: ${response.status}`)
       }
 
-      return {
-        operatorAddress: address,
-        jailed: false,
-        status: 'BOND_STATUS_BONDED',
-        tokens: '5000000000000',
-        delegatorShares: '5000000000000.000000000000000000',
-        description: {
-          moniker: 'Test Validator',
-          identity: 'test-identity',
-          website: 'https://testvalidator.com',
-          securityContact: 'security@testvalidator.com',
-          details: 'A test validator for Akash Network'
-        },
-        commission: {
-          commissionRates: {
-            rate: '0.100000000000000000',
-            maxRate: '0.200000000000000000',
-            maxChangeRate: '0.010000000000000000'
-          },
-          updateTime: new Date().toISOString()
-        },
-        minSelfDelegation: '1000000'
-      }
+      const data = await response.json()
+      return data.validator
     } catch (error) {
       if (error instanceof ValidationError) {
         throw error
@@ -339,24 +395,66 @@ export class StakingManager {
     }
 
     try {
-      // Simulate network call
-      const response = await this.provider.getClient().searchTx([
-        { key: 'message.module', value: 'staking' },
-        { key: 'message.sender', value: address }
-      ])
+      const apiEndpoint = (this.provider as any).config.apiEndpoint
 
-      // Generate mock delegations
-      return response.slice(0, 5).map((_, index) => ({
-        delegatorAddress: address,
-        validatorAddress: `akashvaloper1${this.generateMockAddress()}`,
-        shares: `${(index + 1) * 1000000}.000000000000000000`,
-        balance: {
-          denom: 'uakt',
-          amount: `${(index + 1) * 1000000}`
-        }
+      const response = await fetch(
+        `${apiEndpoint}/cosmos/staking/v1beta1/delegations/${address}`
+      )
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data = await response.json()
+      return (data.delegation_responses || []).map((dr: any) => ({
+        delegatorAddress: dr.delegation.delegator_address,
+        validatorAddress: dr.delegation.validator_address,
+        shares: dr.delegation.shares,
+        balance: dr.balance
       }))
     } catch (error) {
       throw new NetworkError('Failed to get delegations', { error })
+    }
+  }
+
+  /**
+   * Get a specific delegation between a delegator and validator
+   */
+  async getDelegation(delegatorAddress: string, validatorAddress: string): Promise<DelegationResponse | null> {
+    this.provider.ensureConnected()
+
+    if (!delegatorAddress || !delegatorAddress.startsWith('akash1')) {
+      throw new ValidationError('Invalid delegator address format')
+    }
+
+    validateValidatorAddress(validatorAddress)
+
+    try {
+      const apiEndpoint = (this.provider as any).config.apiEndpoint
+
+      const response = await fetch(
+        `${apiEndpoint}/cosmos/staking/v1beta1/validators/${validatorAddress}/delegations/${delegatorAddress}`
+      )
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null
+        }
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data = await response.json()
+      return {
+        delegation: {
+          delegatorAddress: data.delegation_response.delegation.delegator_address,
+          validatorAddress: data.delegation_response.delegation.validator_address,
+          shares: data.delegation_response.delegation.shares,
+          balance: data.delegation_response.balance
+        },
+        balance: data.delegation_response.balance
+      }
+    } catch (error) {
+      throw new NetworkError('Failed to get delegation', { error })
     }
   }
 
@@ -467,33 +565,23 @@ export class StakingManager {
     }
 
     try {
-      // Simulate network call
-      const response = await this.provider.getClient().searchTx([
-        { key: 'message.module', value: 'distribution' },
-        { key: 'message.sender', value: address }
-      ])
+      const apiEndpoint = (this.provider as any).config.apiEndpoint
 
-      // Generate mock rewards based on delegations
-      const rewards = response.slice(0, 3).map((_, index) => ({
-        validatorAddress: `akashvaloper1${this.generateMockAddress()}`,
-        reward: [
-          {
-            denom: 'uakt',
-            amount: `${(index + 1) * 5000}`
-          }
-        ]
-      }))
+      const response = await fetch(
+        `${apiEndpoint}/cosmos/distribution/v1beta1/delegators/${address}/rewards`
+      )
 
-      const totalAmount = rewards.reduce((sum, r) => sum + parseInt(r.reward[0].amount), 0)
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
 
+      const data = await response.json()
       return {
-        rewards,
-        total: [
-          {
-            denom: 'uakt',
-            amount: totalAmount.toString()
-          }
-        ]
+        rewards: (data.rewards || []).map((r: any) => ({
+          validatorAddress: r.validator_address,
+          reward: r.reward || []
+        })),
+        total: data.total || []
       }
     } catch (error) {
       throw new NetworkError('Failed to get rewards', { error })
@@ -503,28 +591,67 @@ export class StakingManager {
   /**
    * Withdraw staking rewards from a validator
    */
-  async withdrawRewards(validatorAddress: string, _delegatorAddress?: string): Promise<StakingResult> {
+  async withdrawRewards(validatorAddress: string, wallet?: any): Promise<StakingResult> {
     this.provider.ensureConnected()
 
     validateValidatorAddress(validatorAddress)
 
+    if (!wallet) {
+      throw new ValidationError('Wallet is required for withdrawing rewards')
+    }
+
     try {
-      const mockResult = {
-        transactionHash: `withdraw-${Date.now()}`,
-        code: 0,
-        height: Math.floor(Date.now() / 1000),
-        gasUsed: 65000n,
-        gasWanted: 80000n,
-        rawLog: 'Rewards withdrawn successfully'
+      // Get wallet signer
+      let actualSigner: any = wallet
+      if (wallet.connectedWallet) {
+        actualSigner = wallet.connectedWallet
+      }
+      if (actualSigner.wallet) {
+        actualSigner = actualSigner.wallet
       }
 
-      // Simulate network call
-      await this.provider.getClient().searchTx([
-        { key: 'message.module', value: 'distribution' },
-        { key: 'message.action', value: 'withdraw_delegator_reward' }
-      ])
+      // Get delegator address
+      const accounts = await actualSigner.getAccounts()
+      const delegatorAddress = accounts[0].address
 
-      return mockResult
+      // Create registry
+      const registry = new Registry()
+
+      // Connect with signer
+      const client = await SigningStargateClient.connectWithSigner(
+        (this.provider as any).config.rpcEndpoint,
+        actualSigner,
+        { registry }
+      )
+
+      // Create MsgWithdrawDelegatorReward message
+      const msg = {
+        typeUrl: '/cosmos.distribution.v1beta1.MsgWithdrawDelegatorReward',
+        value: {
+          delegatorAddress,
+          validatorAddress
+        }
+      }
+
+      // Broadcast transaction
+      const result = await client.signAndBroadcast(
+        delegatorAddress,
+        [msg],
+        'auto'
+      )
+
+      if (result.code !== 0) {
+        throw new NetworkError(`Transaction failed: ${result.rawLog}`)
+      }
+
+      return {
+        transactionHash: result.transactionHash,
+        code: result.code,
+        height: result.height,
+        gasUsed: BigInt(result.gasUsed),
+        gasWanted: BigInt(result.gasWanted),
+        rawLog: result.rawLog
+      }
     } catch (error) {
       throw new NetworkError('Failed to withdraw rewards', { error })
     }

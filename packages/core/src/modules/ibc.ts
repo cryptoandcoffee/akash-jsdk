@@ -10,6 +10,8 @@ import {
   validateRequired
 } from '../utils/validation'
 import { IBCTransferResult } from '../types/results'
+import { SigningStargateClient } from '@cosmjs/stargate'
+import { Registry } from '@cosmjs/proto-signing'
 
 
 export interface Height {
@@ -24,6 +26,7 @@ export interface IBCTransferParams {
   timeoutHeight?: Height
   timeoutTimestamp?: bigint
   memo?: string
+  wallet?: any
 }
 
 export interface Channel {
@@ -55,10 +58,6 @@ export class IBCManager {
 
   /**
    * Initiate an IBC transfer to another chain
-   *
-   * @warning MOCK IMPLEMENTATION - Does not execute actual IBC transfer on blockchain
-   * @todo Implement real IBC MsgTransfer message creation and broadcasting
-   * @todo Add proper IBC client integration from @cosmjs/stargate
    */
   async transfer(params: IBCTransferParams): Promise<IBCTransferResult> {
     this.provider.ensureConnected()
@@ -85,38 +84,70 @@ export class IBCManager {
       throw new ValidationError('Timeout must be in the future')
     }
 
+    if (!params.wallet) {
+      throw new ValidationError('Wallet is required for IBC transfer')
+    }
+
     try {
-      // In a real implementation, this would:
-      // 1. Create MsgTransfer message
-      // 2. Sign and broadcast the transaction
-      // 3. Return the transaction result
-
-      // Runtime warning for mock implementation
-      if (process.env.NODE_ENV !== 'test') {
-        console.warn(
-          '⚠️  WARNING: Using mock IBC transfer. ' +
-          'This will not execute real IBC token transfers. ' +
-          'Do not use in production. ' +
-          'See PRODUCTION_READINESS.md for details.'
-        )
+      // Get wallet signer
+      let actualSigner: any = params.wallet
+      if (params.wallet.connectedWallet) {
+        actualSigner = params.wallet.connectedWallet
+      }
+      if (actualSigner.wallet) {
+        actualSigner = actualSigner.wallet
       }
 
-      // For now, we'll mock the transaction
-      const mockTx = await this.provider.getClient().searchTx([
-        { key: 'message.module', value: 'ibc' },
-        { key: 'message.action', value: 'transfer' }
-      ])
+      // Get sender address
+      const accounts = await actualSigner.getAccounts()
+      const sender = accounts[0].address
 
-      // Simulate transaction result
-      const result: IBCTransferResult = {
-        transactionHash: mockTx.length > 0 ? mockTx[0].hash : `ibc-transfer-${Date.now()}`,
-        code: 0,
-        height: mockTx.length > 0 ? mockTx[0].height : 12345,
-        gasUsed: 150000n,
-        gasWanted: 200000n
+      // Create registry
+      const registry = new Registry()
+
+      // Connect with signer
+      const client = await SigningStargateClient.connectWithSigner(
+        (this.provider as any).config.rpcEndpoint,
+        actualSigner,
+        { registry }
+      )
+
+      // Create MsgTransfer message
+      const msg = {
+        typeUrl: '/ibc.applications.transfer.v1.MsgTransfer',
+        value: {
+          sourcePort: 'transfer',
+          sourceChannel: params.sourceChannel,
+          token: params.token,
+          sender,
+          receiver: params.receiver,
+          timeoutHeight: params.timeoutHeight || {
+            revisionNumber: 0n,
+            revisionHeight: 0n
+          },
+          timeoutTimestamp,
+          memo: params.memo || ''
+        }
       }
 
-      return result
+      // Broadcast transaction
+      const result = await client.signAndBroadcast(
+        sender,
+        [msg],
+        'auto'
+      )
+
+      if (result.code !== 0) {
+        throw new NetworkError(`Transaction failed: ${result.rawLog}`)
+      }
+
+      return {
+        transactionHash: result.transactionHash,
+        code: result.code,
+        height: result.height,
+        gasUsed: BigInt(result.gasUsed),
+        gasWanted: BigInt(result.gasWanted)
+      }
     } catch (error) {
       throw new NetworkError('Failed to execute IBC transfer', { error })
     }
@@ -124,53 +155,34 @@ export class IBCManager {
 
   /**
    * Get all IBC channels
-   *
-   * @warning MOCK IMPLEMENTATION - Returns mock channel data, not actual IBC channels
-   * @todo Implement real channel queries using ibc.core.channel.v1.Query/Channels
    */
   async getChannels(): Promise<Channel[]> {
     this.provider.ensureConnected()
 
     try {
-      // In a real implementation, this would query the IBC channel module
-      // For now, return mock data based on transactions
-      const response = await this.provider.getClient().searchTx([
-        { key: 'message.module', value: 'ibc' }
-      ])
+      const apiEndpoint = (this.provider as any).config.apiEndpoint
 
-      // Generate mock channels based on transaction results
-      const channels: Channel[] = response.slice(0, 5).map((_, index) => ({
-        id: `channel-${index}`,
-        portId: 'transfer',
-        state: 'STATE_OPEN',
-        ordering: 'ORDER_UNORDERED',
-        counterparty: {
-          portId: 'transfer',
-          channelId: `channel-${index + 100}`
-        },
-        connectionHops: [`connection-${index}`],
-        version: 'ics20-1'
-      }))
+      const response = await fetch(
+        `${apiEndpoint}/ibc/core/channel/v1/channels`
+      )
 
-      // If no transactions, return default channels
-      if (channels.length === 0) {
-        return [
-          {
-            id: 'channel-0',
-            portId: 'transfer',
-            state: 'STATE_OPEN',
-            ordering: 'ORDER_UNORDERED',
-            counterparty: {
-              portId: 'transfer',
-              channelId: 'channel-100'
-            },
-            connectionHops: ['connection-0'],
-            version: 'ics20-1'
-          }
-        ]
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
       }
 
-      return channels
+      const data = await response.json()
+      return (data.channels || []).map((ch: any) => ({
+        id: ch.channel_id,
+        portId: ch.port_id,
+        state: ch.state,
+        ordering: ch.ordering,
+        counterparty: {
+          portId: ch.counterparty.port_id,
+          channelId: ch.counterparty.channel_id
+        },
+        connectionHops: ch.connection_hops || [],
+        version: ch.version
+      }))
     } catch (error) {
       throw new NetworkError('Failed to get IBC channels', { error })
     }
@@ -178,11 +190,8 @@ export class IBCManager {
 
   /**
    * Get details of a specific IBC channel
-   *
-   * @warning MOCK IMPLEMENTATION - Returns mock channel info, not actual IBC channel state
-   * @todo Implement real channel query using ibc.core.channel.v1.Query/Channel
    */
-  async getChannel(channelId: string): Promise<Channel> {
+  async getChannel(channelId: string, portId: string = 'transfer'): Promise<Channel> {
     this.provider.ensureConnected()
 
     if (!channelId) {
@@ -190,38 +199,43 @@ export class IBCManager {
     }
 
     try {
-      // In a real implementation, this would query the specific channel
-      const channels = await this.getChannels()
-      const channel = channels.find(ch => ch.id === channelId)
+      const apiEndpoint = (this.provider as any).config.apiEndpoint
 
-      if (!channel) {
-        // Return mock channel for the requested ID
-        return {
-          id: channelId,
-          portId: 'transfer',
-          state: 'STATE_OPEN',
-          ordering: 'ORDER_UNORDERED',
-          counterparty: {
-            portId: 'transfer',
-            channelId: `channel-${parseInt(channelId.replace('channel-', '')) + 100}`
-          },
-          connectionHops: [`connection-${channelId.replace('channel-', '')}`],
-          version: 'ics20-1'
+      const response = await fetch(
+        `${apiEndpoint}/ibc/core/channel/v1/channels/${channelId}/ports/${portId}`
+      )
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new ValidationError(`Channel ${channelId} not found`)
         }
+        throw new Error(`API request failed: ${response.status}`)
       }
 
-      return channel
+      const data = await response.json()
+      const ch = data.channel
+      return {
+        id: channelId,
+        portId,
+        state: ch.state,
+        ordering: ch.ordering,
+        counterparty: {
+          portId: ch.counterparty.port_id,
+          channelId: ch.counterparty.channel_id
+        },
+        connectionHops: ch.connection_hops || [],
+        version: ch.version
+      }
     } catch (error) {
+      if (error instanceof ValidationError) {
+        throw error
+      }
       throw new NetworkError('Failed to get IBC channel', { error })
     }
   }
 
   /**
-   * Check the status of an IBC transfer
-   *
-   * @warning MOCK IMPLEMENTATION - Returns mock transfer status, not actual IBC packet status
-   * @todo Implement real transfer status tracking via IBC acknowledgement events
-   * @todo Add packet acknowledgement monitoring
+   * Check the status of an IBC transfer by querying transaction details and events
    */
   async getTransferStatus(txHash: string): Promise<TransferStatus> {
     this.provider.ensureConnected()
@@ -231,16 +245,15 @@ export class IBCManager {
     }
 
     try {
-      // In a real implementation, this would:
-      // 1. Query the transaction by hash
-      // 2. Check for IBC acknowledgement events
-      // 3. Determine if transfer succeeded, failed, or timed out
+      // Connect to query the blockchain
+      const client = await SigningStargateClient.connect(
+        (this.provider as any).config.rpcEndpoint
+      )
 
-      const response = await this.provider.getClient().searchTx([
-        { key: 'tx.hash', value: txHash }
-      ])
+      // Get the transaction from the chain
+      const tx = await client.getTx(txHash)
 
-      if (response.length === 0) {
+      if (!tx) {
         return {
           txHash,
           status: 'pending',
@@ -248,19 +261,45 @@ export class IBCManager {
         }
       }
 
-      const txResult = response[0]
+      // Get block data for timestamp
+      const block = await client.getBlock(tx.height)
 
-      // Mock status based on transaction code
-      const status: TransferStatus = {
-        txHash,
-        status: txResult.code === 0 ? 'success' : 'failed',
-        height: txResult.height,
-        timestamp: new Date().toISOString(),
-        acknowledgement: txResult.code === 0 ? 'AQ==' : undefined, // Base64 encoded "01"
-        error: txResult.code !== 0 ? 'Transfer failed' : undefined
+      // Check for IBC acknowledgement events in the transaction logs
+      let acknowledgement: string | undefined
+      let hasAckEvent = false
+
+      if (tx.events) {
+        for (const event of tx.events) {
+          if (event.type === 'acknowledge_packet' || event.type === 'write_acknowledgement') {
+            hasAckEvent = true
+            const ackAttr = event.attributes?.find((attr: any) =>
+              attr.key === 'packet_ack' || attr.key === 'acknowledgement'
+            )
+            if (ackAttr) {
+              acknowledgement = ackAttr.value
+            }
+          }
+        }
       }
 
-      return status
+      // Determine status based on transaction code and events
+      let status: 'pending' | 'success' | 'failed' | 'timeout'
+      if (tx.code !== 0) {
+        status = 'failed'
+      } else if (hasAckEvent) {
+        status = 'success'
+      } else {
+        status = 'pending'
+      }
+
+      return {
+        txHash,
+        status,
+        height: tx.height,
+        timestamp: block.header.time,
+        acknowledgement,
+        error: tx.code !== 0 ? tx.rawLog : undefined
+      }
     } catch (error) {
       throw new NetworkError('Failed to get transfer status', { error })
     }
@@ -349,9 +388,6 @@ export class IBCManager {
 
   /**
    * Get IBC denom trace for a token
-   *
-   * @warning MOCK IMPLEMENTATION - Returns hardcoded mock denom trace
-   * @todo Implement real denom trace queries from IBC transfer module
    */
   async getDenomTrace(denom: string): Promise<{
     path: string
@@ -370,13 +406,24 @@ export class IBCManager {
     }
 
     try {
-      // In a real implementation, this would query the IBC denom trace
-      // For now, return mock data
+      const apiEndpoint = (this.provider as any).config.apiEndpoint
       const hash = denom.replace('ibc/', '')
 
+      const response = await fetch(
+        `${apiEndpoint}/ibc/apps/transfer/v1/denom_traces/${hash}`
+      )
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null
+        }
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data = await response.json()
       return {
-        path: 'transfer/channel-0',
-        baseDenom: 'uakt',
+        path: data.denom_trace.path,
+        baseDenom: data.denom_trace.base_denom,
         hash
       }
     } catch (error) {

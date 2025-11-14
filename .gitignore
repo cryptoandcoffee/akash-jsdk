@@ -85,3 +85,5 @@ packages/protobuf/node/
 packages/protobuf/provider/
 node/
 provider/
+node-repo/
+provider-repo/
