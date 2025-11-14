@@ -6,12 +6,12 @@
 
 ### 1. Install
 ```bash
-npm install cryptoandcoffee/akash-jsdk-core
+npm install @cryptoandcoffee/akash-jsdk-core
 ```
 
 ### 2. Connect & Deploy
 ```javascript
-import { AkashSDK } from 'cryptoandcoffee/akash-jsdk-core'
+import { AkashSDK } from '@cryptoandcoffee/akash-jsdk-core'
 
 const sdk = new AkashSDK({
   rpcEndpoint: 'https://rpc.akashedge.com:443',
@@ -51,7 +51,7 @@ deployments.forEach(d => console.log(`${d.id.dseq}: ${d.state}`))
 
 ### Connect Your Wallet
 ```javascript
-import { KeplrWallet } from 'cryptoandcoffee/akash-jsdk-core'
+import { KeplrWallet } from '@cryptoandcoffee/akash-jsdk-core'
 
 await sdk.wallet.connectWallet(new KeplrWallet())
 const accounts = await sdk.wallet.getAccounts()
@@ -61,12 +61,12 @@ const accounts = await sdk.wallet.getAccounts()
 
 ### 1. Install React Package
 ```bash
-npm install cryptoandcoffee/akash-jsdk-react
+npm install @cryptoandcoffee/akash-jsdk-react
 ```
 
 ### 2. Wrap Your App
 ```jsx
-import { AkashProvider } from 'cryptoandcoffee/akash-jsdk-react'
+import { AkashProvider } from '@cryptoandcoffee/akash-jsdk-react'
 
 function App() {
   return (
@@ -79,7 +79,7 @@ function App() {
 
 ### 3. Use Hooks
 ```jsx
-import { useDeployments } from 'cryptoandcoffee/akash-jsdk-react'
+import { useDeployments } from '@cryptoandcoffee/akash-jsdk-react'
 
 function MyDeploymentApp() {
   const { deployments, createDeployment, loading } = useDeployments('akash1...')
@@ -101,7 +101,7 @@ function MyDeploymentApp() {
 
 ### 1. Install CLI
 ```bash
-npm install -g cryptoandcoffee/akash-jsdk-cli
+npm install -g @cryptoandcoffee/akash-jsdk-cli
 ```
 
 ### 2. Initialize Project

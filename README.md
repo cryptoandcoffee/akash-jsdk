@@ -9,12 +9,12 @@ A modern, fully-featured JavaScript SDK for Akash Network built from scratch wit
 - **React Integration**: Custom hooks and provider for seamless React development  
 - **CLI Tools**: Command-line interface for deployment and management operations
 - **Custom Protobuf**: Optimized protobuf implementation using @bufbuild/protobuf
-- **Comprehensive Testing**: Enterprise-grade testing with 789 meaningful tests across all packages
+- **Comprehensive Testing**: Enterprise-grade testing with 1,280 tests passing across all packages
 - **Performance First**: ES2022 target, ESM modules, incremental builds
 
-## What's New in v3.0 - Mainnet 14 Support
+## What's New in v3.5.0 - Major Dependency Updates
 
-Version 3.0 brings full support for Akash Network Mainnet 14, introducing modern authentication and enhanced escrow capabilities:
+Version 3.5.0 brings major dependency updates and production-ready implementations across all modules:
 
 ### JWT Authentication (AEP-63)
 Replace certificate-based authentication with modern JWT tokens for simplified provider communication. Features include:
@@ -544,21 +544,21 @@ pnpm run typecheck
 ## 📊 Comprehensive Test Results
 
 ### Overall Statistics
-- **Total Tests**: 1,145 tests passing
-- **Test Files**: 70+ comprehensive test suites
+- **Total Tests**: 1,280 tests passing
+- **Test Files**: 53 comprehensive test suites
 - **Coverage**: 100% statements, functions, and lines across all packages
 - **Branch Coverage**: 100% (3 packages), 98.15% (core package)
-- **Test Duration**: ~15 seconds total
+- **Test Duration**: ~6 seconds total
 - **Source Lines**: 25,000+ lines of production code
 
 ### Package-Level Coverage
 
 | Package | Tests | Coverage | Features Tested |
 |---------|-------|----------|----------------|
-| **Core** | 700+ tests | 100% statements/functions/lines, 98.15% branches | SDK modules, JWT auth, multi-depositor escrow, lease tracking, providers, error handling |
-| **CLI** | 183 tests | 100% all metrics | Commands, config management, CLI execution, subprocess testing |
-| **React** | 145 tests | 100% all metrics | Hooks, context, component lifecycle, error boundaries |
-| **Protobuf** | 117 tests | 100% all metrics | Type generation, serialization, Mainnet 14 types, error conditions |
+| **Core** | 888 tests | 100% statements/functions/lines, 98.15% branches | SDK modules, JWT auth, multi-depositor escrow, lease tracking, providers, batch operations, IBC, staking, error handling |
+| **CLI** | 148 tests | 100% all metrics | Commands, config management, CLI execution, subprocess testing |
+| **React** | 141 tests | 100% all metrics | Hooks, context, component lifecycle, error boundaries |
+| **Protobuf** | 103 tests | 100% all metrics | Type generation, serialization, Mainnet 14 types, error conditions |
 
 ### Testing Infrastructure
 

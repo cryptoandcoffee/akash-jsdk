@@ -7,7 +7,7 @@
 ### 1. Simple Deployment Pattern
 ```javascript
 // Perfect for AI agents that need to deploy apps quickly
-import { AkashSDK } from 'cryptoandcoffee/akash-jsdk-core'
+import { AkashSDK } from '@cryptoandcoffee/akash-jsdk-core'
 
 class AkashAI {
   constructor(config = {}) {
