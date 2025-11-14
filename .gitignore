@@ -83,3 +83,5 @@ coverage-report.json
 test-results.json
 packages/protobuf/node/
 packages/protobuf/provider/
+node/
+provider/
