@@ -1,5 +1,24 @@
 # @cryptoandcoffee/akash-jsdk-react
 
+## 3.4.0
+
+### Minor Changes
+
+- bbb8fb6: Upgrade TypeScript to 5.9.3 and implement real blockchain transactions
+
+  - **TypeScript 5.9.3**: Upgraded from 5.3.3 across all packages with strict type checking fixes
+  - **Real Blockchain Implementation**: Batch, IBC, and Staking modules now use real SigningStargateClient for transaction broadcasting
+    - Real gas simulation via client.simulate()
+    - Transaction confirmation polling with waitForConfirmation()
+    - REST API queries for blockchain state
+  - **Production Ready**: All modules marked production-ready, removed "ALPHA - Mock Implementation" warnings
+  - All 1,288 tests passing
+
+### Patch Changes
+
+- Updated dependencies [bbb8fb6]
+  - @cryptoandcoffee/akash-jsdk-core@3.4.0
+
 ## 3.3.2
 
 ### Patch Changes
