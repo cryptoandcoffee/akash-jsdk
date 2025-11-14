@@ -54,9 +54,6 @@ function generateIndexFile(generatedDir) {
 // This file exports all generated protobuf types for tree-shaking support
 
 ${exports.join('\n')}
-
-// Re-export protobuf runtime for convenience
-export { Message, type MessageType } from '@bufbuild/protobuf';
 `
 }
 
@@ -69,121 +66,188 @@ function createFallbackTypes(generatedDir) {
   mkdirSync(deploymentDir, { recursive: true })
   mkdirSync(marketDir, { recursive: true })
   
-  // Create deployment types
-  const deploymentTypes = `// Fallback deployment types
-import { proto3, ScalarType } from '@bufbuild/protobuf';
-
+  // Create deployment types using @bufbuild/protobuf v2 API
+  // In v2, we use plain TypeScript types (no classes/makeMessageType)
+  const deploymentTypes = `// Fallback deployment types for @bufbuild/protobuf v2
+/**
+ * Deployment State enum
+ * @generated from enum akash.deployment.v1beta3.Deployment.State
+ */
 export enum Deployment_State {
+  /**
+   * @generated from enum value: invalid = 0;
+   */
   invalid = 0,
+
+  /**
+   * @generated from enum value: active = 1;
+   */
   active = 1,
+
+  /**
+   * @generated from enum value: closed = 2;
+   */
   closed = 2,
 }
 
-// Create enum type for Deployment_State
-export const Deployment_StateEnum = proto3.makeEnumType(
-  'akash.deployment.v1beta3.Deployment.State',
-  [
-    { no: 0, name: 'invalid' },
-    { no: 1, name: 'active' },
-    { no: 2, name: 'closed' },
-  ]
-);
+/**
+ * DeploymentID stores owner and sequence number
+ * @generated from message akash.deployment.v1beta3.DeploymentID
+ */
+export type DeploymentID = {
+  /**
+   * @generated from field: string owner = 1;
+   */
+  owner: string;
 
-// DeploymentID message type
-export const DeploymentID = proto3.makeMessageType(
-  'akash.deployment.v1beta3.DeploymentID',
-  () => [
-    { no: 1, name: 'owner', kind: 'scalar', T: ScalarType.STRING },
-    { no: 2, name: 'dseq', kind: 'scalar', T: ScalarType.UINT64 },
-  ]
-);
+  /**
+   * @generated from field: uint64 dseq = 2;
+   */
+  dseq: bigint;
+};
 
-export type DeploymentID = InstanceType<typeof DeploymentID>;
+/**
+ * Deployment stores deployment state
+ * @generated from message akash.deployment.v1beta3.Deployment
+ */
+export type Deployment = {
+  /**
+   * @generated from field: akash.deployment.v1beta3.DeploymentID deployment_id = 1;
+   */
+  deploymentId?: DeploymentID;
 
-// Deployment message type  
-export const Deployment = proto3.makeMessageType(
-  'akash.deployment.v1beta3.Deployment',
-  () => [
-    { no: 1, name: 'deployment_id', kind: 'message', T: DeploymentID },
-    { no: 2, name: 'state', kind: 'enum', T: Deployment_StateEnum },
-    { no: 3, name: 'version', kind: 'scalar', T: ScalarType.BYTES },
-    { no: 4, name: 'created_at', kind: 'scalar', T: ScalarType.INT64 },
-  ]
-);
+  /**
+   * @generated from field: akash.deployment.v1beta3.Deployment.State state = 2;
+   */
+  state: Deployment_State;
 
-export type Deployment = InstanceType<typeof Deployment>;
+  /**
+   * @generated from field: bytes version = 3;
+   */
+  version: Uint8Array;
+
+  /**
+   * @generated from field: int64 created_at = 4;
+   */
+  createdAt: bigint;
+};
 `
   
-  // Create market types  
-  const marketTypes = `// Fallback market types
-import { proto3, ScalarType } from '@bufbuild/protobuf';
-
+  // Create market types using @bufbuild/protobuf v2 API
+  // In v2, we use plain TypeScript types (no classes/makeMessageType)
+  const marketTypes = `// Fallback market types for @bufbuild/protobuf v2
+/**
+ * Lease State enum
+ * @generated from enum akash.market.v1beta4.Lease.State
+ */
 export enum Lease_State {
+  /**
+   * @generated from enum value: invalid = 0;
+   */
   invalid = 0,
+
+  /**
+   * @generated from enum value: active = 1;
+   */
   active = 1,
+
+  /**
+   * @generated from enum value: insufficient_funds = 2;
+   */
   insufficient_funds = 2,
+
+  /**
+   * @generated from enum value: closed = 3;
+   */
   closed = 3,
 }
 
-// Create enum type for Lease_State
-export const Lease_StateEnum = proto3.makeEnumType(
-  'akash.market.v1beta4.Lease.State',
-  [
-    { no: 0, name: 'invalid' },
-    { no: 1, name: 'active' },
-    { no: 2, name: 'insufficient_funds' },
-    { no: 3, name: 'closed' },
-  ]
-);
+/**
+ * LeaseID stores bid details
+ * @generated from message akash.market.v1beta4.LeaseID
+ */
+export type LeaseID = {
+  /**
+   * @generated from field: string owner = 1;
+   */
+  owner: string;
 
-// LeaseID message type
-export const LeaseID = proto3.makeMessageType(
-  'akash.market.v1beta4.LeaseID',
-  () => [
-    { no: 1, name: 'owner', kind: 'scalar', T: ScalarType.STRING },
-    { no: 2, name: 'dseq', kind: 'scalar', T: ScalarType.UINT64 },
-    { no: 3, name: 'gseq', kind: 'scalar', T: ScalarType.UINT32 },
-    { no: 4, name: 'oseq', kind: 'scalar', T: ScalarType.UINT32 },
-    { no: 5, name: 'provider', kind: 'scalar', T: ScalarType.STRING },
-  ]
-);
+  /**
+   * @generated from field: uint64 dseq = 2;
+   */
+  dseq: bigint;
 
-export type LeaseID = InstanceType<typeof LeaseID>;
+  /**
+   * @generated from field: uint32 gseq = 3;
+   */
+  gseq: number;
 
-// DecCoin message type (Cosmos SDK)
-export const DecCoin = proto3.makeMessageType(
-  'cosmos.base.v1beta1.DecCoin',
-  () => [
-    { no: 1, name: 'denom', kind: 'scalar', T: ScalarType.STRING },
-    { no: 2, name: 'amount', kind: 'scalar', T: ScalarType.STRING },
-  ]
-);
+  /**
+   * @generated from field: uint32 oseq = 4;
+   */
+  oseq: number;
 
-export type DecCoin = InstanceType<typeof DecCoin>;
+  /**
+   * @generated from field: string provider = 5;
+   */
+  provider: string;
+};
 
-// Lease message type
-export const Lease = proto3.makeMessageType(
-  'akash.market.v1beta4.Lease',
-  () => [
-    { no: 1, name: 'lease_id', kind: 'message', T: LeaseID },
-    { no: 2, name: 'state', kind: 'enum', T: Lease_StateEnum },
-    { no: 3, name: 'price', kind: 'message', T: DecCoin },
-    { no: 4, name: 'created_at', kind: 'scalar', T: ScalarType.INT64 },
-    { no: 5, name: 'closed_on', kind: 'scalar', T: ScalarType.INT64 },
-  ]
-);
+/**
+ * DecCoin defines a token with a denomination and a decimal amount
+ * @generated from message cosmos.base.v1beta1.DecCoin
+ */
+export type DecCoin = {
+  /**
+   * @generated from field: string denom = 1;
+   */
+  denom: string;
 
-export type Lease = InstanceType<typeof Lease>;
+  /**
+   * @generated from field: string amount = 2;
+   */
+  amount: string;
+};
+
+/**
+ * Lease stores lease details
+ * @generated from message akash.market.v1beta4.Lease
+ */
+export type Lease = {
+  /**
+   * @generated from field: akash.market.v1beta4.LeaseID lease_id = 1;
+   */
+  leaseId?: LeaseID;
+
+  /**
+   * @generated from field: akash.market.v1beta4.Lease.State state = 2;
+   */
+  state: Lease_State;
+
+  /**
+   * @generated from field: cosmos.base.v1beta1.DecCoin price = 3;
+   */
+  price?: DecCoin;
+
+  /**
+   * @generated from field: int64 created_at = 4;
+   */
+  createdAt: bigint;
+
+  /**
+   * @generated from field: int64 closed_on = 5;
+   */
+  closedOn: bigint;
+};
 `
 
   writeFileSync(join(deploymentDir, 'deployment_pb.ts'), deploymentTypes)
   writeFileSync(join(marketDir, 'lease_pb.ts'), marketTypes)
   
   // Create index file
-  const indexContent = `// Fallback generated index
+  const indexContent = `// Fallback generated index for @bufbuild/protobuf v2
 export * from './akash/deployment/v1beta3/deployment_pb.js';
 export * from './akash/market/v1beta4/lease_pb.js';
-export { Message, type MessageType } from '@bufbuild/protobuf';
 `
   writeFileSync(join(generatedDir, 'index.ts'), indexContent)
 }
