@@ -1,5 +1,39 @@
 # @cryptoandcoffee/akash-jsdk-protobuf
 
+## 3.3.0
+
+### Minor Changes
+
+- **Unified v3.3.0 Release** - All packages synchronized to v3.3.0
+- Canonical source of truth for Deployment and Lease types across SDK
+
+  **Breaking Changes:**
+
+  - Unified Deployment and Lease types across all packages - now use protobuf canonical types
+  - Changed property names: `deployment.id` → `deployment.deploymentId`, `lease.id` → `lease.leaseId`
+  - DeploymentState is now an enum (0=INVALID, 1=ACTIVE, 2=CLOSED) instead of string literals
+  - createDeployment() now returns DeploymentID object instead of string
+
+  **Core Package:**
+
+  - Removed duplicate Deployment and Lease type definitions
+  - Re-export types from @cryptoandcoffee/akash-jsdk-protobuf for consistency
+  - Fixed AkashProvider to return deploymentId property
+
+  **React Package:**
+
+  - Updated useDeployments hook to return DeploymentID from createDeployment()
+  - Type safety improvements for deployment and lease objects
+
+  **CLI Package:**
+
+  - Updated all commands to use deploymentId and leaseId properties
+  - Fixed state comparisons to use numeric enum values
+
+  **Protobuf Package:**
+
+  - No changes - canonical source of truth for types
+
 ## 3.0.4
 
 ### Patch Changes

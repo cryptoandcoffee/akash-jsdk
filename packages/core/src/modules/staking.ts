@@ -116,8 +116,8 @@ export class StakingManager {
         transactionHash: `delegate-${Date.now()}`,
         code: 0,
         height: Math.floor(Date.now() / 1000),
-        gasUsed: 75000,
-        gasWanted: 90000,
+        gasUsed: 75000n,
+        gasWanted: 90000n,
         rawLog: 'Delegation successful'
       }
 
@@ -144,11 +144,6 @@ export class StakingManager {
     validateCoinAmount(amount)
 
 
-    if (!amount || !amount.denom || !amount.amount) {
-      throw new ValidationError('Valid amount is required')
-    }
-
-
     try {
       // Runtime warning for mock implementation
       if (process.env.NODE_ENV !== 'test') {
@@ -167,8 +162,8 @@ export class StakingManager {
         transactionHash: `undelegate-${Date.now()}`,
         code: 0,
         height: Math.floor(Date.now() / 1000),
-        gasUsed: 85000,
-        gasWanted: 100000,
+        gasUsed: 85000n,
+        gasWanted: 100000n,
         unbondingTime: unbondingTime.toISOString(),
         rawLog: 'Unbonding delegation successful'
       }
@@ -196,8 +191,8 @@ export class StakingManager {
   ): Promise<StakingResult> {
     this.provider.ensureConnected()
 
-    validateValidatorAddress(srcValidator, 'Source validator address')
-    validateValidatorAddress(dstValidator, 'Destination validator address')
+    validateValidatorAddress(srcValidator)
+    validateValidatorAddress(dstValidator)
     validateRequired(amount, 'Amount')
     validateCoinAmount(amount)
 
@@ -210,8 +205,8 @@ export class StakingManager {
         transactionHash: `redelegate-${Date.now()}`,
         code: 0,
         height: Math.floor(Date.now() / 1000),
-        gasUsed: 95000,
-        gasWanted: 110000,
+        gasUsed: 95000n,
+        gasWanted: 110000n,
         rawLog: 'Redelegation successful'
       }
 
@@ -351,7 +346,7 @@ export class StakingManager {
       ])
 
       // Generate mock delegations
-      return response.slice(0, 5).map((tx, index) => ({
+      return response.slice(0, 5).map((_, index) => ({
         delegatorAddress: address,
         validatorAddress: `akashvaloper1${this.generateMockAddress()}`,
         shares: `${(index + 1) * 1000000}.000000000000000000`,
@@ -518,8 +513,8 @@ export class StakingManager {
         transactionHash: `withdraw-${Date.now()}`,
         code: 0,
         height: Math.floor(Date.now() / 1000),
-        gasUsed: 65000,
-        gasWanted: 80000,
+        gasUsed: 65000n,
+        gasWanted: 80000n,
         rawLog: 'Rewards withdrawn successfully'
       }
 
@@ -559,8 +554,8 @@ export class StakingManager {
         transactionHash: `withdraw-all-${Date.now()}`,
         code: 0,
         height: Math.floor(Date.now() / 1000),
-        gasUsed: 65000 * delegations.length,
-        gasWanted: 80000 * delegations.length,
+        gasUsed: BigInt(65000 * delegations.length),
+        gasWanted: BigInt(80000 * delegations.length),
         rawLog: `Withdrew rewards from ${delegations.length} validators`
       }
 
@@ -630,3 +625,5 @@ export class StakingManager {
     return result
   }
 }
+
+export type { StakingResult }

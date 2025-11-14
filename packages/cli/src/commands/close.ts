@@ -33,8 +33,8 @@ export async function closeAction(options: any) {
         }
 
         const choices = deployments.map(d => ({
-          name: `${d.id.dseq} (${d.state})`,
-          value: d.id.dseq
+          name: `${d.deploymentId.dseq} (${d.state})`,
+          value: d.deploymentId.dseq
         }))
 
         const answer = await inquirer.prompt([{

@@ -1,6 +1,10 @@
-import { BaseProvider } from '../providers/base'
-import { Deployment, DeploymentID, DeploymentState, GroupSpec, Coin } from '@cryptoandcoffee/akash-jsdk-protobuf'
+ import { BaseProvider } from '../providers/base'
+import { Deployment, DeploymentID, DeploymentState, GroupSpec, Coin, MsgCreateDeployment } from '@cryptoandcoffee/akash-jsdk-protobuf'
 import { NetworkError, ValidationError, DeploymentError } from '../errors'
+import { SigningStargateClient } from '@cosmjs/stargate'
+import { Registry } from '@cosmjs/proto-signing'
+import { Secp256k1HdWallet } from '@cosmjs/amino'
+import { SDLManager } from './sdl'
 
 export interface CreateDeploymentRequest {
   sdl: string;
@@ -15,27 +19,104 @@ export interface DeploymentFilters {
 }
 
 export class DeploymentManager {
-  constructor(private provider: BaseProvider) {}
+  private sdlManager: SDLManager
 
-  async create(request: CreateDeploymentRequest): Promise<DeploymentID> {
+  constructor(private provider: BaseProvider) {
+    this.sdlManager = new SDLManager()
+  }
+
+  async create(request: CreateDeploymentRequest, wallet?: any): Promise<DeploymentID> {
+    console.log('DEBUG: Starting deployment creation')
     this.provider.ensureConnected()
-    
+
     if (!request.sdl || request.sdl.trim().length === 0) {
       throw new ValidationError('SDL is required')
     }
+    console.log('DEBUG: SDL validated')
+
+    if (!wallet) {
+      throw new ValidationError('Wallet is required for real deployment creation')
+    }
 
     try {
-      // In a real implementation, this would submit a MsgCreateDeployment transaction
-      const response = await this.provider.getClient().searchTx([
-        { key: 'message.module', value: 'deployment' },
-        { key: 'message.action', value: 'create-deployment' }
-      ])
+      // Parse SDL to get service definition
+      const serviceDefinition = this.sdlManager.parseSDL(request.sdl)
 
-      // Generate a mock deployment ID based on the response
-      const dseq = response.length > 0 ? response[0].height.toString() : Date.now().toString()
-      
+      // Convert SDL to GroupSpec array
+      const groups = this.convertSDLToGroupSpecs(serviceDefinition)
+
+      // Get the underlying wallet - if it's a WalletManager, get the connected wallet
+      let hdWallet: any = wallet
+      if (wallet.connectedWallet) {
+        hdWallet = wallet.connectedWallet
+      }
+
+      // If it's a MnemonicWallet, get the underlying Secp256k1HdWallet
+      let actualSigner: any = hdWallet
+      if (hdWallet.wallet) {
+        actualSigner = hdWallet.wallet
+      } else if (hdWallet.mnemonic) {
+        // Create Secp256k1HdWallet directly from mnemonic
+        actualSigner = await Secp256k1HdWallet.fromMnemonic(hdWallet.mnemonic, {
+          prefix: "akash",
+        })
+      }
+
+      // Get wallet address
+      const signerAccounts = await actualSigner.getAccounts()
+      const owner = Array.isArray(signerAccounts) && signerAccounts.length > 0
+        ? (typeof signerAccounts[0] === 'string' ? signerAccounts[0] : signerAccounts[0]?.address)
+        : null
+
+      console.log('DEBUG: owner =', owner)
+      if (!owner || typeof owner !== 'string' || owner.trim().length === 0) {
+        throw new ValidationError(`Failed to get wallet address: ${owner}`)
+      }
+
+
+
+      // Generate deployment sequence (dseq) - in real Akash this comes from the chain
+      // For now, we'll use a timestamp-based approach
+      const dseq = Date.now().toString()
+
+      // Create MsgCreateDeployment
+      const msg: MsgCreateDeployment = {
+        id: {
+          owner,
+          dseq
+        },
+        groups,
+        version: new Uint8Array([1, 0, 0]), // Version 1.0.0
+        deposit: request.deposit || { denom: 'uakt', amount: '500000' }, // Default deposit
+        depositor: request.depositor || owner
+      }
+
+      // Create registry with Akash message types for Protobuf encoding
+      const registry = new Registry()
+      // The MsgCreateDeployment should be available from the protobuf package
+      // For now, we'll try without explicit registration
+
+      const client = await SigningStargateClient.connectWithSigner(
+        (this.provider as any).config.rpcEndpoint,
+        actualSigner,
+        { registry }
+      )
+
+      // Use signAndBroadcast with typeUrl/value format (should use AminoTypes)
+      const result = await client.signAndBroadcast(owner, [{
+        typeUrl: '/akash.deployment.v1beta3.MsgCreateDeployment',
+        value: msg
+      }], {
+        amount: [{ denom: 'uakt', amount: '5000' }],
+        gas: 'auto'
+      })
+
+      if (result.code !== 0) {
+        throw new DeploymentError(`Transaction failed: ${result.rawLog}`)
+      }
+
       return {
-        owner: (this.provider as any)['signer'] || 'akash1mock',
+        owner,
         dseq
       }
     } catch (error) {
@@ -43,33 +124,121 @@ export class DeploymentManager {
     }
   }
 
+  private convertSDLToGroupSpecs(serviceDefinition: any): GroupSpec[] {
+    const groups: GroupSpec[] = []
+
+    // Process each deployment group
+    for (const [serviceName, deploymentConfig] of Object.entries(serviceDefinition.deployment)) {
+      for (const [profileName, profileConfig] of Object.entries(deploymentConfig as any)) {
+        const service = serviceDefinition.services[serviceName]
+        const computeProfile = serviceDefinition.profiles?.compute?.[(profileConfig as any).profile]
+
+        if (!service || !computeProfile) {
+          throw new ValidationError(`Missing service or compute profile for ${serviceName}`)
+        }
+
+        // Convert CPU units (e.g., "0.5" -> Uint8Array)
+        const cpuUnits = parseFloat(computeProfile.resources.cpu.units)
+        const cpuVal = new Uint8Array(8)
+        const cpuView = new DataView(cpuVal.buffer)
+        cpuView.setFloat64(0, cpuUnits * 1000, true) // Convert to millicores
+
+        // Convert memory size (e.g., "512Mi" -> Uint8Array)
+        const memorySize = this.parseMemorySize(computeProfile.resources.memory.size)
+        const memoryVal = new Uint8Array(8)
+        const memoryView = new DataView(memoryVal.buffer)
+        memoryView.setBigUint64(0, BigInt(memorySize), true)
+
+        // Convert storage size
+        const storageSize = computeProfile.resources.storage?.[0]?.size
+          ? this.parseMemorySize(computeProfile.resources.storage[0].size)
+          : this.parseMemorySize('1Gi')
+        const storageVal = new Uint8Array(8)
+        const storageView = new DataView(storageVal.buffer)
+        storageView.setBigUint64(0, BigInt(storageSize), true)
+
+        const groupSpec: GroupSpec = {
+          name: `${serviceName}-${profileName}`,
+          requirements: {
+            signedBy: {
+              allOf: [],
+              anyOf: []
+            },
+            attributes: []
+          },
+          resources: [{
+            resources: {
+              cpu: { units: { val: cpuVal } },
+              memory: { quantity: { val: memoryVal } },
+              storage: [{
+                name: 'default',
+                quantity: { val: storageVal }
+              }]
+            },
+            count: (profileConfig as any).count || 1,
+            price: { denom: 'uakt', amount: '1000' } // Default price
+          }]
+        }
+
+        groups.push(groupSpec)
+      }
+    }
+
+    return groups
+  }
+
+  private parseMemorySize(size: string): number {
+    const match = size.match(/^(\d+)([KMGT]i?)$/i)
+    if (!match) return 0
+
+    const value = parseInt(match[1])
+    const unit = match[2].toUpperCase()
+
+    const multipliers: Record<string, number> = {
+      'K': 1024,
+      'KI': 1024,
+      'M': 1024 * 1024,
+      'MI': 1024 * 1024,
+      'G': 1024 * 1024 * 1024,
+      'GI': 1024 * 1024 * 1024,
+      'T': 1024 * 1024 * 1024 * 1024,
+      'TI': 1024 * 1024 * 1024 * 1024
+    }
+
+    return value * (multipliers[unit] || 1)
+  }
+
   async list(filters: DeploymentFilters = {}): Promise<Deployment[]> {
     this.provider.ensureConnected()
 
     try {
-      const searchTags = [
-        { key: 'message.module', value: 'deployment' }
-      ]
+      const apiEndpoint = (this.provider as any).config.apiEndpoint
+      let url = `${apiEndpoint}/akash/deployment/v1beta3/deployments/list`
 
-      if (filters.owner) {
-        searchTags.push({ key: 'deployment.owner', value: filters.owner })
+      const params = new URLSearchParams()
+      if (filters.owner) params.append('filters.owner', filters.owner)
+      if (filters.dseq) params.append('filters.dseq', filters.dseq)
+      if (filters.state) params.append('filters.state', filters.state.toString())
+
+      if (params.toString()) {
+        url += `?${params.toString()}`
       }
 
-      if (filters.dseq) {
-        searchTags.push({ key: 'deployment.dseq', value: filters.dseq })
+      const response = await fetch(url)
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
       }
 
-      const response = await this.provider.getClient().searchTx(searchTags)
-
-      // Mock deployments based on transaction results
-      return response.map((tx, index) => ({
+      const data = await response.json()
+      return data.deployments.map((deployment: any) => ({
         deploymentId: {
-          owner: filters.owner || `akash1owner${index}`,
-          dseq: filters.dseq || tx.height.toString()
+          owner: deployment.deployment.deploymentId.owner,
+          dseq: deployment.deployment.deploymentId.dseq
         },
-        state: filters.state || DeploymentState.DEPLOYMENT_ACTIVE,
-        version: '1.0.0',
-        createdAt: tx.height
+        state: deployment.deployment.state,
+        version: deployment.deployment.version,
+        createdAt: deployment.deployment.createdAt
       }))
     } catch (error) {
       throw new NetworkError('Failed to list deployments', { error })
@@ -78,29 +247,28 @@ export class DeploymentManager {
 
   async get(deploymentId: DeploymentID): Promise<Deployment | null> {
     this.provider.ensureConnected()
-    
+
     if (!deploymentId.owner || !deploymentId.dseq) {
       throw new ValidationError('Invalid deployment ID')
     }
 
     try {
-      const response = await this.provider.getClient().searchTx([
-        { key: 'message.module', value: 'deployment' },
-        { key: 'deployment.owner', value: deploymentId.owner },
-        { key: 'deployment.dseq', value: deploymentId.dseq }
-      ])
+      const apiEndpoint = (this.provider as any).config.apiEndpoint
+      const response = await fetch(`${apiEndpoint}/akash/deployment/v1beta3/deployments/info?id.owner=${deploymentId.owner}&id.dseq=${deploymentId.dseq}`)
 
-      if (response.length === 0) {
-        return null
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null
+        }
+        throw new Error(`API request failed: ${response.status}`)
       }
 
-      // Mock deployment based on the first transaction found
-      const tx = response[0]
+      const data = await response.json()
       return {
         deploymentId,
-        state: DeploymentState.DEPLOYMENT_ACTIVE,
-        version: '1.0.0',
-        createdAt: tx.height
+        state: data.deployment.state,
+        version: data.deployment.version,
+        createdAt: data.deployment.createdAt
       }
     } catch (error) {
       throw new NetworkError('Failed to get deployment', { error })
@@ -158,42 +326,21 @@ export class DeploymentManager {
 
   async getGroups(deploymentId: DeploymentID): Promise<GroupSpec[]> {
     this.provider.ensureConnected()
-    
+
     if (!deploymentId.owner || !deploymentId.dseq) {
       throw new ValidationError('Invalid deployment ID')
     }
 
     try {
-      // In a real implementation, this would query deployment groups
-      await this.provider.getClient().searchTx([
-        { key: 'message.module', value: 'deployment' },
-        { key: 'deployment.owner', value: deploymentId.owner },
-        { key: 'deployment.dseq', value: deploymentId.dseq }
-      ])
+      const apiEndpoint = (this.provider as any).config.apiEndpoint
+      const response = await fetch(`${apiEndpoint}/akash/deployment/v1beta3/deployments/info?id.owner=${deploymentId.owner}&id.dseq=${deploymentId.dseq}`)
 
-      // Mock group specs
-      return [{
-        name: 'web',
-        requirements: {
-          signedBy: {
-            allOf: [],
-            anyOf: []
-          },
-          attributes: []
-        },
-        resources: [{
-          resources: {
-            cpu: { units: { val: new Uint8Array([1, 0, 0, 0]) } },
-            memory: { quantity: { val: new Uint8Array([0, 0, 0, 32]) } }, // 512Mi
-            storage: [{ 
-              name: 'default',
-              quantity: { val: new Uint8Array([0, 0, 0, 64]) } // 1Gi
-            }]
-          },
-          count: 1,
-          price: { denom: 'uakt', amount: '1000' }
-        }]
-      }]
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data = await response.json()
+      return data.deployment.groups
     } catch (error) {
       throw new NetworkError('Failed to get deployment groups', { error })
     }

@@ -34,8 +34,8 @@ export async function statusAction(options: any) {
       }
 
       deployments.forEach((deployment, index) => {
-        console.log(chalk.green(`${index + 1}. Deployment ${deployment.id.dseq}`))
-        console.log(chalk.white(`   Owner: ${deployment.id.owner}`))
+        console.log(chalk.green(`${index + 1}. Deployment ${deployment.deploymentId.dseq}`))
+        console.log(chalk.white(`   Owner: ${deployment.deploymentId.owner}`))
         console.log(chalk.white(`   State: ${deployment.state}`))
         console.log(chalk.white(`   Created: ${new Date(deployment.createdAt).toISOString()}`))
         console.log()
@@ -44,8 +44,8 @@ export async function statusAction(options: any) {
       if (leases.length > 0) {
         console.log(chalk.blue('💰 Active Leases\n'))
         leases.forEach((lease, index) => {
-          console.log(chalk.green(`${index + 1}. Lease ${lease.id.dseq}-${lease.id.gseq}-${lease.id.oseq}`))
-          console.log(chalk.white(`   Provider: ${lease.id.provider}`))
+          console.log(chalk.green(`${index + 1}. Lease ${lease.leaseId.dseq}-${lease.leaseId.gseq}-${lease.leaseId.oseq}`))
+          console.log(chalk.white(`   Provider: ${lease.leaseId.provider}`))
           console.log(chalk.white(`   State: ${lease.state}`))
           console.log(chalk.white(`   Price: ${lease.price.amount} ${lease.price.denom}`))
           console.log()

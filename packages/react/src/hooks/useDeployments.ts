@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Deployment } from '@cryptoandcoffee/akash-jsdk-core'
+import { Deployment, DeploymentID } from '@cryptoandcoffee/akash-jsdk-core'
 import { useAkashContext } from '../providers/AkashProvider'
 
 interface UseDeploymentsResult {
@@ -7,7 +7,7 @@ interface UseDeploymentsResult {
   loading: boolean
   error: Error | null
   refetch: () => Promise<void>
-  createDeployment: (config: any) => Promise<string>
+  createDeployment: (config: any) => Promise<DeploymentID>
   closeDeployment: (deploymentId: string) => Promise<void>
 }
 
@@ -37,7 +37,7 @@ export function useDeployments(owner?: string): UseDeploymentsResult {
     }
   }, [sdk, isConnected, owner])
 
-  const createDeployment = useCallback(async (config: any): Promise<string> => {
+  const createDeployment = useCallback(async (config: any): Promise<DeploymentID> => {
     if (!sdk || !isConnected) {
       throw new Error('SDK not connected')
     }

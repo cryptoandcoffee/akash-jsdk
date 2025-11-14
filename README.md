@@ -72,10 +72,10 @@ These mock modules are NOT suitable for:
 
 | Package | Description | Version |
 |---------|-------------|---------|
-| `@cryptoandcoffee/akash-jsdk-core` | Core SDK with deployment, market, provider, and wallet management | 3.1.0 |
-| `@cryptoandcoffee/akash-jsdk-react` | React hooks and context provider for seamless integration | 3.0.4 |
-| `@cryptoandcoffee/akash-jsdk-cli` | Command-line tools for project initialization and deployment | 3.0.4 |
-| `@cryptoandcoffee/akash-jsdk-protobuf` | Custom protobuf definitions with TypeScript support | 3.0.4 |
+| `@cryptoandcoffee/akash-jsdk-core` | Core SDK with deployment, market, provider, and wallet management | 3.3.0 |
+| `@cryptoandcoffee/akash-jsdk-react` | React hooks and context provider for seamless integration | 3.3.0 |
+| `@cryptoandcoffee/akash-jsdk-cli` | Command-line tools for project initialization and deployment | 3.3.0 |
+| `@cryptoandcoffee/akash-jsdk-protobuf` | Custom protobuf definitions with TypeScript support | 3.3.0 |
 
 ## 🔧 Installation
 

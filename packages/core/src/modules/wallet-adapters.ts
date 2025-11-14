@@ -166,8 +166,8 @@ export class WalletAdapter {
         options,
         async (message: string) => {
           // Try signArbitrary if available
-          if (cosmostation.cosmos?.signArbitrary) {
-            const result = await cosmostation.cosmos.signArbitrary(
+          if (cosmostation.providers?.keplr?.signArbitrary) {
+            const result = await cosmostation.providers.keplr.signArbitrary(
               chainId,
               address,
               message
@@ -196,7 +196,7 @@ export class WalletAdapter {
             memo: ''
           }
 
-          const result = await cosmostation.cosmos.request({
+          const result = await (cosmostation as any).cosmos.request({
             method: 'cos_signAmino',
             params: { chainName: chainId, doc: signDoc, isADR36: true }
           })
@@ -230,16 +230,14 @@ export class WalletAdapter {
       // Check if Leap Cosmos Snap is installed
       const snaps = await ethereum.request({
         method: 'wallet_getSnaps'
-      })
+      }) as Record<string, unknown>
 
       const snapId = 'npm:@leapwallet/metamask-cosmos-snap'
       if (!snaps[snapId]) {
         // Try to install the snap
         await ethereum.request({
           method: 'wallet_requestSnaps',
-          params: {
-            [snapId]: {}
-          }
+          params: [{ [snapId]: {} }]
         })
       }
 
@@ -252,7 +250,7 @@ export class WalletAdapter {
           // Invoke the snap's signArbitrary method
           const result = await ethereum.request({
             method: 'wallet_invokeSnap',
-            params: {
+            params: [{
               snapId,
               request: {
                 method: 'signArbitrary',
@@ -262,8 +260,8 @@ export class WalletAdapter {
                   data: message
                 }
               }
-            }
-          })
+            }]
+          }) as { signature: string }
 
           return result.signature
         }
@@ -327,7 +325,7 @@ export class WalletAdapter {
    * Common JWT signing logic used by all wallet adapters
    */
   private async signJWTWithWallet(
-    chainId: string,
+    _chainId: string,
     address: string,
     options: WalletJWTOptions | undefined,
     signFn: (message: string) => Promise<string>
