@@ -37,7 +37,8 @@ export async function closeCommand(deploymentId: string, options: any) {
     }
     
     // Check if already closed
-    if (deployment.state === 'closed') {
+    // DeploymentState is an enum: INVALID = 0, ACTIVE = 1, CLOSED = 2
+    if (deployment.state === 2) {
       spinner.warn('Deployment is already closed')
       return
     }

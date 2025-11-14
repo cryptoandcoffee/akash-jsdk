@@ -10,27 +10,7 @@ import {
   validateRequired
 } from '../utils/validation'
 import { IBCTransferResult } from '../types/results'
-import {
-  DEFAULT_TIMEOUT_OFFSET_NS,
-  MS_TO_NS_CONVERSION,
-  DEFAULT_SOURCE_PORT,
-  DEFAULT_TIMEOUT_BLOCKS,
-  DEFAULT_REVISION_NUMBER,
-  DEFAULT_CHANNEL_STATE,
-  DEFAULT_CHANNEL_ORDERING,
-  DEFAULT_IBC_VERSION,
-  TX_SUCCESS_CODE,
-  DEFAULT_CHANNEL_ID,
-  COUNTERPARTY_CHANNEL_OFFSET,
-  MIN_RECEIVER_ADDRESS_LENGTH,
-  IBC_DENOM_PREFIX,
-  DEFAULT_BASE_DENOM,
-  DEFAULT_IBC_PATH,
-  MOCK_IBC_ACK,
-  DEFAULT_IBC_GAS_USED,
-  DEFAULT_IBC_GAS_WANTED,
-  MOCK_IBC_HEIGHT
-} from './ibc-constants'
+
 
 export interface Height {
   revisionNumber: bigint
@@ -84,26 +64,13 @@ export class IBCManager {
     this.provider.ensureConnected()
 
     // Validate parameters
-    // Validate all transfer parameters
     validateChannelId(params.sourceChannel)
     validateRequired(params.token, 'Token')
     validateCoinAmount(params.token)
     validateNonEmptyString(params.receiver, 'Receiver address')
-    
+
     if (params.timeoutTimestamp) {
       validateTimeoutTimestamp(params.timeoutTimestamp)
-    }
-
-    if (!params.sourceChannel) {
-      throw new ValidationError('Source channel is required')
-    }
-
-    if (!params.token || !params.token.denom || !params.token.amount) {
-      throw new ValidationError('Valid token with denom and amount is required')
-    }
-
-    if (!params.receiver) {
-      throw new ValidationError('Receiver address is required')
     }
 
     // Validate token amount is positive
@@ -172,7 +139,7 @@ export class IBCManager {
       ])
 
       // Generate mock channels based on transaction results
-      const channels: Channel[] = response.slice(0, 5).map((tx, index) => ({
+      const channels: Channel[] = response.slice(0, 5).map((_, index) => ({
         id: `channel-${index}`,
         portId: 'transfer',
         state: 'STATE_OPEN',
@@ -208,8 +175,6 @@ export class IBCManager {
       throw new NetworkError('Failed to get IBC channels', { error })
     }
   }
-
-    validateChannelId(channelId)
 
   /**
    * Get details of a specific IBC channel
@@ -419,3 +384,5 @@ export class IBCManager {
     }
   }
 }
+
+export type { IBCTransferResult }

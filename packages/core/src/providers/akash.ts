@@ -1,25 +1,28 @@
 import { BaseProvider } from './base'
 import { Deployment, Lease, ProviderInfo } from '../types'
-import { DeploymentError, NetworkError } from '../errors'
+import { NetworkError } from '../errors'
 
 export class AkashProvider extends BaseProvider {
   async getDeployments(owner: string): Promise<Deployment[]> {
     this.ensureConnected()
-    
-    try {
-      const response = await this.client!.searchTx([
-        { key: 'message.module', value: 'deployment' },
-        { key: 'message.sender', value: owner }
-      ])
 
-      return response.map(tx => ({
+    try {
+      const apiEndpoint = (this as any).config.apiEndpoint
+      const response = await fetch(`${apiEndpoint}/akash/deployment/v1beta3/deployments/list?filters.owner=${owner}`)
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data = await response.json()
+      return data.deployments.map((deployment: any) => ({
         id: {
-          owner,
-          dseq: tx.height.toString()
+          owner: deployment.deployment.deploymentId.owner,
+          dseq: deployment.deployment.deploymentId.dseq
         },
-        state: 'active' as const,
-        version: '1.0.0',
-        createdAt: Date.now()
+        state: deployment.deployment.state,
+        version: deployment.deployment.version,
+        createdAt: deployment.deployment.createdAt
       }))
     } catch (error) {
       throw new NetworkError('Failed to fetch deployments', { error })
@@ -28,33 +31,33 @@ export class AkashProvider extends BaseProvider {
 
   async getLeases(owner: string): Promise<Lease[]> {
     this.ensureConnected()
-    
-    try {
-      const response = await this.client!.searchTx([
-        { key: 'message.module', value: 'market' },
-        { key: 'message.sender', value: owner }
-      ])
 
-      return response.map(tx => ({
+    try {
+      const apiEndpoint = (this as any).config.apiEndpoint
+      const response = await fetch(`${apiEndpoint}/akash/market/v1beta4/leases/list?filters.owner=${owner}`)
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data = await response.json()
+      return data.leases.map((lease: any) => ({
         id: {
-          owner,
-          dseq: tx.height.toString(),
-          gseq: 1,
-          oseq: 1,
-          provider: 'akash1provider'
+          owner: lease.lease.leaseId.owner,
+          dseq: lease.lease.leaseId.dseq,
+          gseq: lease.lease.leaseId.gseq,
+          oseq: lease.lease.leaseId.oseq,
+          provider: lease.lease.leaseId.provider
         },
         leaseId: {
-          owner,
-          dseq: tx.height.toString(),
-          gseq: 1,
-          oseq: 1,
-          provider: 'akash1provider'
+          owner: lease.lease.leaseId.owner,
+          dseq: lease.lease.leaseId.dseq,
+          gseq: lease.lease.leaseId.gseq,
+          oseq: lease.lease.leaseId.oseq,
+          provider: lease.lease.leaseId.provider
         },
-        state: 'active' as const,
-        price: {
-          denom: 'uakt',
-          amount: '1000'
-        }
+        state: lease.lease.state,
+        price: lease.lease.price
       }))
     } catch (error) {
       throw new NetworkError('Failed to fetch leases', { error })
@@ -63,61 +66,53 @@ export class AkashProvider extends BaseProvider {
 
   async getProviders(): Promise<ProviderInfo[]> {
     this.ensureConnected()
-    
-    try {
-      const response = await this.client!.searchTx([
-        { key: 'message.module', value: 'provider' }
-      ])
 
-      return response.map(() => ({
-        owner: 'akash1provider',
-        hostUri: 'https://provider.akash.network',
-        attributes: [
-          { key: 'region', value: 'us-west' },
-          { key: 'tier', value: 'community' }
-        ]
+    try {
+      const apiEndpoint = (this as any).config.apiEndpoint
+      const response = await fetch(`${apiEndpoint}/akash/provider/v1beta3/providers`)
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data = await response.json()
+      return data.providers.map((provider: any) => ({
+        owner: provider.owner,
+        hostUri: provider.hostUri,
+        attributes: provider.attributes || []
       }))
     } catch (error) {
       throw new NetworkError('Failed to fetch providers', { error })
     }
   }
 
-  async createDeployment(_config: any): Promise<string> {
-    this.ensureConnected()
-    
-    try {
-      // Simulate potential error condition by checking config validity
-      if (_config && typeof _config === 'object' && _config.simulateError) {
-        throw new Error('Simulated deployment error')
-      }
-      return 'deployment-id-placeholder'
-    } catch (error) {
-      throw new DeploymentError('Failed to create deployment', { error })
-    }
+  async createDeployment(): Promise<string> {
+    throw new Error('createDeployment should be called through DeploymentManager, not directly on provider')
   }
 
   async getDeployment(params: { owner: string; dseq: string }): Promise<Deployment | null> {
     this.ensureConnected()
-    
-    try {
-      const response = await this.client!.searchTx([
-        { key: 'message.module', value: 'deployment' },
-        { key: 'message.sender', value: params.owner }
-      ])
 
-      const deployment = response.find(tx => tx.height.toString() === params.dseq)
-      if (!deployment) {
-        return null
+    try {
+      const apiEndpoint = (this as any).config.apiEndpoint
+      const response = await fetch(`${apiEndpoint}/akash/deployment/v1beta3/deployments/info?id.owner=${params.owner}&id.dseq=${params.dseq}`)
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null
+        }
+        throw new Error(`API request failed: ${response.status}`)
       }
 
+      const data = await response.json()
       return {
-        id: {
-          owner: params.owner,
-          dseq: params.dseq
+        deploymentId: {
+          owner: data.deployment.deploymentId.owner,
+          dseq: data.deployment.deploymentId.dseq
         },
-        state: 'active' as const,
-        version: '1.0.0',
-        createdAt: Date.now()
+        state: data.deployment.state,
+        version: data.deployment.version,
+        createdAt: data.deployment.createdAt
       }
     } catch (error) {
       throw new NetworkError('Failed to fetch deployment', { error })
@@ -126,58 +121,40 @@ export class AkashProvider extends BaseProvider {
 
   async getLeasesByDeployment(params: { owner: string; dseq: string }): Promise<Lease[]> {
     this.ensureConnected()
-    
-    try {
-      const response = await this.client!.searchTx([
-        { key: 'message.module', value: 'market' },
-        { key: 'message.sender', value: params.owner }
-      ])
 
-      return response.map(_ => ({
+    try {
+      const apiEndpoint = (this as any).config.apiEndpoint
+      const response = await fetch(`${apiEndpoint}/akash/market/v1beta4/leases/list?filters.owner=${params.owner}&filters.dseq=${params.dseq}`)
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data = await response.json()
+      return data.leases.map((lease: any) => ({
         id: {
-          owner: params.owner,
-          dseq: params.dseq,
-          gseq: 1,
-          oseq: 1,
-          provider: 'akash1provider'
+          owner: lease.lease.leaseId.owner,
+          dseq: lease.lease.leaseId.dseq,
+          gseq: lease.lease.leaseId.gseq,
+          oseq: lease.lease.leaseId.oseq,
+          provider: lease.lease.leaseId.provider
         },
         leaseId: {
-          owner: params.owner,
-          dseq: params.dseq,
-          gseq: 1,
-          oseq: 1,
-          provider: 'akash1provider'
+          owner: lease.lease.leaseId.owner,
+          dseq: lease.lease.leaseId.dseq,
+          gseq: lease.lease.leaseId.gseq,
+          oseq: lease.lease.leaseId.oseq,
+          provider: lease.lease.leaseId.provider
         },
-        state: 'active' as const,
-        price: {
-          denom: 'uakt',
-          amount: '1000'
-        }
+        state: lease.lease.state,
+        price: lease.lease.price
       }))
     } catch (error) {
       throw new NetworkError('Failed to fetch leases', { error })
     }
   }
 
-  async closeDeployment(params: { owner: string; dseq: string } | string): Promise<void> {
-    this.ensureConnected()
-    
-    try {
-      if (typeof params === 'string') {
-        // Simulate potential error condition
-        if (params.includes('simulate-error')) {
-          throw new Error('Simulated close deployment error')
-        }
-        console.log(`Closing deployment: ${params}`)
-      } else {
-        // Simulate potential error condition
-        if (params.owner === 'simulate-error') {
-          throw new Error('Simulated close deployment error')
-        }
-        console.log(`Closing deployment: ${params.owner}/${params.dseq}`)
-      }
-    } catch (error) {
-      throw new DeploymentError('Failed to close deployment', { error })
-    }
+  async closeDeployment(): Promise<void> {
+    throw new Error('closeDeployment should be called through DeploymentManager, not directly on provider')
   }
 }

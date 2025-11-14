@@ -72,7 +72,7 @@ export async function statusCommand(deploymentId?: string, options?: any) {
       console.log(chalk.gray('─'.repeat(40)))
       
       deployments.forEach(deployment => {
-        const id = `${deployment.id.owner}/${deployment.id.dseq}`
+        const id = `${deployment.deploymentId.owner}/${deployment.deploymentId.dseq}`
         console.log(`\n${chalk.bold(id)}`)
         console.log(`  State: ${deployment.state}`)
         console.log(`  Created: ${new Date(deployment.createdAt).toLocaleString()}`)

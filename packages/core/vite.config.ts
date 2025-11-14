@@ -16,12 +16,17 @@ export default defineConfig({
       fileName: (format) => format === 'es' ? 'index.js' : 'index.cjs'
     },
     rollupOptions: {
-      external: [
-        '@cosmjs/stargate',
-        '@cosmjs/proto-signing',
-        '@cosmjs/encoding',
-        '@cryptoandcoffee/akash-jsdk-protobuf'
-      ]
+      output: {
+        exports: 'named'
+      },
+       external: [
+         '@cosmjs/stargate',
+         '@cosmjs/proto-signing',
+         '@cosmjs/encoding',
+         '@cosmjs/amino',
+         '@cryptoandcoffee/akash-jsdk-protobuf',
+         'module'
+       ]
     },
     sourcemap: true,
     minify: false

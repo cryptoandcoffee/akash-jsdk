@@ -4,8 +4,7 @@ import { EncodeObject } from '@cosmjs/proto-signing'
 import {
   validateSDL,
   validateDseq,
-  validateProviderAddress,
-  validateCertificate
+  validateProviderAddress
 } from '../utils/validation'
 import { BatchResult } from '../types/results'
 import {
@@ -42,9 +41,9 @@ export class BatchBuilder {
    * Add a deployment creation to the batch
    */
   addDeployment(sdl: string): BatchBuilder {
-    if (!sdl || typeof sdl !== 'string') {
     validateSDL(sdl)
 
+    if (!sdl || typeof sdl !== 'string') {
       throw new ValidationError('SDL must be a non-empty string')
     }
 
@@ -399,3 +398,5 @@ export class BatchManager {
     }
   }
 }
+
+export type { BatchResult }

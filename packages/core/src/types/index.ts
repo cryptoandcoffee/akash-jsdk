@@ -40,50 +40,20 @@ export interface ProviderInfo {
   }>
 }
 
-export interface Lease {
-  id: {
-    owner: string
-    dseq: string
-    gseq: number
-    oseq: number
-    provider: string
-  }
-  leaseId: {
-    owner: string
-    dseq: string
-    gseq: number
-    oseq: number
-    provider: string
-  }
-  state: 'active' | 'closed' | 'insufficient_funds'
-  price: {
-    denom: string
-    amount: string
-  }
-  /** Lease termination reason (AEP-39) - only present when state is 'closed' */
-  closeReason?: LeaseCloseReason
-}
+// Re-export Lease types from protobuf to avoid duplication
+export type {
+  Lease,
+  LeaseID,
+  LeaseState,
+  LeaseCloseReason
+} from '@cryptoandcoffee/akash-jsdk-protobuf'
 
-/**
- * Lease close reasons (AEP-39: Lease Termination Tracking)
- */
-export enum LeaseCloseReason {
-  Unspecified = 'unspecified',
-  ManifestTimeout = 'manifest_timeout',
-  Unstable = 'unstable',
-  InsufficientFunds = 'insufficient_funds',
-  UserRequested = 'user_requested'
-}
-
-export interface Deployment {
-  id: {
-    owner: string
-    dseq: string
-  }
-  state: 'active' | 'closed'
-  version: string
-  createdAt: number
-}
+// Re-export Deployment types from protobuf to avoid duplication
+export type {
+  Deployment,
+  DeploymentID,
+  DeploymentState
+} from '@cryptoandcoffee/akash-jsdk-protobuf'
 
 /**
  * Deposit sources (AEP-75: Multi-Depositor Escrow)

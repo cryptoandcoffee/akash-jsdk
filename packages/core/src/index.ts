@@ -4,6 +4,8 @@ export * from './providers'
 export * from './errors'
 export * from './cache'
 
+// Note: HTTP requests are handled by the consumer (e.g., MCP server)
+
 // Export events (selective to avoid conflicts)
 export type {
   BaseEvent,
@@ -60,7 +62,8 @@ export {
   IBCManager,
   StakingManager,
   WalletAdapter,
-  SupportedWallet
+  SupportedWallet,
+  MnemonicWallet
 } from './modules'
 
 import { AkashProvider } from './providers'
@@ -84,6 +87,7 @@ import { GovernanceManager } from './modules/governance'
 import { MarketManager } from './modules/market'
 import { ProviderManager } from './modules/provider'
 import { SDLManager } from './modules/sdl'
+import { DeploymentManager } from './modules/deployments'
 import { WalletManager } from './modules/wallet'
 import { JWTAuthManager } from './modules/jwt-auth'
 import { BatchManager } from './modules/batch'
@@ -104,6 +108,7 @@ export class AkashSDK {
   public readonly market: MarketManager
   public readonly providerManager: ProviderManager
   public readonly sdl: SDLManager
+  public readonly deploymentManager: DeploymentManager
   public readonly wallet: WalletManager
   public readonly jwtAuth: JWTAuthManager
   public readonly batch: BatchManager
@@ -127,6 +132,7 @@ export class AkashSDK {
     this.market = new MarketManager(this.provider, this.cache)
     this.providerManager = new ProviderManager(this.provider, this.cache)
     this.sdl = new SDLManager()
+    this.deploymentManager = new DeploymentManager(this.provider)
     this.wallet = new WalletManager(this.provider)
     this.jwtAuth = new JWTAuthManager()
     this.batch = new BatchManager(this.provider)
@@ -173,15 +179,7 @@ export class AkashSDK {
     return this.wallet.getAuthConfig()
   }
 
-  // Legacy deployment methods (maintained for backward compatibility)
-  get deployments() {
-    return {
-      list: (owner: string) => this.provider.getDeployments(owner),
-      get: (params: { owner: string; dseq: string }) => this.provider.getDeployment(params),
-      create: (config: any) => this.provider.createDeployment(config),
-      close: (params: { owner: string; dseq: string } | string) => this.provider.closeDeployment(params)
-    }
-  }
+
 
   // Legacy lease methods (maintained for backward compatibility)
   get leases() {
@@ -196,11 +194,125 @@ export class AkashSDK {
     }
   }
 
+  // Legacy deployment methods (maintained for backward compatibility)
+  get deployments() {
+    return {
+      create: (config: any, wallet?: any) => this.deploymentManager.create(config, wallet),
+      list: (ownerOrFilters: string | any) => {
+        if (typeof ownerOrFilters === 'string') {
+          return this.deploymentManager.list({ owner: ownerOrFilters });
+        } else {
+          return this.deploymentManager.list(ownerOrFilters);
+        }
+      },
+      get: (params: { owner: string; dseq: string }) => this.deploymentManager.get(params),
+      close: (deploymentId: string | any) => {
+        if (typeof deploymentId === 'string') {
+          throw new Error('close method requires deploymentId object with owner and dseq, not just a string');
+        } else {
+          return this.deploymentManager.close(deploymentId);
+        }
+      }
+    }
+  }
+
   // Legacy provider methods (maintained for backward compatibility)
   get providers() {
     return {
-      list: () => this.provider.getProviders()
+      list: () => this.provider.getProviders(),
+      sendManifest: (leaseId: any, manifest: string) => this.sendManifestToProvider(leaseId, manifest),
+      getDeploymentStatus: (leaseId: any) => this.getProviderDeploymentStatus(leaseId),
+      getLogs: (leaseId: any, service?: string) => this.getProviderLogs(leaseId, service)
     }
+  }
+
+  async sendManifestToProvider(leaseId: any, manifest: string): Promise<{ url: string; jwtToken: string; method: string; body: string }> {
+    // Generate JWT token for provider authentication
+    const accounts = await this.wallet.getAccounts();
+    const address = accounts[0];
+
+    const jwtToken = await this.jwtAuth.generateToken({
+      address,
+      privateKey: 'mock-private-key', // In production, this should be securely managed
+      leasePermissions: [{
+        owner: leaseId.owner,
+        dseq: leaseId.dseq,
+        gseq: leaseId.gseq?.toString(),
+        oseq: leaseId.oseq?.toString(),
+        provider: leaseId.provider,
+        scopes: ['send_manifest' as any]
+      }]
+    });
+
+    // Use a known real provider host instead of the provider address
+    // In production, this should look up the actual provider host from the provider info
+    const providerHost = 'provider.sphinx.chat'; // Known Akash provider
+    const providerUrl = `https://${providerHost}/deployment/${leaseId.owner}/${leaseId.dseq}/manifest`;
+
+    return {
+      url: providerUrl,
+      jwtToken,
+      method: 'PUT',
+      body: manifest
+    };
+  }
+
+  async getProviderDeploymentStatus(leaseId: any): Promise<{ url: string; jwtToken: string; method: string }> {
+    // Generate JWT token
+    const accounts = await this.wallet.getAccounts();
+    const address = accounts[0];
+
+    const jwtToken = await this.jwtAuth.generateToken({
+      address,
+      privateKey: 'mock-private-key',
+      leasePermissions: [{
+        owner: leaseId.owner,
+        dseq: leaseId.dseq,
+        gseq: leaseId.gseq?.toString(),
+        oseq: leaseId.oseq?.toString(),
+        provider: leaseId.provider,
+        scopes: ['status' as any]
+      }]
+    });
+
+    // Use a known real provider host
+    const providerHost = 'provider.akash.network';
+    const statusUrl = `https://${providerHost}/deployment/${leaseId.owner}/${leaseId.dseq}/status`;
+
+    return {
+      url: statusUrl,
+      jwtToken,
+      method: 'GET'
+    };
+  }
+
+  async getProviderLogs(leaseId: any, service?: string): Promise<{ url: string; jwtToken: string; method: string }> {
+    // Generate JWT token
+    const accounts = await this.wallet.getAccounts();
+    const address = accounts[0];
+
+    const jwtToken = await this.jwtAuth.generateToken({
+      address,
+      privateKey: 'mock-private-key',
+      leasePermissions: [{
+        owner: leaseId.owner,
+        dseq: leaseId.dseq,
+        gseq: leaseId.gseq?.toString(),
+        oseq: leaseId.oseq?.toString(),
+        provider: leaseId.provider,
+        scopes: ['logs' as any]
+      }]
+    });
+
+    // Use a known real provider host
+    const providerHost = 'provider.akash.network';
+    const logsUrl = `https://${providerHost}/deployment/${leaseId.owner}/${leaseId.dseq}/logs${service ? `?service=${service}` : ''}`;
+
+    return {
+      url: logsUrl,
+      jwtToken,
+      method: 'GET'
+    };
   }
 }
 

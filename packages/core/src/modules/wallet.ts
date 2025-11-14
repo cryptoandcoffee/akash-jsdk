@@ -3,6 +3,9 @@ import { Coin } from '@cryptoandcoffee/akash-jsdk-protobuf'
 import { NetworkError, ValidationError } from '../errors'
 import { JWTAuthManager } from './jwt-auth'
 import { JWTGenerationOptions, AuthConfig, AuthMethod } from '../types/jwt'
+import { Secp256k1HdWallet } from '@cosmjs/amino'
+
+const CHAIN_ID = 'akashnet-2'
 
 // Extend Window interface for wallet providers
 declare global {
@@ -371,9 +374,6 @@ export class WalletManager {
       // In real implementation, would use:
       // const result = await this.provider['client']!.broadcastTx(...)
 
-      // Add a testable operation that can be mocked to throw an error
-      const _timestamp = Date.now()
-
       return {
         txHash: mockResult.transactionHash,
         height: mockResult.height,
@@ -405,9 +405,6 @@ export class WalletManager {
 
       // In real implementation, would use:
       // const result = await this.provider['client']!.broadcastTx(...)
-
-      // Add a testable operation that can be mocked to throw an error
-      const _timestamp = Date.now()
 
       return {
         txHash: mockResult.transactionHash,
@@ -480,9 +477,6 @@ export class WalletManager {
 
       // In real implementation, would use:
       // const result = await this.provider['client']!.sendTokens(...)
-
-      // Add a testable operation that can be mocked to throw an error
-      const _timestamp = Date.now()
 
       return {
         txHash: mockResult.transactionHash,
@@ -717,56 +711,95 @@ export class KeplrWallet implements WalletProvider {
 
 // Cosmostation wallet implementation example
 export class CosmostationWallet implements WalletProvider {
-  private cosmostation: any = null
-
   async connect(): Promise<void> {
-    if (typeof window === 'undefined' || !window.cosmostation) {
+    if (!window.cosmostation?.providers?.keplr) {
       throw new Error('Cosmostation wallet not found')
     }
 
-    this.cosmostation = window.cosmostation
-    await this.cosmostation.cosmos.request({
-      method: 'cos_requestAccount',
-      params: { chainName: 'akash' }
-    })
+    try {
+      await window.cosmostation.providers.keplr.enable(CHAIN_ID)
+    } catch (error) {
+      throw new Error('Failed to connect to Cosmostation wallet')
+    }
   }
 
   async disconnect(): Promise<void> {
-    this.cosmostation = null
+    // Cosmostation doesn't have a disconnect method
   }
 
   async getAccounts(): Promise<string[]> {
-    if (!this.cosmostation) {
-      throw new Error('Cosmostation not connected')
+    if (!window.cosmostation?.providers?.keplr) {
+      throw new Error('Cosmostation wallet not found')
     }
 
-    const account = await this.cosmostation.cosmos.request({
-      method: 'cos_account',
-      params: { chainName: 'akash' }
-    })
-
-    return [account.address]
+    try {
+      const account = await window.cosmostation.providers.keplr.getKey(CHAIN_ID)
+      return [account.bech32Address]
+    } catch (error) {
+      throw new Error('Failed to get accounts from Cosmostation wallet')
+    }
   }
 
   async signTransaction(_tx: any): Promise<Uint8Array> {
-    if (!this.cosmostation) {
-      throw new Error('Cosmostation not connected')
-    }
-
-    // In a real implementation, this would sign the transaction with Cosmostation
-    return new Uint8Array([11, 12, 13, 14, 15])
+    throw new Error('Transaction signing not implemented for Cosmostation')
   }
 
   async signMessage(_message: string): Promise<Uint8Array> {
-    if (!this.cosmostation) {
-      throw new Error('Cosmostation not connected')
-    }
-
-    // In a real implementation, this would sign the message with Cosmostation
-    return new Uint8Array([16, 17, 18, 19, 20])
+    throw new Error('Message signing not implemented for Cosmostation')
   }
 
   isConnected(): boolean {
-    return this.cosmostation !== null
+    return !!window.cosmostation?.providers?.keplr
+  }
+}
+
+// Mnemonic wallet implementation for server-side usage
+export class MnemonicWallet implements WalletProvider {
+  private wallet: Secp256k1HdWallet | null = null;
+  private connected = false;
+
+  constructor(private mnemonic: string) {}
+
+  async connect(): Promise<void> {
+    if (this.connected) return;
+
+    this.wallet = await Secp256k1HdWallet.fromMnemonic(this.mnemonic, {
+      prefix: "akash",
+    });
+    this.connected = true;
+  }
+
+  async disconnect(): Promise<void> {
+    this.wallet = null;
+    this.connected = false;
+  }
+
+  async getAccounts(): Promise<string[]> {
+    if (!this.wallet) {
+      throw new Error("Wallet not connected");
+    }
+
+    const accounts = await this.wallet.getAccounts();
+    return accounts.map(account => account.address);
+  }
+
+  async signTransaction(_tx: any): Promise<Uint8Array> {
+    if (!this.wallet) {
+      throw new Error("Wallet not connected");
+    }
+
+    // This would need proper transaction signing logic
+    // For now, throw an error as this is complex
+    throw new Error("Transaction signing not implemented in mnemonic provider");
+  }
+
+  async signMessage(_message: string): Promise<Uint8Array> {
+    // Message signing not implemented for server-side mnemonic wallet
+    // This would require proper implementation of arbitrary message signing
+    throw new Error("Message signing not implemented for mnemonic wallet");
+  }
+
+  isConnected(): boolean {
+    return this.connected;
   }
 }

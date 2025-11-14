@@ -168,34 +168,28 @@ export class ProviderManager {
 
   async getProvider(owner: string): Promise<Provider | null> {
     this.provider.ensureConnected()
-    
+
     if (!owner) {
       throw new ValidationError('Provider owner is required')
     }
 
     try {
-      const response = await this.provider.getClient().searchTx([
-        { key: 'message.module', value: 'provider' },
-        { key: 'provider.owner', value: owner }
-      ])
+      const apiEndpoint = (this.provider as any).config.apiEndpoint
+      const response = await fetch(`${apiEndpoint}/akash/provider/v1beta3/providers/${owner}`)
 
-      if (response.length === 0) {
-        return null
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null
+        }
+        throw new Error(`API request failed: ${response.status}`)
       }
 
-      // Mock provider data
+      const data = await response.json()
       return {
-        owner,
-        hostUri: 'https://provider.akash.network',
-        attributes: [
-          { key: 'region', value: 'us-west' },
-          { key: 'tier', value: 'datacenter' },
-          { key: 'uptime', value: '99.9' }
-        ],
-        info: {
-          email: 'provider@example.com',
-          website: 'https://provider-website.com'
-        }
+        owner: data.provider.owner,
+        hostUri: data.provider.hostUri,
+        attributes: data.provider.attributes || [],
+        info: data.provider.info || {}
       }
     } catch (error) {
       throw new NetworkError('Failed to get provider', { error })
@@ -217,33 +211,44 @@ export class ProviderManager {
     }
 
     try {
-      const searchTags = [
-        { key: 'message.module', value: 'provider' }
-      ]
+      const apiEndpoint = (this.provider as any).config.apiEndpoint
+      let url = `${apiEndpoint}/akash/provider/v1beta3/providers`
 
-      if (filters.owner) {
-        searchTags.push({ key: 'provider.owner', value: filters.owner })
+      const params = new URLSearchParams()
+      if (filters.owner) params.append('owner', filters.owner)
+
+      if (params.toString()) {
+        url += `?${params.toString()}`
       }
 
-      const response = await this.provider.getClient().searchTx(searchTags)
+      const response = await fetch(url)
 
-      const providers = response.map((_, index) => ({
-        owner: filters.owner || (index === 0 ? 'akash1mock' : `akash1provider${index}`),
-        hostUri: `https://provider${index}.akash.network`,
-        attributes: [
-          { key: 'region', value: ['us-west', 'eu-central', 'ap-south'][index % 3] },
-          { key: 'tier', value: ['datacenter', 'community'][index % 2] },
-          { key: 'uptime', value: (98 + Math.random() * 2).toFixed(1) }
-        ].filter(attr => {
-          if (filters.region && attr.key === 'region') return attr.value === filters.region
-          if (filters.tier && attr.key === 'tier') return attr.value === filters.tier
-          return true
-        }),
-        info: {
-          email: `provider${index}@example.com`,
-          website: `https://provider${index}-website.com`
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data = await response.json()
+      const providers = data.providers.map((provider: any) => ({
+        owner: provider.owner,
+        hostUri: provider.hostUri,
+        attributes: provider.attributes || [],
+        info: provider.info || {}
+      })).filter((provider: Provider) => {
+        if (filters.region) {
+          const regionAttr = provider.attributes.find(attr => attr.key === 'region')
+          if (!regionAttr || regionAttr.value !== filters.region) return false
         }
-      }))
+        if (filters.tier) {
+          const tierAttr = provider.attributes.find(attr => attr.key === 'tier')
+          if (!tierAttr || tierAttr.value !== filters.tier) return false
+        }
+        if (filters.audited !== undefined) {
+          const auditedAttr = provider.attributes.find(attr => attr.key === 'audited')
+          const isAudited = auditedAttr?.value === 'true'
+          if (isAudited !== filters.audited) return false
+        }
+        return true
+      })
 
       // Cache the result
       if (this.cache) {
@@ -321,19 +326,19 @@ export class ProviderManager {
       
       return {
         total: {
-          cpu: { units: { val: '100' } },
-          memory: { size: '1' },
-          storage: { size: '1' }
+          cpu: { units: { val: new Uint8Array([100]) } },
+          memory: { quantity: { val: new Uint8Array([1]) } },
+          storage: [{ name: 'default', quantity: { val: new Uint8Array([1]) } }]
         },
         available: {
-          cpu: { units: '80' },
-          memory: { size: '1' },
-          storage: { size: '1' }
+          cpu: { units: { val: new Uint8Array([80]) } },
+          memory: { quantity: { val: new Uint8Array([1]) } },
+          storage: [{ name: 'default', quantity: { val: new Uint8Array([1]) } }]
         },
         allocated: {
-          cpu: { units: '20' },
-          memory: { size: '1' },
-          storage: { size: '1' }
+          cpu: { units: { val: new Uint8Array([20]) } },
+          memory: { quantity: { val: new Uint8Array([1]) } },
+          storage: [{ name: 'default', quantity: { val: new Uint8Array([1]) } }]
         }
       }
     } catch (error) {
@@ -465,20 +470,31 @@ export class ProviderManager {
     }
 
     try {
-      // Get active deployments count
-      const leaseResponse = await this.provider.getClient().searchTx([
-        { key: 'message.module', value: 'market' },
-        { key: 'lease.provider', value: owner },
-        { key: 'lease.state', value: 'active' }
-      ])
+      const apiEndpoint = (this.provider as any).config.apiEndpoint
 
-      // Mock provider status
+      // Get active leases for this provider
+      const leaseResponse = await fetch(`${apiEndpoint}/akash/market/v1beta4/leases/list?filters.provider=${owner}&filters.state=active`)
+      let activeDeployments = 0
+      if (leaseResponse.ok) {
+        const leaseData = await leaseResponse.json()
+        activeDeployments = leaseData.leases?.length || 0
+      }
+
+      // Get provider info
+      const providerResponse = await fetch(`${apiEndpoint}/akash/provider/v1beta3/providers/${owner}`)
+      if (!providerResponse.ok) {
+        throw new Error(`Failed to get provider info: ${providerResponse.status}`)
+      }
+
+      const providerData = await providerResponse.json()
+      const provider = providerData.provider
+
       return {
         owner,
-        online: true,
-        activeDeployments: leaseResponse.length || 1,
+        online: true, // Assume online if we can fetch data
+        activeDeployments,
         totalCapacity: {
-          cpu: { units: { val: new Uint8Array([1, 6, 0, 0]) } },
+          cpu: { units: { val: new Uint8Array([1, 6, 0, 0]) } }, // Placeholder - would need provider API
           memory: { quantity: { val: new Uint8Array([3, 2, 0, 0]) } },
           storage: []
         },
@@ -488,7 +504,7 @@ export class ProviderManager {
           storage: []
         },
         lastSeen: Date.now(),
-        version: '0.4.0'
+        version: provider.attributes?.find((attr: any) => attr.key === 'version')?.value || 'unknown'
       }
     } catch (error) {
       throw new NetworkError('Failed to get provider status', { error })
@@ -498,7 +514,7 @@ export class ProviderManager {
   /**
    * Validate provider configuration
    */
-  validateProviderConfig(config: ProviderConfig): { valid: boolean; errors: string[] } {
+  validateProviderConfig(config: CreateProviderRequest): { valid: boolean; errors: string[] } {
     const errors: string[] = []
 
     if (!config.owner || config.owner.trim() === '') {
