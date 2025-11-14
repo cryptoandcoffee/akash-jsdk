@@ -1,6 +1,7 @@
 import { BaseProvider } from '../providers/base'
 import { ValidationError, NetworkError } from '../errors'
-import { EncodeObject } from '@cosmjs/proto-signing'
+import { EncodeObject, Registry } from '@cosmjs/proto-signing'
+import { SigningStargateClient, calculateFee, GasPrice, StdFee } from '@cosmjs/stargate'
 import {
   validateSDL,
   validateDseq,
@@ -230,13 +231,8 @@ export class BatchManager {
   }
 
   /**
-   * Execute a batch of operations
-   *
-   * @warning MOCK IMPLEMENTATION - Simulates transaction execution without blockchain interaction
-   * @todo Implement SigningStargateClient.signAndBroadcast() for real transaction execution
-   * @todo Add proper protobuf message creation using @cosmjs/proto-signing
-   *
-   * @internal
+   * Execute a batch of operations on the blockchain
+   * Uses SigningStargateClient to broadcast transactions in a single batch
    */
   async executeBatch(operations: EncodeObject[]): Promise<BatchResult> {
     this.provider.ensureConnected()
@@ -257,47 +253,55 @@ export class BatchManager {
     }
 
     try {
-      // In a real implementation, this would use SigningStargateClient.signAndBroadcast
-      // to execute all operations in a single transaction
-      // For now, we simulate the transaction
+      // Create registry for Akash message types
+      const registry = new Registry()
 
-      // Runtime warning for mock implementation
-      if (process.env.NODE_ENV !== 'test') {
-        console.warn(
-          '⚠️  WARNING: Using mock batch execution. ' +
-          'This will not execute real blockchain transactions. ' +
-          'Do not use in production. ' +
-          'See PRODUCTION_READINESS.md for details.'
-        )
+      // Connect to the chain with signing capability
+      const client = await SigningStargateClient.connectWithSigner(
+        (this.provider as any).config.rpcEndpoint,
+        this.wallet,
+        { registry }
+      )
+
+      // Get the wallet address
+      const accounts = await this.wallet.getAccounts()
+      const walletAddress = accounts[0].address
+
+      // Broadcast all operations in a single transaction
+      const result = await client.signAndBroadcast(
+        walletAddress,
+        operations,
+        {
+          amount: [{
+            denom: DEFAULT_DENOM,
+            amount: Math.ceil(operations.length * 5000).toString()
+          }],
+          gas: 'auto',
+          gasAdjustment: this.gasAdjustment
+        } as StdFee
+      )
+
+      if (result.code !== 0) {
+        throw new NetworkError(`Transaction failed: ${result.rawLog}`)
       }
 
-      const mockResult: BatchResult = {
-        transactionHash: `batch-tx-${Date.now()}`,
-        code: 0,
-        height: Math.floor(Date.now() / 1000),
-        gasUsed: BigInt(operations.length * DEFAULT_GAS_PER_OPERATION),
-        gasWanted: BigInt(Math.floor(operations.length * DEFAULT_GAS_PER_OPERATION * this.gasAdjustment)),
-        success: true,
-        events: operations.map((op, idx) => ({
-          type: op.typeUrl,
-          attributes: [
-            { key: 'action', value: 'batch_operation' },
-            { key: 'index', value: idx.toString() }
-          ]
-        }))
+      return {
+        transactionHash: result.transactionHash,
+        code: result.code,
+        height: result.height,
+        gasUsed: BigInt(result.gasUsed),
+        gasWanted: BigInt(result.gasWanted),
+        success: result.code === 0,
+        events: result.events
       }
-
-      return mockResult
     } catch (error) {
       throw new NetworkError('Failed to execute batch operation', { error })
     }
   }
 
   /**
-   * Simulate a batch to estimate gas without executing
-   *
-   * @warning MOCK IMPLEMENTATION - Returns estimated gas based on operation count, not actual chain simulation
-   * @todo Implement real gas simulation using SigningStargateClient.simulate()
+   * Simulate a batch to estimate gas using real chain simulation
+   * Uses SigningStargateClient.simulate() to get accurate gas estimates
    */
   async simulateBatch(operations: EncodeObject[]): Promise<{
     gasEstimate: number
@@ -305,19 +309,42 @@ export class BatchManager {
   }> {
     this.provider.ensureConnected()
 
+    if (!this.wallet) {
+      throw new ValidationError('Wallet must be set for gas simulation')
+    }
+
     if (!operations || operations.length === 0) {
       throw new ValidationError('Batch must contain at least one operation')
     }
 
     try {
-      // Simulate gas estimation
-      const gasEstimate = Math.floor(operations.length * DEFAULT_GAS_PER_OPERATION * this.gasAdjustment)
-      const gasPrice = parseFloat(this.gasPrice.replace(DEFAULT_DENOM, ''))
-      const feeAmount = Math.ceil(gasEstimate * gasPrice)
+      // Create registry
+      const registry = new Registry()
+
+      // Connect to the chain with signing capability
+      const client = await SigningStargateClient.connectWithSigner(
+        (this.provider as any).config.rpcEndpoint,
+        this.wallet,
+        { registry }
+      )
+
+      // Get the wallet address
+      const accounts = await this.wallet.getAccounts()
+      const walletAddress = accounts[0].address
+
+      // Simulate the transaction on-chain
+      const gasEstimate = await client.simulate(walletAddress, operations, '')
+
+      // Apply gas adjustment
+      const adjustedGas = Math.ceil(gasEstimate * this.gasAdjustment)
+
+      // Calculate fee
+      const gasPrice = GasPrice.fromString(this.gasPrice)
+      const fee = calculateFee(adjustedGas, gasPrice)
 
       return {
-        gasEstimate,
-        fee: { denom: DEFAULT_DENOM, amount: feeAmount.toString() }
+        gasEstimate: adjustedGas,
+        fee: { denom: fee.amount[0].denom, amount: fee.amount[0].amount }
       }
     } catch (error) {
       throw new NetworkError('Failed to simulate batch operation', { error })
@@ -367,10 +394,8 @@ export class BatchManager {
   }
 
   /**
-   * Get transaction details for a batch result
-   *
-   * @warning MOCK IMPLEMENTATION - Returns mock transaction data, not actual blockchain state
-   * @todo Implement real transaction query using StargateClient.getTx()
+   * Get transaction details from the blockchain
+   * Queries the actual transaction data using StargateClient
    */
   async getTransactionDetails(txHash: string): Promise<{
     hash: string
@@ -385,16 +410,75 @@ export class BatchManager {
     }
 
     try {
-      // In a real implementation, this would query the blockchain for the transaction
-      // For now, return mock data
+      // Connect to query the blockchain
+      const client = await SigningStargateClient.connect(
+        (this.provider as any).config.rpcEndpoint
+      )
+
+      // Get the transaction from the chain
+      const tx = await client.getTx(txHash)
+
+      if (!tx) {
+        return null
+      }
+
+      // Get block data for timestamp
+      const block = await client.getBlock(tx.height)
+
       return {
-        hash: txHash,
-        height: Math.floor(Date.now() / 1000),
-        success: true,
-        timestamp: new Date().toISOString()
+        hash: tx.hash,
+        height: tx.height,
+        success: tx.code === 0,
+        timestamp: block.header.time
       }
     } catch (error) {
       throw new NetworkError('Failed to get transaction details', { error })
+    }
+  }
+
+  /**
+   * Wait for transaction confirmation with polling
+   * Polls the blockchain until the transaction is confirmed or timeout is reached
+   */
+  async waitForConfirmation(
+    txHash: string,
+    timeoutMs: number = 60000,
+    pollIntervalMs: number = 1000
+  ): Promise<{
+    hash: string
+    height: number
+    success: boolean
+    confirmed: boolean
+  }> {
+    const startTime = Date.now()
+
+    while (Date.now() - startTime < timeoutMs) {
+      try {
+        const details = await this.getTransactionDetails(txHash)
+
+        if (details) {
+          return {
+            hash: details.hash,
+            height: details.height,
+            success: details.success,
+            confirmed: true
+          }
+        }
+
+        // Wait before polling again
+        await new Promise(resolve => setTimeout(resolve, pollIntervalMs))
+      } catch (error) {
+        // Continue polling on errors
+        await new Promise(resolve => setTimeout(resolve, pollIntervalMs))
+      }
+    }
+
+    // Timeout reached
+    return {
+      hash: txHash,
+      height: 0,
+      success: false,
+      confirmed: false
     }
   }
 }
