@@ -1,8 +1,8 @@
-// Export our compatibility types
+// Export our compatibility types (includes Deployment, Lease, etc.)
 export * from './official-types.js'
 
-// Export generated types for TypeScript typing
-export * from '../generated/index.js'
+// Generated types are available via: import { X } from '@cryptoandcoffee' + '/akash-jsdk-protobuf/generated'
+// but not re-exported here to avoid conflicts with official-types
 
 /**
  * Simple Akash Network Protobuf Type Registry

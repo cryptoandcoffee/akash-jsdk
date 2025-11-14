@@ -20,7 +20,9 @@ Major dependency updates and framework compatibility improvements
 - Simplified API reduces bundle size
 
 **Testing:**
-- All 888 core SDK tests passing
-- Verified compatibility with upgraded dependencies
+- Core package: 888/888 tests passing (100%)
+- Protobuf package: 103/103 tests passing (100%)
+- CLI package: 114/148 tests passing (77% - vitest 4 mock updates in progress)
+- React package: Test updates for vitest 4 in progress
 
-**Note:** @bufbuild/protobuf v2 is a breaking change but doesn't affect SDK users since protobuf serialization was never part of the public API
+**Note:** @bufbuild/protobuf v2 uses plain TypeScript types instead of classes, but doesn't affect SDK users since protobuf serialization was never part of the public API. CLI and React package test suites are being updated for vitest 4 compatibility and will be fully fixed in a follow-up patch release.

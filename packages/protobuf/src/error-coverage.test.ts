@@ -1,160 +1,101 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
+import { AkashProtobuf } from './index.js'
 
 /**
- * Targeted tests to achieve 100% coverage for protobuf package
- * Specifically targeting the uncovered error condition lines
- * 
- * This test file uses module mocking to force the import conditions that would
- * result in null/undefined DeploymentType and LeaseType variables.
+ * Error coverage tests for v2 API
+ * In v2, serialization is not supported - all encode/decode methods throw errors
  */
-describe('Error Coverage Tests - Import Failure Simulation', () => {
-  let originalImports: any
+describe('Error Coverage Tests - v2 API', () => {
 
-  beforeEach(() => {
-    // Clear module cache before each test
-    vi.resetModules()
-  })
-
-  afterEach(() => {
-    // Restore modules after each test
-    vi.doUnmock('./index.js')
-  })
-
-  describe('Force error conditions for uncovered lines', () => {
-    it('should cover error paths when protobuf types fail to import', async () => {
-      // Mock the generated protobuf imports to return null/undefined
-      vi.doMock('../generated/akash/deployment/v1beta3/deployment_pb.js', () => ({
-        Deployment: null
-      }))
-      
-      vi.doMock('../generated/akash/market/v1beta4/lease_pb.js', () => ({
-        Lease: null
-      }))
-
-      // Import the module after mocking
-      const { AkashProtobuf } = await import('./index.js')
+  describe('v2 serialization error handling', () => {
+    it('should throw errors for all encode/decode operations in v2', () => {
       const registry = new AkashProtobuf()
-      
-      // Now test all the error conditions
+
+      // v2 doesn't support serialization - all these should throw
       expect(() => {
         registry.encodeDeployment({})
-      }).toThrow('Deployment protobuf type not available. Ensure protobuf generation completed successfully.')
+      }).toThrow('Serialization not supported in v2 type-only mode')
 
       expect(() => {
         registry.decodeDeployment(new Uint8Array([1, 2, 3]))
-      }).toThrow('Deployment protobuf type not available. Ensure protobuf generation completed successfully.')
+      }).toThrow('Deserialization not supported in v2 type-only mode')
 
       expect(() => {
         registry.encodeLease({})
-      }).toThrow('Lease protobuf type not available. Ensure protobuf generation completed successfully.')
+      }).toThrow('Serialization not supported in v2 type-only mode')
 
       expect(() => {
         registry.decodeLease(new Uint8Array([1, 2, 3]))
-      }).toThrow('Lease protobuf type not available. Ensure protobuf generation completed successfully.')
-
-      expect(() => {
-        registry.createDeployment({})
-      }).toThrow('Deployment protobuf type not available')
-
-      expect(() => {
-        registry.createLease({})
-      }).toThrow('Lease protobuf type not available')
+      }).toThrow('Deserialization not supported in v2 type-only mode')
     })
 
-    it('should cover error paths when protobuf types are undefined', async () => {
-      // Mock the generated protobuf imports to return undefined
-      vi.doMock('../generated/akash/deployment/v1beta3/deployment_pb.js', () => ({
-        Deployment: undefined
-      }))
-      
-      vi.doMock('../generated/akash/market/v1beta4/lease_pb.js', () => ({
-        Lease: undefined
-      }))
-
-      // Import the module after mocking
-      const { AkashProtobuf } = await import('./index.js')
+    it('should handle createDeployment and createLease by returning data', () => {
       const registry = new AkashProtobuf()
-      
-      // Test error conditions with undefined types
-      expect(() => {
-        registry.encodeDeployment({})
-      }).toThrow('Deployment protobuf type not available. Ensure protobuf generation completed successfully.')
 
-      expect(() => {
-        registry.decodeDeployment(new Uint8Array([1, 2, 3]))
-      }).toThrow('Deployment protobuf type not available. Ensure protobuf generation completed successfully.')
+      // In v2, these just return the data as-is
+      const deploymentData = {
+        deploymentId: { owner: 'test', dseq: '1' },
+        state: 1,
+        version: new Uint8Array([1]),
+        createdAt: Date.now()
+      }
 
-      expect(() => {
-        registry.encodeLease({})
-      }).toThrow('Lease protobuf type not available. Ensure protobuf generation completed successfully.')
+      const deployment = registry.createDeployment(deploymentData)
+      expect(deployment).toEqual(deploymentData)
+      expect(deployment.deploymentId.owner).toBe('test')
 
-      expect(() => {
-        registry.decodeLease(new Uint8Array([1, 2, 3]))
-      }).toThrow('Lease protobuf type not available. Ensure protobuf generation completed successfully.')
+      const leaseData = {
+        leaseId: { owner: 'test', dseq: '1', gseq: 1, oseq: 1, provider: 'provider' },
+        state: 1,
+        price: { denom: 'uakt', amount: '1000' },
+        createdAt: Date.now(),
+        closedOn: 0
+      }
 
-      expect(() => {
-        registry.createDeployment({})
-      }).toThrow('Deployment protobuf type not available')
-
-      expect(() => {
-        registry.createLease({})
-      }).toThrow('Lease protobuf type not available')
+      const lease = registry.createLease(leaseData)
+      expect(lease).toEqual(leaseData)
+      expect(lease.leaseId.provider).toBe('provider')
     })
 
-    it('should cover error paths with empty/false imports', async () => {
-      // Mock the generated protobuf imports to return falsy values  
-      vi.doMock('../generated/akash/deployment/v1beta3/deployment_pb.js', () => ({
-        Deployment: false
-      }))
-      
-      vi.doMock('../generated/akash/market/v1beta4/lease_pb.js', () => ({
-        Lease: 0
-      }))
-
-      // Import the module after mocking
-      const { AkashProtobuf } = await import('./index.js')
+    it('should test error messages with various data', () => {
       const registry = new AkashProtobuf()
-      
-      // Test with falsy but defined values
-      expect(() => {
-        registry.encodeDeployment({})
-      }).toThrow('Deployment protobuf type not available. Ensure protobuf generation completed successfully.')
 
-      expect(() => {
-        registry.encodeLease({})
-      }).toThrow('Lease protobuf type not available. Ensure protobuf generation completed successfully.')
+      // Test with different data types - all should throw the same v2 error
+      const testData = [
+        new Uint8Array([]),
+        new Uint8Array([255, 255, 255, 255]),
+        new Uint8Array([1, 2, 3]),
+        new Uint8Array([0, 0, 0, 0])
+      ]
 
-      expect(() => {
-        registry.createDeployment({})
-      }).toThrow('Deployment protobuf type not available')
-
-      expect(() => {
-        registry.createLease({})
-      }).toThrow('Lease protobuf type not available')
+      testData.forEach(data => {
+        expect(() => registry.decodeDeployment(data)).toThrow(
+          'Deserialization not supported in v2 type-only mode'
+        )
+        expect(() => registry.decodeLease(data)).toThrow(
+          'Deserialization not supported in v2 type-only mode'
+        )
+      })
     })
 
-    it('should cover error paths with NaN imports', async () => {
-      // Mock the generated protobuf imports to return NaN
-      vi.doMock('../generated/akash/deployment/v1beta3/deployment_pb.js', () => ({
-        Deployment: NaN
-      }))
-      
-      vi.doMock('../generated/akash/market/v1beta4/lease_pb.js', () => ({
-        Lease: NaN
-      }))
-
-      // Import the module after mocking
-      const { AkashProtobuf } = await import('./index.js')
+    it('should test encoding with various objects', () => {
       const registry = new AkashProtobuf()
-      
-      // Test with NaN values (which are falsy)
-      expect(() => {
-        registry.decodeDeployment(new Uint8Array([1, 2, 3]))
-      }).toThrow('Deployment protobuf type not available. Ensure protobuf generation completed successfully.')
 
-      expect(() => {
-        registry.decodeLease(new Uint8Array([1, 2, 3]))
-      }).toThrow('Lease protobuf type not available. Ensure protobuf generation completed successfully.')
+      const testObjects = [
+        {},
+        { test: 'data' },
+        { deploymentId: { owner: 'test' } },
+        null as any
+      ]
+
+      testObjects.forEach(obj => {
+        expect(() => registry.encodeDeployment(obj)).toThrow(
+          'Serialization not supported in v2 type-only mode'
+        )
+        expect(() => registry.encodeLease(obj)).toThrow(
+          'Serialization not supported in v2 type-only mode'
+        )
+      })
     })
   })
 })
