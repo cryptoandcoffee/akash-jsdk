@@ -19,10 +19,14 @@ vi.mock('isomorphic-ws', () => ({
   }
 }))
 
+// Mock fetch for provider list API calls
+global.fetch = vi.fn()
+
 describe('Cache Integration', () => {
   let sdk: AkashSDK
 
   beforeEach(() => {
+    vi.clearAllMocks()
     sdk = new AkashSDK({
       rpcEndpoint: 'https://rpc.akash.network:443',
       apiEndpoint: 'https://api.akash.network:443',
@@ -54,24 +58,30 @@ describe('Cache Integration', () => {
   })
 
   it('should cache provider list results', async () => {
-    // Mock the provider's client
-    const mockClient = {
-      searchTx: vi.fn().mockResolvedValue([
-        { height: 1000 },
-        { height: 1001 }
-      ])
+    // Mock fetch to return provider list
+    const mockProviders = {
+      providers: [
+        { owner: 'akash1test1', hostUri: 'https://provider1.com', attributes: [], info: {} },
+        { owner: 'akash1test2', hostUri: 'https://provider2.com', attributes: [], info: {} }
+      ]
     }
 
-    sdk['provider']['client'] = mockClient
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      json: async () => mockProviders
+    } as Response)
+
+    // Mock the provider connection
+    sdk['provider']['client'] = {} as any
     sdk['provider']['connected'] = true
 
     // First call should hit the API
     await sdk.providerManager.listProviders()
-    expect(mockClient.searchTx).toHaveBeenCalledTimes(1)
+    expect(global.fetch).toHaveBeenCalledTimes(1)
 
     // Second call should use cache
     await sdk.providerManager.listProviders()
-    expect(mockClient.searchTx).toHaveBeenCalledTimes(1) // Still 1, not 2
+    expect(global.fetch).toHaveBeenCalledTimes(1) // Still 1, not 2
 
     const stats = sdk.cache.getStats()
     expect(stats.hits).toBeGreaterThan(0)
@@ -173,24 +183,40 @@ describe('Cache Integration', () => {
   })
 
   it('should cache with different filters separately', async () => {
-    // Mock the provider's client
-    const mockClient = {
-      searchTx: vi.fn()
-        .mockResolvedValueOnce([{ height: 1000 }])
-        .mockResolvedValueOnce([{ height: 2000 }])
+    // Mock fetch to return different provider lists for different owners
+    const mockProviders1 = {
+      providers: [
+        { owner: 'akash1', hostUri: 'https://provider1.com', attributes: [], info: {} }
+      ]
+    }
+    const mockProviders2 = {
+      providers: [
+        { owner: 'akash2', hostUri: 'https://provider2.com', attributes: [], info: {} }
+      ]
     }
 
-    sdk['provider']['client'] = mockClient
+    vi.mocked(global.fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockProviders1
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockProviders2
+      } as Response)
+
+    // Mock the provider connection
+    sdk['provider']['client'] = {} as any
     sdk['provider']['connected'] = true
 
     // Two different filters should hit API twice
     await sdk.providerManager.listProviders({ owner: 'akash1' })
     await sdk.providerManager.listProviders({ owner: 'akash2' })
 
-    expect(mockClient.searchTx).toHaveBeenCalledTimes(2)
+    expect(global.fetch).toHaveBeenCalledTimes(2)
 
     // But calling with same filter should use cache
     await sdk.providerManager.listProviders({ owner: 'akash1' })
-    expect(mockClient.searchTx).toHaveBeenCalledTimes(2) // Still 2
+    expect(global.fetch).toHaveBeenCalledTimes(2) // Still 2
   })
 })

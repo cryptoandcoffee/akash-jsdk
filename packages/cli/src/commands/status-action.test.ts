@@ -50,12 +50,12 @@ describe('statusCommand (status-action)', () => {
         }),
         list: vi.fn().mockResolvedValue([
           {
-            id: { owner: 'akash1test', dseq: '123' },
+            deploymentId: { owner: 'akash1test', dseq: '123' },
             state: 'active',
             createdAt: Date.now()
           },
           {
-            id: { owner: 'akash1test', dseq: '456' },
+            deploymentId: { owner: 'akash1test', dseq: '456' },
             state: 'closed',
             createdAt: Date.now() - 86400000
           }

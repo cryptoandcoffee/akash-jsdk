@@ -27,13 +27,13 @@ const mockExit = vi.spyOn(process, 'exit').mockImplementation((() => { throw new
 describe('statusAction', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    
+
     const mockSDK = {
       connect: vi.fn().mockResolvedValue(undefined),
       deployments: {
         list: vi.fn().mockResolvedValue([
           {
-            id: { owner: 'akash1test', dseq: '123' },
+            deploymentId: { owner: 'akash1test', dseq: '123' },
             state: 'active',
             createdAt: new Date().toISOString()
           }
@@ -42,7 +42,7 @@ describe('statusAction', () => {
       leases: {
         list: vi.fn().mockResolvedValue([
           {
-            id: { 
+            leaseId: {
               dseq: '123',
               gseq: '1',
               oseq: '1',
@@ -54,7 +54,7 @@ describe('statusAction', () => {
         ])
       }
     }
-    
+
     vi.mocked(AkashSDK).mockReturnValue(mockSDK as any)
   })
 
@@ -87,12 +87,12 @@ describe('statusAction', () => {
         list: vi.fn().mockResolvedValue([])
       }
     }
-    
+
     vi.mocked(AkashSDK).mockReturnValue(mockSDK as any)
     const options = { owner: 'akash1test' }
-    
+
     await statusAction(options)
-    
+
     expect(mockLog).toHaveBeenCalledWith(expect.stringContaining('No deployments found'))
   })
 
@@ -123,7 +123,7 @@ describe('statusAction', () => {
       deployments: {
         list: vi.fn().mockResolvedValue([
           {
-            id: { owner: 'akash1test', dseq: '123' },
+            deploymentId: { owner: 'akash1test', dseq: '123' },
             state: 'active',
             createdAt: new Date().toISOString()
           }
@@ -133,12 +133,12 @@ describe('statusAction', () => {
         list: vi.fn().mockResolvedValue([])
       }
     }
-    
+
     vi.mocked(AkashSDK).mockReturnValue(mockSDK as any)
     const options = { owner: 'akash1test' }
-    
+
     await statusAction(options)
-    
+
     expect(mockLog).not.toHaveBeenCalledWith(expect.stringContaining('Active Leases'))
   })
 

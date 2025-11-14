@@ -18,6 +18,15 @@ const createMockTx = (height: number, hash: string = 'mock-hash') => ({
   msgResponses: []
 })
 
+// Mock wallet for deployment creation
+const mockWallet = {
+  getAccounts: vi.fn().mockResolvedValue([{
+    address: 'akash1test',
+    algo: 'secp256k1',
+    pubkey: new Uint8Array()
+  }])
+}
+
 // Mock the provider
 const mockClient = {
   searchTx: vi.fn()
@@ -26,9 +35,17 @@ const mockClient = {
 const mockProvider = {
   ensureConnected: vi.fn(),
   client: mockClient,
+  config: {
+    rpcEndpoint: 'https://rpc.akashedge.com:443',
+    apiEndpoint: 'https://api.akashedge.com:443',
+    chainId: 'akashnet-test'
+  },
   getClient: vi.fn().mockReturnValue(mockClient),
   signer: 'akash1test'
 } as unknown as AkashProvider
+
+// Mock global fetch
+global.fetch = vi.fn()
 
 describe('DeploymentManager', () => {
   let deploymentManager: DeploymentManager
@@ -36,6 +53,8 @@ describe('DeploymentManager', () => {
   beforeEach(() => {
     deploymentManager = new DeploymentManager(mockProvider)
     vi.clearAllMocks()
+    // Reset fetch mock
+    vi.mocked(global.fetch).mockReset()
   })
 
   describe('create', () => {
@@ -49,18 +68,44 @@ services:
       - port: 80
         as: 80
         to:
-          - global: true`
+          - global: true
+profiles:
+  compute:
+    web:
+      resources:
+        cpu:
+          units: 0.5
+        memory:
+          size: 512Mi
+        storage:
+          size: 1Gi
+deployment:
+  web:
+    westcoast:
+      profile: web
+      count: 1`
       }
 
-      const mockTx = createMockTx(12345, 'deployment-tx-hash')
+      // Mock SigningStargateClient.connectWithSigner
+      const mockSignAndBroadcast = vi.fn().mockResolvedValue({
+        code: 0,
+        transactionHash: 'deployment-tx-hash',
+        rawLog: ''
+      })
 
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([mockTx])
+      const mockSigningClient = {
+        signAndBroadcast: mockSignAndBroadcast
+      }
 
-      const result = await deploymentManager.create(createRequest)
+      // Mock the SigningStargateClient.connectWithSigner static method
+      const { SigningStargateClient } = await import('@cosmjs/stargate')
+      vi.spyOn(SigningStargateClient, 'connectWithSigner').mockResolvedValue(mockSigningClient as any)
+
+      const result = await deploymentManager.create(createRequest, mockWallet)
 
       expect(result).toMatchObject({
         owner: 'akash1test',
-        dseq: '12345'
+        dseq: expect.any(String)
       })
       expect(mockProvider['ensureConnected']).toHaveBeenCalled()
     })
@@ -81,29 +126,52 @@ services:
       - port: 80
         as: 80
         to:
-          - global: true`
+          - global: true
+profiles:
+  compute:
+    web:
+      resources:
+        cpu:
+          units: 0.5
+        memory:
+          size: 512Mi
+        storage:
+          size: 1Gi
+deployment:
+  web:
+    westcoast:
+      profile: web
+      count: 1`
       }
 
-      // Mock the provider client to throw an error
-      const errorMockProvider = {
-        ensureConnected: vi.fn(),
-        client: {
-          searchTx: vi.fn().mockRejectedValue(new Error('Network search failed'))
-        }
-      }
+      // Mock SigningStargateClient to throw an error
+      const { SigningStargateClient } = await import('@cosmjs/stargate')
+      vi.spyOn(SigningStargateClient, 'connectWithSigner').mockRejectedValue(new Error('Network connection failed'))
 
-      const errorDeploymentManager = new DeploymentManager(errorMockProvider as any)
-      
-      await expect(errorDeploymentManager.create(createRequest)).rejects.toThrow(DeploymentError)
-      await expect(errorDeploymentManager.create(createRequest)).rejects.toThrow('Failed to create deployment')
+      await expect(deploymentManager.create(createRequest, mockWallet)).rejects.toThrow(DeploymentError)
+      await expect(deploymentManager.create(createRequest, mockWallet)).rejects.toThrow('Failed to create deployment')
     })
   })
 
   describe('list', () => {
     it('should list deployments for owner', async () => {
-      const mockTxs = [createMockTx(12345, 'deployment-tx-1')]
-
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue(mockTxs)
+      // Mock fetch response
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          deployments: [{
+            deployment: {
+              deploymentId: {
+                owner: 'test-owner',
+                dseq: '12345'
+              },
+              state: DeploymentState.DEPLOYMENT_ACTIVE,
+              version: '1.0.0',
+              createdAt: 12345
+            }
+          }]
+        })
+      } as Response)
 
       const result = await deploymentManager.list({ owner: 'test-owner' })
 
@@ -120,18 +188,34 @@ services:
     })
 
     it('should list deployments with dseq filter', async () => {
-      const mockTxs = [createMockTx(12345, 'deployment-tx-1')]
-
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue(mockTxs)
+      // Mock fetch response
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          deployments: [{
+            deployment: {
+              deploymentId: {
+                owner: 'test-owner',
+                dseq: '12345'
+              },
+              state: DeploymentState.DEPLOYMENT_ACTIVE,
+              version: '1.0.0',
+              createdAt: 12345
+            }
+          }]
+        })
+      } as Response)
 
       const result = await deploymentManager.list({ owner: 'test-owner', dseq: '12345' })
 
       expect(result).toHaveLength(1)
-      expect(mockProvider['client']!.searchTx).toHaveBeenCalledWith([
-        { key: 'message.module', value: 'deployment' },
-        { key: 'deployment.owner', value: 'test-owner' },
-        { key: 'deployment.dseq', value: '12345' }
-      ])
+      // Verify fetch was called with the correct URL including filters
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('filters.owner=test-owner')
+      )
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('filters.dseq=12345')
+      )
     })
 
     it('should handle network errors during deployment list', async () => {
@@ -142,7 +226,13 @@ services:
     })
 
     it('should handle empty deployment list', async () => {
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([])
+      // Mock fetch response with empty deployments array
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          deployments: []
+        })
+      } as Response)
 
       const result = await deploymentManager.list({ owner: 'test-owner' })
 
@@ -153,9 +243,18 @@ services:
   describe('get', () => {
     it('should get specific deployment', async () => {
       const deploymentId = { owner: 'test-owner', dseq: '123' }
-      const mockTxs = [createMockTx(123, 'deployment-tx')]
 
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue(mockTxs)
+      // Mock fetch response
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          deployment: {
+            state: DeploymentState.DEPLOYMENT_ACTIVE,
+            version: '1.0.0',
+            createdAt: 123
+          }
+        })
+      } as Response)
 
       const result = await deploymentManager.get(deploymentId)
 
@@ -169,7 +268,12 @@ services:
 
     it('should return null for non-existent deployment', async () => {
       const deploymentId = { owner: 'test-owner', dseq: '999' }
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([])
+
+      // Mock fetch response with 404
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: false,
+        status: 404
+      } as Response)
 
       const result = await deploymentManager.get(deploymentId)
 
@@ -297,9 +401,37 @@ deployment:
   describe('getGroups', () => {
     it('should get deployment groups successfully', async () => {
       const deploymentId = { owner: 'test-owner', dseq: '123' }
-      const mockTxs = [createMockTx(125, 'groups-tx')]
 
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue(mockTxs)
+      // Mock fetch response with groups
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          deployment: {
+            groups: [{
+              name: 'web',
+              requirements: {
+                signedBy: {
+                  allOf: [],
+                  anyOf: []
+                },
+                attributes: []
+              },
+              resources: [{
+                resources: {
+                  cpu: { units: { val: new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]) } },
+                  memory: { quantity: { val: new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]) } },
+                  storage: [{
+                    name: 'default',
+                    quantity: { val: new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]) }
+                  }]
+                },
+                count: 1,
+                price: { denom: 'uakt', amount: '1000' }
+              }]
+            }]
+          }
+        })
+      } as Response)
 
       const result = await deploymentManager.getGroups(deploymentId)
 
@@ -330,12 +462,6 @@ deployment:
           })
         ])
       })
-
-      expect(mockProvider['client']!.searchTx).toHaveBeenCalledWith([
-        { key: 'message.module', value: 'deployment' },
-        { key: 'deployment.owner', value: 'test-owner' },
-        { key: 'deployment.dseq', value: '123' }
-      ])
     })
 
     it('should throw error for invalid deployment ID in getGroups', async () => {
@@ -358,15 +484,18 @@ deployment:
   describe('validateDeployment', () => {
     it('should validate active deployment successfully', async () => {
       const deploymentId = { owner: 'test-owner', dseq: '123' }
-      const mockTxs = [{
-        height: 123,
-        hash: 'deployment-tx',
-        gasUsed: 50000,
-        gasWanted: 60000,
-        events: []
-      }]
 
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue(mockTxs)
+      // Mock fetch response for get() call
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          deployment: {
+            state: DeploymentState.DEPLOYMENT_ACTIVE,
+            version: '1.0.0',
+            createdAt: 123
+          }
+        })
+      } as Response)
 
       const result = await deploymentManager.validateDeployment(deploymentId)
 
@@ -379,7 +508,12 @@ deployment:
 
     it('should return invalid for non-existent deployment', async () => {
       const deploymentId = { owner: 'test-owner', dseq: '999' }
-      vi.mocked(mockProvider['client']!.searchTx).mockResolvedValue([])
+
+      // Mock fetch response with 404
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: false,
+        status: 404
+      } as Response)
 
       const result = await deploymentManager.validateDeployment(deploymentId)
 
