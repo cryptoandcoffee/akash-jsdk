@@ -1,5 +1,27 @@
 # @cryptoandcoffee/akash-jsdk-core
 
+## 3.3.2
+
+### Patch Changes
+
+- Fix test failures and add missing dependencies
+
+  - Fixed all 60 failing tests across the monorepo (1,288 tests now passing)
+  - Added missing dependencies: @cosmjs/amino, elliptic, isomorphic-ws
+  - Created dependency checker script to validate imports before tests
+  - Fixed API endpoint configuration in provider test mocks
+  - Corrected BigInt comparison assertions in staking tests
+  - Added valid SDL YAML for batch validation tests
+  - Updated Cosmostation wallet mock structure
+  - Added fetch mocks for all provider API endpoint calls
+  - Fixed deployment manager tests with proper mocks
+  - Updated SDK wrapper tests for new property names
+  - Fixed cache integration and wallet error handling tests
+  - Updated CLI tests to use deploymentId instead of id property
+
+- Updated dependencies
+  - @cryptoandcoffee/akash-jsdk-protobuf@3.3.2
+
 ## 3.3.0
 
 ### Minor Changes
