@@ -11,7 +11,6 @@ import { BatchResult } from '../types/results'
 import {
   DEFAULT_GAS_PRICE,
   DEFAULT_GAS_ADJUSTMENT,
-  DEFAULT_GAS_PER_OPERATION,
   DEFAULT_DEPLOYMENT_DEPOSIT,
   DEFAULT_DENOM,
   DEFAULT_GSEQ,
@@ -184,11 +183,11 @@ export interface BatchManagerConfig {
  */
 export class BatchManager {
   private provider: BaseProvider
-  private wallet: { address: string } | null = null
+  private wallet: any = null
   private gasPrice: string
   private gasAdjustment: number
 
-  constructor(provider: BaseProvider, wallet?: { address: string }, config?: BatchManagerConfig) {
+  constructor(provider: BaseProvider, wallet?: any, config?: BatchManagerConfig) {
     this.provider = provider
     this.wallet = wallet || null
     this.gasPrice = config?.gasPrice || DEFAULT_GAS_PRICE
@@ -198,7 +197,7 @@ export class BatchManager {
   /**
    * Set the wallet to use for batch operations
    */
-  setWallet(wallet: { address: string }): void {
+  setWallet(wallet: any): void {
     this.wallet = wallet
   }
 
@@ -292,7 +291,7 @@ export class BatchManager {
         gasUsed: BigInt(result.gasUsed),
         gasWanted: BigInt(result.gasWanted),
         success: result.code === 0,
-        events: result.events
+        events: result.events ? [...result.events] : []
       }
     } catch (error) {
       throw new NetworkError('Failed to execute batch operation', { error })
