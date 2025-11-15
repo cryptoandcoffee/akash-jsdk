@@ -1,6 +1,6 @@
 {
   "name": "akash-jsdk",
-  "version": "3.8.2",
+  "version": "3.8.0",
   "description": "Modern JavaScript SDK for Akash Network",
   "type": "module",
   "private": true,
@@ -14,9 +14,9 @@
     "format": "pnpm run --recursive format",
     "typecheck": "pnpm run --recursive typecheck",
     "clean": "pnpm run --recursive clean",
-    "release": "pnpm publish -r --access public",
-    "validate:release": "node scripts/validate-release.js",
-    "publish:release": "node scripts/publish-release.js",
+    "release": "node scripts/release.js",
+    "release:preflight": "node scripts/pre-flight-check.js",
+    "release:verify": "node scripts/verify-npm-publish.js",
     "check-deps": "node scripts/check-dependencies.js"
   },
   "devDependencies": {
