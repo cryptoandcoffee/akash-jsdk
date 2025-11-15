@@ -1,21 +1,21 @@
 name: Release
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (must match package.json versions)'
+        required: true
 
-concurrency: ${{ github.workflow }}-${{ github.ref }}
+permissions:
+  contents: write
+  packages: write
+  id-token: write
 
 jobs:
   release:
-    name: Release
+    name: Release v${{ github.event.inputs.version }}
     runs-on: [self-hosted, akash]
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
-      id-token: write
 
     steps:
       - name: Checkout
@@ -37,84 +37,52 @@ jobs:
       - name: 📦 Install GitHub CLI
         uses: dev-hanz-ops/install-gh-cli-action@v0.2.1
 
-      - name: Install dependencies
+      - name: Validate Release
+        run: node scripts/validate-release.js
+
+      - name: Install Dependencies
         run: pnpm install
 
-      - name: Build packages
+      - name: Build Packages
         run: pnpm run build
 
-      - name: Create Release Pull Request or Publish to npm
-        id: changesets
-        uses: changesets/action@v1
-        with:
-          version: pnpm changeset version
-          publish: pnpm run release
-          title: 'Release packages'
-          commit: 'Release packages'
-          createGithubReleases: false
+      - name: Publish to npm
+        run: pnpm publish -r --access public
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Create git tags after publish
-        if: steps.changesets.outputs.publishedPackages != '[]' && steps.changesets.outputs.publishedPackages != ''
-        run: pnpm run release:tag
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create unified GitHub release
-        if: steps.changesets.outputs.publishedPackages != '[]' && steps.changesets.outputs.publishedPackages != ''
+      - name: Create git tag
         run: |
-          # Get published packages info from changesets action
-          PUBLISHED='${{ steps.changesets.outputs.publishedPackages }}'
+          VERSION=${{ github.event.inputs.version }}
+          git tag v${VERSION}
+          git push origin v${VERSION}
 
-          # Extract version (all packages share same version in monorepo)
-          VERSION=$(echo "$PUBLISHED" | jq -r '.[0].version')
-
-          echo "Creating unified release v${VERSION}"
-
-          # Build consolidated release notes
-          cat > release-notes.md << 'EOFNOTES'
-          ## Packages Released
-
-          EOFNOTES
-
-          echo "$PUBLISHED" | jq -r '.[] | "- " + .name + "@" + .version' >> release-notes.md
-
-          echo "" >> release-notes.md
-          echo "## Changes" >> release-notes.md
-          echo "" >> release-notes.md
-
-          # Extract changelog from first package (they all have same changes in monorepo)
-          FIRST_PKG=$(echo "$PUBLISHED" | jq -r '.[0].name' | sed 's/@cryptoandcoffee\/akash-jsdk-//')
-          if [ -f "packages/${FIRST_PKG}/CHANGELOG.md" ]; then
-            sed -n "/## ${VERSION}/,/## /p" "packages/${FIRST_PKG}/CHANGELOG.md" | head -n -1 >> release-notes.md
-          fi
-
-          # Create unified release (will be marked as latest automatically if it's the newest)
-          gh release create "v${VERSION}" \
+      - name: Create GitHub Release
+        run: |
+          VERSION=${{ github.event.inputs.version }}
+          gh release create v${VERSION} \
             --title "Release v${VERSION}" \
-            --notes-file release-notes.md
+            --notes "## Packages Released
+
+- @cryptoandcoffee/akash-jsdk-core@${VERSION}
+- @cryptoandcoffee/akash-jsdk-cli@${VERSION}
+- @cryptoandcoffee/akash-jsdk-react@${VERSION}
+- @cryptoandcoffee/akash-jsdk-protobuf@${VERSION}
+
+All packages synchronized and published atomically."
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update README.md versions
-        if: steps.changesets.outputs.publishedPackages != '[]' && steps.changesets.outputs.publishedPackages != ''
+      - name: Update README
+        run: node scripts/update-readme-versions.js
+
+      - name: Commit README updates
         run: |
-          echo "Updating README.md with latest package versions..."
-          node scripts/update-readme-versions.js
-          
-          # Check if README.md was modified
-          if git diff --quiet README.md; then
-            echo "README.md is already up to date"
-          else
-            echo "Committing README.md updates..."
+          if ! git diff --quiet README.md; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add README.md
             git commit -m "docs: update README.md with latest package versions [skip ci]"
             git push
           fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

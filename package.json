@@ -1,6 +1,6 @@
 {
   "name": "akash-jsdk",
-  "version": "1.0.0",
+  "version": "3.8.0",
   "description": "Modern JavaScript SDK for Akash Network",
   "type": "module",
   "private": true,
@@ -15,13 +15,11 @@
     "typecheck": "pnpm run --recursive typecheck",
     "clean": "pnpm run --recursive clean",
     "release": "pnpm publish -r --access public",
-    "release:tag": "changeset tag",
-    "changeset": "changeset",
-    "version-packages": "changeset version",
+    "validate:release": "node scripts/validate-release.js",
+    "publish:release": "node scripts/publish-release.js",
     "check-deps": "node scripts/check-dependencies.js"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.29.7",
     "@types/react": "^19.2.4",
     "@types/react-dom": "^19.2.3",
     "isomorphic-ws": "^5.0.0",
