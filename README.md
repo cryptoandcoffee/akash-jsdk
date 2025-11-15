@@ -19,18 +19,26 @@ A modern, fully-featured JavaScript SDK for Akash Network built from scratch wit
 - **Comprehensive Testing**: Enterprise-grade testing with 1,280 tests passing across all packages
 - **Performance First**: ES2022 target, ESM modules, incremental builds
 
-## What's New in v3.6.3
+## What's New in v3.7.1
 
-Version 3.6.1 adds GitHub Packages registry support:
+Version 3.7.1 brings comprehensive Protobuf message type registration and production-ready blockchain integration:
 
-### GitHub Packages Integration
+### Protobuf Message Type Registration (v3.7.0)
+- **New `createAkashRegistry()` Utility**: Centralized registry creation with all 14 Akash message types pre-registered
+- **Full CosmJS Compatibility**: Eliminates "Unregistered type url" errors when broadcasting transactions
+- **Message Types Registered**:
+  - Deployment: MsgCreateDeployment, MsgUpdateDeployment, MsgCloseDeployment, MsgDepositDeployment
+  - Market: MsgCreateBid, MsgCloseBid, MsgCreateLease, MsgCloseLease, MsgWithdrawLease
+  - Provider: MsgCreateProvider, MsgUpdateProvider, MsgDeleteProvider
+  - Certificate: MsgCreateCertificate, MsgRevokeCertificate
+
+### Previous Release: GitHub Packages Integration (v3.6.1)
 - Published to both npm and GitHub Packages registries
-- Added repository field to all package.json files
-- Updated release workflow for dual registry publishing
-- Users can now install from either npm (default) or GitHub Packages
+- Repository field integration for GitHub
+- Dual registry publishing support
 
 ### All Mainnet 14 Features Available
-This release includes full support for Akash Network Mainnet 14 features:
+Full support for Akash Network Mainnet 14 features:
 - **JWT Authentication (AEP-63)**: Modern JWT tokens with ES256K signatures
 - **Multi-Depositor Escrow (AEP-75)**: Flexible funding sources for deployments
 - **Lease Termination Tracking (AEP-39)**: Detailed lease close reasons
@@ -58,9 +66,9 @@ This release includes full support for Akash Network Mainnet 14 features:
 
 | Package | Description | Version |
 |---------|-------------|---------|
-| `@cryptoandcoffee/akash-jsdk-core` | Core SDK with deployment, market, provider, and wallet management | 3.6.3 |
-| `@cryptoandcoffee/akash-jsdk-react` | React hooks and context provider for seamless integration | 3.6.3 |
-| `@cryptoandcoffee/akash-jsdk-cli` | Command-line tools for project initialization and deployment | 3.6.3 |
+| `@cryptoandcoffee/akash-jsdk-core` | Core SDK with deployment, market, provider, and wallet management | 3.7.1 |
+| `@cryptoandcoffee/akash-jsdk-react` | React hooks and context provider for seamless integration | 3.7.1 |
+| `@cryptoandcoffee/akash-jsdk-cli` | Command-line tools for project initialization and deployment | 3.7.1 |
 | `@cryptoandcoffee/akash-jsdk-protobuf` | Custom protobuf definitions with TypeScript support | 3.6.2 |
 
 ## 🔧 Installation
