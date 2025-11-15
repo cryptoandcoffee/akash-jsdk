@@ -45,7 +45,7 @@ jobs:
 
       - name: Install Dependencies
         if: steps.validate.outcome == 'success'
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build Packages
         if: steps.validate.outcome == 'success'
