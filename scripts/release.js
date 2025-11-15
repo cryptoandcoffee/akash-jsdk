@@ -139,24 +139,12 @@ async function main() {
     log.info(`Releasing version ${version}`)
     console.log()
 
-    // STEP 0: Convert workspace:* to explicit versions
-    log.section('STEP 0: Convert workspace:* to Explicit Versions')
+    // STEP 0: Install dependencies (before any checks/builds)
+    log.section('STEP 0: Install Dependencies')
     try {
-      convertWorkspaceToExplicit(version)
-      log.success('Converted internal dependencies to explicit versions')
-    } catch (error) {
-      log.error('Failed to convert workspace protocols')
-      process.exit(1)
-    }
-
-    // STEP 0.5: Install dependencies
-    log.section('STEP 0.5: Install Dependencies')
-    try {
-      run('pnpm install', 'Installing dependencies with explicit versions')
+      run('pnpm install', 'Installing dependencies')
     } catch (error) {
       log.error('Dependency installation failed')
-      revertToWorkspaceProtocol()
-      log.warn('Reverted to workspace:* protocols')
       process.exit(1)
     }
 
@@ -166,8 +154,6 @@ async function main() {
       run('node scripts/pre-flight-check.js', 'Running comprehensive checks')
     } catch (error) {
       log.error('Pre-flight checks failed - cannot proceed with release')
-      revertToWorkspaceProtocol()
-      log.warn('Reverted to workspace:* protocols')
       process.exit(1)
     }
 
@@ -180,8 +166,19 @@ async function main() {
       process.exit(1)
     }
 
-    // STEP 3: Publish
-    log.section('STEP 3: Publish to npm')
+    // STEP 3: Convert workspace:* to explicit versions (BEFORE publish)
+    log.section('STEP 3: Convert workspace:* to Explicit Versions')
+    try {
+      convertWorkspaceToExplicit(version)
+      log.success('Converted internal dependencies to explicit versions')
+    } catch (error) {
+      log.error('Failed to convert workspace protocols')
+      revertToWorkspaceProtocol()
+      process.exit(1)
+    }
+
+    // STEP 4: Publish
+    log.section('STEP 4: Publish to npm')
     try {
       log.info('Publishing all 4 packages atomically...')
       run('pnpm publish -r --access public --no-git-checks', 'Publishing packages', {
@@ -199,11 +196,12 @@ async function main() {
       log.warn('  - npm authentication failed (check NPM_TOKEN)')
       log.warn('  - Package contains invalid files')
       log.warn('  - npm registry is temporarily unavailable')
+      revertToWorkspaceProtocol()
       process.exit(1)
     }
 
-    // STEP 4: Verify all packages published
-    log.section('STEP 4: Verify Packages on npm')
+    // STEP 5: Verify all packages published
+    log.section('STEP 5: Verify Packages on npm')
     try {
       run('node scripts/verify-npm-publish.js', 'Verifying npm publication')
     } catch (error) {
@@ -213,8 +211,8 @@ async function main() {
       process.exit(1)
     }
 
-    // STEP 5: Create git tag
-    log.section('STEP 5: Create Git Tag')
+    // STEP 6: Create git tag
+    log.section('STEP 6: Create Git Tag')
     try {
       run(`git tag v${version}`, `Creating git tag v${version}`)
       run(`git push origin v${version}`, `Pushing tag to origin`)
@@ -225,8 +223,8 @@ async function main() {
       log.warn(`Manually run: git tag v${version} && git push origin v${version}`)
     }
 
-    // STEP 6: Create GitHub release
-    log.section('STEP 6: Create GitHub Release')
+    // STEP 7: Create GitHub release
+    log.section('STEP 7: Create GitHub Release')
     try {
       const packages = getPublishedPackages()
       const notes = packages
@@ -244,8 +242,8 @@ async function main() {
       log.warn('This is non-critical - you can create it manually if needed')
     }
 
-    // STEP 7: Update README
-    log.section('STEP 7: Update README with Latest Versions')
+    // STEP 8: Update README
+    log.section('STEP 8: Update README with Latest Versions')
     try {
       run('node scripts/update-readme-versions.js', 'Updating README')
 
@@ -265,8 +263,8 @@ async function main() {
       log.warn('README update failed (non-critical)')
     }
 
-    // STEP 8: Revert to workspace:* for development
-    log.section('STEP 8: Revert to workspace:* for Development')
+    // STEP 9: Revert to workspace:* for development
+    log.section('STEP 9: Revert to workspace:* for Development')
     try {
       revertToWorkspaceProtocol()
       run('git add packages/*/package.json', 'Staging reverted package.json files')
