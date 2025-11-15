@@ -1,5 +1,11 @@
 # @cryptoandcoffee/akash-jsdk-protobuf
 
+## 3.7.1
+
+### Patch Changes
+
+- Version bump to synchronize all packages at v3.7.1
+
 ## 3.6.2
 
 ### Patch Changes

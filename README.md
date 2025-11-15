@@ -69,7 +69,7 @@ Full support for Akash Network Mainnet 14 features:
 | `@cryptoandcoffee/akash-jsdk-core` | Core SDK with deployment, market, provider, and wallet management | 3.7.1 |
 | `@cryptoandcoffee/akash-jsdk-react` | React hooks and context provider for seamless integration | 3.7.1 |
 | `@cryptoandcoffee/akash-jsdk-cli` | Command-line tools for project initialization and deployment | 3.7.1 |
-| `@cryptoandcoffee/akash-jsdk-protobuf` | Custom protobuf definitions with TypeScript support | 3.6.2 |
+| `@cryptoandcoffee/akash-jsdk-protobuf` | Custom protobuf definitions with TypeScript support | 3.7.1 |
 
 ## 🔧 Installation
 
