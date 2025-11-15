@@ -96,7 +96,7 @@ function checkNoWorkspaceProtocols(packages) {
 }
 
 function checkInternalDependencies(packages) {
-  log.section('Check 3: Internal Dependencies Match Version')
+  log.section('Check 3: Internal Dependencies Match Version (or use workspace:*)')
 
   const internalPackages = new Set(Object.keys(packages))
   const targetVersion = Object.values(packages)[0].version
@@ -105,8 +105,9 @@ function checkInternalDependencies(packages) {
   for (const [name, pkg] of Object.entries(packages)) {
     for (const [depName, depVersion] of Object.entries(pkg.dependencies)) {
       if (internalPackages.has(depName)) {
-        if (depVersion !== targetVersion) {
-          log.error(`${name}: Depends on ${depName}@${depVersion} but should be @${targetVersion}`)
+        // Allow both explicit version OR workspace:* (will be converted during release)
+        if (depVersion !== targetVersion && depVersion !== 'workspace:*') {
+          log.error(`${name}: Depends on ${depName}@${depVersion} but should be @${targetVersion} or workspace:*`)
           valid = false
         }
       }
@@ -114,7 +115,7 @@ function checkInternalDependencies(packages) {
   }
 
   if (valid) {
-    log.success('All internal dependencies reference correct version')
+    log.success('All internal dependencies reference correct version (or workspace:*)')
   }
   return valid
 }
