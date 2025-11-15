@@ -42,7 +42,7 @@ const log = {
 }
 
 function run(command, description, options = {}) {
-  const { stdio = 'inherit', env = process.env } = options
+  const { stdio = 'inherit', env: customEnv = {} } = options
 
   log.info(description)
   try {
@@ -50,7 +50,7 @@ function run(command, description, options = {}) {
       cwd: rootDir,
       stdio,
       encoding: 'utf-8',
-      env: { ...env, ...options.env }
+      env: { ...process.env, ...customEnv }
     })
 
     if (result.error) throw result.error
@@ -181,11 +181,12 @@ async function main() {
     log.section('STEP 4: Publish to npm')
     try {
       log.info('Publishing all 4 packages atomically...')
-      run('pnpm publish -r --access public --no-git-checks', 'Publishing packages', {
+      // Use npx pnpm to ensure pnpm is found even if not in PATH
+      run('npx pnpm publish -r --access public --no-git-checks', 'Publishing packages', {
         stdio: 'inherit',
         env: {
-          NPM_TOKEN: process.env.NPM_TOKEN,
-          NODE_AUTH_TOKEN: process.env.NPM_TOKEN
+          NPM_TOKEN: process.env.NPM_TOKEN || '',
+          NODE_AUTH_TOKEN: process.env.NPM_TOKEN || ''
         }
       })
     } catch (error) {
