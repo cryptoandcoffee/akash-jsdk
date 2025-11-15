@@ -57,6 +57,12 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Create git tags after publish
+        if: steps.changesets.outputs.published == 'true'
+        run: pnpm run release:tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create unified GitHub release
         if: steps.changesets.outputs.published == 'true'
         run: |

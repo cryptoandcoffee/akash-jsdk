@@ -14,7 +14,8 @@
     "format": "pnpm run --recursive format",
     "typecheck": "pnpm run --recursive typecheck",
     "clean": "pnpm run --recursive clean",
-    "release": "changeset publish",
+    "release": "pnpm publish -r --access public",
+    "release:tag": "changeset tag",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "check-deps": "node scripts/check-dependencies.js"

@@ -1,5 +1,13 @@
 # @cryptoandcoffee/akash-jsdk-cli
 
+## 3.6.2
+
+### Patch Changes
+
+- Fix npm package publishing by using pnpm publish instead of changeset publish. This resolves workspace:\* protocol references to proper version numbers in published packages, making packages functional for npm consumers.
+- Updated dependencies
+  - @cryptoandcoffee/akash-jsdk-core@3.6.2
+
 ## 3.6.1
 
 ### Patch Changes
