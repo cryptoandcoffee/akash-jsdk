@@ -1,5 +1,11 @@
 # @cryptoandcoffee/akash-jsdk-core
 
+## 3.7.2
+
+### Patch Changes
+
+- e4f18f9: Fix dependency resolution for protobuf package v3.7.1
+
 ## 3.7.1
 
 ### Patch Changes
