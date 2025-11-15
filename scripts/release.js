@@ -119,6 +119,26 @@ async function main() {
       process.exit(1)
     }
 
+    // STEP 2.5: Convert workspace:* to explicit versions before publishing
+    log.section('STEP 2.5: Prepare Packages for Publishing')
+    try {
+      const packagesDir = path.join(rootDir, 'packages')
+      const packageFiles = ['core/package.json', 'cli/package.json', 'react/package.json']
+
+      for (const packageFile of packageFiles) {
+        const filePath = path.join(packagesDir, packageFile)
+        const content = fs.readFileSync(filePath, 'utf-8')
+        // Replace workspace:* with explicit version
+        const updated = content.replace(/"workspace:\*"/g, `"${version}"`)
+        fs.writeFileSync(filePath, updated)
+      }
+
+      log.success('Updated internal dependencies to explicit versions')
+    } catch (error) {
+      log.error('Failed to update package dependencies')
+      process.exit(1)
+    }
+
     // STEP 3: Publish
     log.section('STEP 3: Publish to npm')
     try {
