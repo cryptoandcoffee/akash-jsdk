@@ -134,6 +134,11 @@ async function main() {
       }
 
       log.success('Updated internal dependencies to explicit versions')
+
+      // Commit the changes so git checks pass for publishing
+      log.info('Committing dependency changes...')
+      run('git add packages/*/package.json', 'Staging package.json changes')
+      run(`git commit -m "chore: Prepare v${version} for publishing with explicit dependencies"`, 'Committing changes')
     } catch (error) {
       log.error('Failed to update package dependencies')
       process.exit(1)
