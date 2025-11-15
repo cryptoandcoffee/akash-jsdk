@@ -149,32 +149,21 @@ function checkLockfileUpToDate() {
 function checkDependenciesInstalled() {
   log.section('Check 5: Dependencies Can Be Installed')
 
+  // For development with workspace:*, we just need to verify pnpm can resolve dependencies
+  // The actual resolution happens during pre-flight, not final publish
+  // Since we use workspace:* in development, installation will work fine with workspace packages
   try {
-    // First try with frozen lockfile
-    execSync('pnpm install --frozen-lockfile', {
+    execSync('pnpm install', {
       cwd: rootDir,
       stdio: 'pipe',
       encoding: 'utf-8'
     })
-    log.success('Dependencies installed successfully (frozen lockfile)')
+    log.success('Dependencies installed successfully')
     return true
   } catch (error) {
-    // If frozen lockfile fails, try without it
-    // This is OK for new releases where the internal versions don't exist yet on npm
-    try {
-      execSync('pnpm install --no-frozen-lockfile', {
-        cwd: rootDir,
-        stdio: 'pipe',
-        encoding: 'utf-8'
-      })
-      log.success('Dependencies installed successfully (updated lockfile)')
-      log.warn('Lockfile was regenerated - ensure pnpm-lock.yaml is committed')
-      return true
-    } catch (innerError) {
-      log.error('Failed to install dependencies')
-      console.error(innerError.message)
-      return false
-    }
+    log.error('Failed to install dependencies')
+    console.error(error.message)
+    return false
   }
 }
 
