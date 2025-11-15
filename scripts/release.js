@@ -91,6 +91,44 @@ function getPublishedPackages() {
   return packages
 }
 
+function convertWorkspaceToExplicit(version) {
+  // Convert workspace:* to explicit versions in all package.json files
+  const packagesDir = path.join(rootDir, 'packages')
+  const dirs = fs.readdirSync(packagesDir)
+
+  for (const dir of dirs) {
+    const pkgJsonPath = path.join(packagesDir, dir, 'package.json')
+    if (fs.existsSync(pkgJsonPath)) {
+      let content = fs.readFileSync(pkgJsonPath, 'utf-8')
+      // Replace workspace:* with explicit version for internal packages
+      content = content.replace(/"@cryptoandcoffee\/[^"]+": "workspace:\*"/g, (match) => {
+        const pkgName = match.match(/"(@cryptoandcoffee\/[^"]+)"/)[1]
+        return `"${pkgName}": "${version}"`
+      })
+      fs.writeFileSync(pkgJsonPath, content, 'utf-8')
+    }
+  }
+}
+
+function revertToWorkspaceProtocol() {
+  // Revert all explicit versions back to workspace:* for development
+  const packagesDir = path.join(rootDir, 'packages')
+  const dirs = fs.readdirSync(packagesDir)
+
+  for (const dir of dirs) {
+    const pkgJsonPath = path.join(packagesDir, dir, 'package.json')
+    if (fs.existsSync(pkgJsonPath)) {
+      let content = fs.readFileSync(pkgJsonPath, 'utf-8')
+      // Replace explicit version with workspace:* for internal packages
+      content = content.replace(/"(@cryptoandcoffee\/[^"]+)": "\d+\.\d+\.\d+"/g, (match) => {
+        const pkgName = match.match(/"(@cryptoandcoffee\/[^"]+)"/)[1]
+        return `"${pkgName}": "workspace:*"`
+      })
+      fs.writeFileSync(pkgJsonPath, content, 'utf-8')
+    }
+  }
+}
+
 async function main() {
   console.log(`\n${colors.cyan}╔════════════════════════════════════════╗${colors.reset}`)
   console.log(`${colors.cyan}║   SAFE RELEASE ORCHESTRATION             ║${colors.reset}`)
@@ -101,12 +139,24 @@ async function main() {
     log.info(`Releasing version ${version}`)
     console.log()
 
-    // STEP 0: Install dependencies (needed for pre-flight checks)
-    log.section('STEP 0: Install Dependencies')
+    // STEP 0: Convert workspace:* to explicit versions
+    log.section('STEP 0: Convert workspace:* to Explicit Versions')
     try {
-      run('pnpm install', 'Installing dependencies')
+      convertWorkspaceToExplicit(version)
+      log.success('Converted internal dependencies to explicit versions')
+    } catch (error) {
+      log.error('Failed to convert workspace protocols')
+      process.exit(1)
+    }
+
+    // STEP 0.5: Install dependencies
+    log.section('STEP 0.5: Install Dependencies')
+    try {
+      run('pnpm install', 'Installing dependencies with explicit versions')
     } catch (error) {
       log.error('Dependency installation failed')
+      revertToWorkspaceProtocol()
+      log.warn('Reverted to workspace:* protocols')
       process.exit(1)
     }
 
@@ -116,6 +166,8 @@ async function main() {
       run('node scripts/pre-flight-check.js', 'Running comprehensive checks')
     } catch (error) {
       log.error('Pre-flight checks failed - cannot proceed with release')
+      revertToWorkspaceProtocol()
+      log.warn('Reverted to workspace:* protocols')
       process.exit(1)
     }
 
@@ -211,6 +263,19 @@ async function main() {
       }
     } catch (error) {
       log.warn('README update failed (non-critical)')
+    }
+
+    // STEP 8: Revert to workspace:* for development
+    log.section('STEP 8: Revert to workspace:* for Development')
+    try {
+      revertToWorkspaceProtocol()
+      run('git add packages/*/package.json', 'Staging reverted package.json files')
+      run('git commit -m "chore: revert to workspace:* for development"', 'Committing workspace revert')
+      run('git push origin main', 'Pushing workspace revert')
+      log.success('Reverted to workspace:* protocols and pushed changes')
+    } catch (error) {
+      log.warn('Failed to revert to workspace:* (packages still have explicit versions)')
+      log.warn('You can manually run: git checkout packages/*/package.json && git push')
     }
 
     // SUCCESS
