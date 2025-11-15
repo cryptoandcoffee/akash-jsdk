@@ -58,13 +58,13 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create git tags after publish
-        if: steps.changesets.outputs.published == 'true'
+        if: steps.changesets.outputs.publishedPackages != '[]' && steps.changesets.outputs.publishedPackages != ''
         run: pnpm run release:tag
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create unified GitHub release
-        if: steps.changesets.outputs.published == 'true'
+        if: steps.changesets.outputs.publishedPackages != '[]' && steps.changesets.outputs.publishedPackages != ''
         run: |
           # Get published packages info from changesets action
           PUBLISHED='${{ steps.changesets.outputs.publishedPackages }}'
@@ -100,7 +100,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update README.md versions
-        if: steps.changesets.outputs.published == 'true'
+        if: steps.changesets.outputs.publishedPackages != '[]' && steps.changesets.outputs.publishedPackages != ''
         run: |
           echo "Updating README.md with latest package versions..."
           node scripts/update-readme-versions.js
