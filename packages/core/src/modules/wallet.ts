@@ -3,7 +3,7 @@ import { Coin } from '@cryptoandcoffee/akash-jsdk-protobuf'
 import { NetworkError, ValidationError } from '../errors'
 import { JWTAuthManager } from './jwt-auth'
 import { JWTGenerationOptions, AuthConfig, AuthMethod } from '../types/jwt'
-import { Secp256k1HdWallet } from '@cosmjs/amino'
+import { DirectSecp256k1HdWallet } from '@cosmjs/proto-signing'
 
 const CHAIN_ID = 'akashnet-2'
 
@@ -755,7 +755,7 @@ export class CosmostationWallet implements WalletProvider {
 
 // Mnemonic wallet implementation for server-side usage
 export class MnemonicWallet implements WalletProvider {
-  private wallet: Secp256k1HdWallet | null = null;
+  private wallet: DirectSecp256k1HdWallet | null = null;
   private connected = false;
 
   constructor(private mnemonic: string) {}
@@ -763,7 +763,7 @@ export class MnemonicWallet implements WalletProvider {
   async connect(): Promise<void> {
     if (this.connected) return;
 
-    this.wallet = await Secp256k1HdWallet.fromMnemonic(this.mnemonic, {
+    this.wallet = await DirectSecp256k1HdWallet.fromMnemonic(this.mnemonic, {
       prefix: "akash",
     });
     this.connected = true;

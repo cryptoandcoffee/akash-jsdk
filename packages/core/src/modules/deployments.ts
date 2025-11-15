@@ -2,8 +2,7 @@
 import { Deployment, DeploymentID, DeploymentState, GroupSpec, Coin, MsgCreateDeployment } from '@cryptoandcoffee/akash-jsdk-protobuf'
 import { NetworkError, ValidationError, DeploymentError } from '../errors'
 import { SigningStargateClient } from '@cosmjs/stargate'
-import { Registry } from '@cosmjs/proto-signing'
-import { Secp256k1HdWallet } from '@cosmjs/amino'
+import { Registry, DirectSecp256k1HdWallet } from '@cosmjs/proto-signing'
 import { SDLManager } from './sdl'
 
 export interface CreateDeploymentRequest {
@@ -49,13 +48,13 @@ export class DeploymentManager {
         hdWallet = wallet.connectedWallet
       }
 
-      // If it's a MnemonicWallet, get the underlying Secp256k1HdWallet
+      // If it's a MnemonicWallet, get the underlying DirectSecp256k1HdWallet
       let actualSigner: any = hdWallet
       if (hdWallet.wallet) {
         actualSigner = hdWallet.wallet
       } else if (hdWallet.mnemonic) {
-        // Create Secp256k1HdWallet directly from mnemonic
-        actualSigner = await Secp256k1HdWallet.fromMnemonic(hdWallet.mnemonic, {
+        // Create DirectSecp256k1HdWallet for Direct (Protobuf) signing
+        actualSigner = await DirectSecp256k1HdWallet.fromMnemonic(hdWallet.mnemonic, {
           prefix: "akash",
         })
       }
