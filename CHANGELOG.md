@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.7.1] - 2025-11-15
+
+### Fixed
+- Synchronized all packages (core, cli, react) to v3.7.1 for coordinated release
+
+### Build Status
+- All 1,280 tests passing (100%)
+- Includes comprehensive Protobuf message type registration from v3.7.0
+- Production-ready with full CosmJS compatibility
+
+## [3.7.0] - 2025-11-15
+
+### Added
+- Comprehensive Protobuf message type registration for full CosmJS compatibility
+- `createAkashRegistry()` utility function with all 14 Akash-specific message types
+- Helper functions for registry validation and message type checking
+
+### Fixed
+- Eliminates "Unregistered type url" errors when broadcasting Akash transactions
+- Updated all 8 Registry instantiations across 4 modules (deployments, batch, staking, ibc)
+
+### Test Coverage
+- All 1,280 tests passing (100%)
+
 ## [3.5.0] - 2025-11-14
 
 ### Added
