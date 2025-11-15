@@ -1,5 +1,11 @@
 # @cryptoandcoffee/akash-jsdk-protobuf
 
+## 3.7.2
+
+### Patch Changes
+
+- 025a3c6: Synchronize protobuf package version to 3.7.2 with core, cli, and react
+
 ## 3.7.1
 
 ### Patch Changes

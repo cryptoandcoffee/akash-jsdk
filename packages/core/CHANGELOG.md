@@ -1,5 +1,12 @@
 # @cryptoandcoffee/akash-jsdk-core
 
+## 3.7.3
+
+### Patch Changes
+
+- Updated dependencies [025a3c6]
+  - @cryptoandcoffee/akash-jsdk-protobuf@3.7.2
+
 ## 3.7.2
 
 ### Patch Changes
