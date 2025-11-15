@@ -53,3 +53,6 @@ export { LogLevel, ConsoleLogger, NoOpLogger, createDefaultLogger } from './logg
 // Export new utilities
 export * from './event-parsing'
 export * from './error-helpers'
+
+// Export registry utilities for Akash message handling
+export * from './registry'

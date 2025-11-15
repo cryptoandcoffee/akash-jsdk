@@ -7,8 +7,8 @@ import {
   validateRequired
 } from '../utils/validation'
 import { StakingResult } from '../types/results'
-import { SigningStargateClient, defaultRegistryTypes } from '@cosmjs/stargate'
-import { Registry } from '@cosmjs/proto-signing'
+import { SigningStargateClient } from '@cosmjs/stargate'
+import { createAkashRegistry } from '../utils/registry'
 
 export interface Validator {
   operatorAddress: string
@@ -116,8 +116,8 @@ export class StakingManager {
       const accounts = await actualSigner.getAccounts()
       const delegatorAddress = accounts[0].address
 
-      // Create registry with default Cosmos message types
-      const registry = new Registry(defaultRegistryTypes)
+      // Create registry with Akash-specific message types
+      const registry = createAkashRegistry()
 
       // Connect with signer
       const client = await SigningStargateClient.connectWithSigner(
@@ -188,8 +188,8 @@ export class StakingManager {
       const accounts = await actualSigner.getAccounts()
       const delegatorAddress = accounts[0].address
 
-      // Create registry with default Cosmos message types
-      const registry = new Registry(defaultRegistryTypes)
+      // Create registry with Akash-specific message types
+      const registry = createAkashRegistry()
 
       // Connect with signer
       const client = await SigningStargateClient.connectWithSigner(
@@ -275,8 +275,8 @@ export class StakingManager {
       const accounts = await actualSigner.getAccounts()
       const delegatorAddress = accounts[0].address
 
-      // Create registry with default Cosmos message types
-      const registry = new Registry(defaultRegistryTypes)
+      // Create registry with Akash-specific message types
+      const registry = createAkashRegistry()
 
       // Connect with signer
       const client = await SigningStargateClient.connectWithSigner(
@@ -614,8 +614,8 @@ export class StakingManager {
       const accounts = await actualSigner.getAccounts()
       const delegatorAddress = accounts[0].address
 
-      // Create registry with default Cosmos message types
-      const registry = new Registry(defaultRegistryTypes)
+      // Create registry with Akash-specific message types
+      const registry = createAkashRegistry()
 
       // Connect with signer
       const client = await SigningStargateClient.connectWithSigner(

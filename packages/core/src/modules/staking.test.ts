@@ -19,6 +19,13 @@ vi.mock('@cosmjs/stargate', () => ({
   defaultRegistryTypes: []
 }))
 
+// Mock registry utility
+vi.mock('../utils/registry', () => ({
+  createAkashRegistry: vi.fn(() => ({
+    register: vi.fn()
+  }))
+}))
+
 // Mock global fetch
 global.fetch = vi.fn()
 

@@ -20,6 +20,13 @@ vi.mock('@cosmjs/stargate', () => ({
   defaultRegistryTypes: []
 }))
 
+// Mock registry utility
+vi.mock('../utils/registry', () => ({
+  createAkashRegistry: vi.fn(() => ({
+    register: vi.fn()
+  }))
+}))
+
 // Valid SDL for testing
 const VALID_SDL = `version: "2.0"
 services:

@@ -10,8 +10,8 @@ import {
   validateRequired
 } from '../utils/validation'
 import { IBCTransferResult } from '../types/results'
-import { SigningStargateClient, defaultRegistryTypes } from '@cosmjs/stargate'
-import { Registry } from '@cosmjs/proto-signing'
+import { SigningStargateClient } from '@cosmjs/stargate'
+import { createAkashRegistry } from '../utils/registry'
 
 
 export interface Height {
@@ -102,8 +102,8 @@ export class IBCManager {
       const accounts = await actualSigner.getAccounts()
       const sender = accounts[0].address
 
-      // Create registry with default Cosmos message types
-      const registry = new Registry(defaultRegistryTypes)
+      // Create registry with Akash-specific message types
+      const registry = createAkashRegistry()
 
       // Connect with signer
       const client = await SigningStargateClient.connectWithSigner(
