@@ -1,5 +1,12 @@
 # @cryptoandcoffee/akash-jsdk
 
+[![npm version](https://img.shields.io/npm/v/@cryptoandcoffee/akash-jsdk-core.svg)](https://www.npmjs.com/package/@cryptoandcoffee/akash-jsdk-core)
+[![npm downloads](https://img.shields.io/npm/dm/@cryptoandcoffee/akash-jsdk-core.svg)](https://www.npmjs.com/package/@cryptoandcoffee/akash-jsdk-core)
+[![CI](https://img.shields.io/github/actions/workflow/status/cryptoandcoffee/akash-jsdk/ci.yml?branch=main&label=CI)](https://github.com/cryptoandcoffee/akash-jsdk/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-1,280%20passing-brightgreen.svg)](#-comprehensive-test-results)
+[![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#-comprehensive-test-results)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
 A modern, fully-featured JavaScript SDK for Akash Network built from scratch with cutting-edge frameworks and enterprise-grade quality.
 
 ## 🚀 Features
