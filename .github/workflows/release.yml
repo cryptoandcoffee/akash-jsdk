@@ -35,7 +35,7 @@ jobs:
         with:
           version: latest
 
-      - name: 📦 Install GitHub CLI
+      - name: Install GitHub CLI
         uses: dev-hanz-ops/install-gh-cli-action@v0.2.1
 
       - name: Validate Release
@@ -74,20 +74,12 @@ jobs:
 
       - name: Create GitHub Release
         if: steps.validate.outcome == 'success'
-        run: |
-          VERSION=${{ steps.version.outputs.version }}
-          gh release create v${VERSION} \
-            --title "Release v${VERSION}" \
-            --notes "## Packages Released
-
-- @cryptoandcoffee/akash-jsdk-core@${VERSION}
-- @cryptoandcoffee/akash-jsdk-cli@${VERSION}
-- @cryptoandcoffee/akash-jsdk-react@${VERSION}
-- @cryptoandcoffee/akash-jsdk-protobuf@${VERSION}
-
-All packages synchronized and published atomically."
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          NOTES="## Packages Released\n\n- @cryptoandcoffee/akash-jsdk-core@${VERSION}\n- @cryptoandcoffee/akash-jsdk-cli@${VERSION}\n- @cryptoandcoffee/akash-jsdk-react@${VERSION}\n- @cryptoandcoffee/akash-jsdk-protobuf@${VERSION}\n\nAll packages synchronized and published atomically."
+          gh release create v${VERSION} --title "Release v${VERSION}" --notes "${NOTES}"
 
       - name: Update README
         if: steps.validate.outcome == 'success'
