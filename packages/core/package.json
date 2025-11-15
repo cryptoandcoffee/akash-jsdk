@@ -1,6 +1,6 @@
 {
   "name": "@cryptoandcoffee/akash-jsdk-core",
-  "version": "3.8.1",
+  "version": "3.8.2",
   "description": "Core SDK for Akash Network",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -29,7 +29,7 @@
     "@cosmjs/encoding": "^0.37.0",
     "@cosmjs/proto-signing": "^0.37.0",
     "@cosmjs/stargate": "^0.37.0",
-    "@cryptoandcoffee/akash-jsdk-protobuf": "3.8.1",
+    "@cryptoandcoffee/akash-jsdk-protobuf": "3.8.2",
     "elliptic": "^6.5.4",
     "isomorphic-ws": "^5.0.0"
   },
