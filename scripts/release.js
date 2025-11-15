@@ -101,21 +101,21 @@ async function main() {
     log.info(`Releasing version ${version}`)
     console.log()
 
+    // STEP 0: Install dependencies (needed for pre-flight checks)
+    log.section('STEP 0: Install Dependencies')
+    try {
+      run('pnpm install', 'Installing dependencies')
+    } catch (error) {
+      log.error('Dependency installation failed')
+      process.exit(1)
+    }
+
     // STEP 1: Pre-flight checks
     log.section('STEP 1: Pre-Flight Checks')
     try {
       run('node scripts/pre-flight-check.js', 'Running comprehensive checks')
     } catch (error) {
       log.error('Pre-flight checks failed - cannot proceed with release')
-      process.exit(1)
-    }
-
-    // STEP 1.5: Install dependencies
-    log.section('STEP 1.5: Install Dependencies')
-    try {
-      run('pnpm install', 'Installing dependencies')
-    } catch (error) {
-      log.error('Dependency installation failed')
       process.exit(1)
     }
 
