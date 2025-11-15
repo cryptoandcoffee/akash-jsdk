@@ -110,6 +110,15 @@ async function main() {
       process.exit(1)
     }
 
+    // STEP 1.5: Install dependencies
+    log.section('STEP 1.5: Install Dependencies')
+    try {
+      run('pnpm install', 'Installing dependencies')
+    } catch (error) {
+      log.error('Dependency installation failed')
+      process.exit(1)
+    }
+
     // STEP 2: Build
     log.section('STEP 2: Build All Packages')
     try {
