@@ -16,7 +16,8 @@ vi.mock('@cosmjs/stargate', () => ({
   })),
   GasPrice: {
     fromString: vi.fn(() => ({ denom: 'uakt', amount: '0.025' }))
-  }
+  },
+  defaultRegistryTypes: []
 }))
 
 // Valid SDL for testing

@@ -1,7 +1,7 @@
 import { BaseProvider } from '../providers/base'
 import { ValidationError, NetworkError } from '../errors'
 import { EncodeObject, Registry } from '@cosmjs/proto-signing'
-import { SigningStargateClient, calculateFee, GasPrice, StdFee } from '@cosmjs/stargate'
+import { SigningStargateClient, calculateFee, GasPrice, StdFee, defaultRegistryTypes } from '@cosmjs/stargate'
 import {
   validateSDL,
   validateDseq,
@@ -247,8 +247,8 @@ export class BatchManager {
     }
 
     try {
-      // Create registry for Akash message types
-      const registry = new Registry()
+      // Create registry with default Cosmos message types
+      const registry = new Registry(defaultRegistryTypes)
 
       // Connect to the chain with signing capability
       const client = await SigningStargateClient.connectWithSigner(
@@ -312,8 +312,8 @@ export class BatchManager {
     }
 
     try {
-      // Create registry
-      const registry = new Registry()
+      // Create registry with default Cosmos message types
+      const registry = new Registry(defaultRegistryTypes)
 
       // Connect to the chain with signing capability
       const client = await SigningStargateClient.connectWithSigner(

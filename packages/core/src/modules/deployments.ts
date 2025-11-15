@@ -1,7 +1,7 @@
  import { BaseProvider } from '../providers/base'
 import { Deployment, DeploymentID, DeploymentState, GroupSpec, Coin, MsgCreateDeployment } from '@cryptoandcoffee/akash-jsdk-protobuf'
 import { NetworkError, ValidationError, DeploymentError } from '../errors'
-import { SigningStargateClient } from '@cosmjs/stargate'
+import { SigningStargateClient, defaultRegistryTypes } from '@cosmjs/stargate'
 import { Registry, DirectSecp256k1HdWallet } from '@cosmjs/proto-signing'
 import { SDLManager } from './sdl'
 
@@ -87,10 +87,8 @@ export class DeploymentManager {
         depositor: request.depositor || owner
       }
 
-      // Create registry with Akash message types for Protobuf encoding
-      const registry = new Registry()
-      // The MsgCreateDeployment should be available from the protobuf package
-      // For now, we'll try without explicit registration
+      // Create registry with default Cosmos message types for Protobuf encoding
+      const registry = new Registry(defaultRegistryTypes)
 
       const client = await SigningStargateClient.connectWithSigner(
         (this.provider as any).config.rpcEndpoint,
