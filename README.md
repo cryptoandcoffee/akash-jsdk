@@ -12,7 +12,7 @@ A modern, fully-featured JavaScript SDK for Akash Network built from scratch wit
 - **Comprehensive Testing**: Enterprise-grade testing with 1,280 tests passing across all packages
 - **Performance First**: ES2022 target, ESM modules, incremental builds
 
-## What's New in v3.6.1
+## What's New in v3.6.2
 
 Version 3.6.1 adds GitHub Packages registry support:
 
@@ -51,10 +51,10 @@ This release includes full support for Akash Network Mainnet 14 features:
 
 | Package | Description | Version |
 |---------|-------------|---------|
-| `@cryptoandcoffee/akash-jsdk-core` | Core SDK with deployment, market, provider, and wallet management | 3.6.1 |
-| `@cryptoandcoffee/akash-jsdk-react` | React hooks and context provider for seamless integration | 3.6.1 |
-| `@cryptoandcoffee/akash-jsdk-cli` | Command-line tools for project initialization and deployment | 3.6.1 |
-| `@cryptoandcoffee/akash-jsdk-protobuf` | Custom protobuf definitions with TypeScript support | 3.6.1 |
+| `@cryptoandcoffee/akash-jsdk-core` | Core SDK with deployment, market, provider, and wallet management | 3.6.2 |
+| `@cryptoandcoffee/akash-jsdk-react` | React hooks and context provider for seamless integration | 3.6.2 |
+| `@cryptoandcoffee/akash-jsdk-cli` | Command-line tools for project initialization and deployment | 3.6.2 |
+| `@cryptoandcoffee/akash-jsdk-protobuf` | Custom protobuf definitions with TypeScript support | 3.6.2 |
 
 ## 🔧 Installation
 

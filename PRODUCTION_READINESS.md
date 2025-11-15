@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Akash JSDK v3.6.1 includes comprehensive production-ready modules with real blockchain implementations. All modules now use SigningStargateClient for actual transaction broadcasting and REST API queries for state retrieval.
+The Akash JSDK v3.6.2 includes comprehensive production-ready modules with real blockchain implementations. All modules now use SigningStargateClient for actual transaction broadcasting and REST API queries for state retrieval.
 
 ## Module Status Summary
 
@@ -198,7 +198,7 @@ All methods use `SigningStargateClient` for blockchain interaction and REST API 
 - [x] Add delegation tracking
 - [x] Integration tests with staking operations
 
-### v3.6.1 (Current Release)
+### v3.6.2 (Current Release)
 **Focus: Production Hardening**
 - [x] Security audit of all modules
 - [x] Performance optimization
@@ -212,7 +212,7 @@ All methods use `SigningStargateClient` for blockchain interaction and REST API 
 
 All modules are production-ready and require no migration:
 
-1. **Install SDK version v3.6.1
+1. **Install SDK version v3.6.2
 2. **Use any module** with confidence - all are production-ready
 3. **Real blockchain interaction** - all operations use SigningStargateClient
 4. **Error handling included** - comprehensive retry logic and error handling

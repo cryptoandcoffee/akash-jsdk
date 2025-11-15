@@ -557,4 +557,4 @@ Apache License 2.0
 
 ---
 
-**Part of the Akash JSDK v3.6.1 - Production Ready React Integration**
+**Part of the Akash JSDK v3.6.2 - Production Ready React Integration**
