@@ -1,5 +1,12 @@
 # @cryptoandcoffee/akash-jsdk-react
 
+## 3.6.3
+
+### Patch Changes
+
+- Updated dependencies [2511466]
+  - @cryptoandcoffee/akash-jsdk-core@3.6.3
+
 ## 3.6.2
 
 ### Patch Changes
