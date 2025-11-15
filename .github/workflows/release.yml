@@ -48,7 +48,6 @@ jobs:
         uses: changesets/action@v1
         with:
           version: pnpm changeset version
-          publish: pnpm run release
           title: 'Release packages'
           commit: 'Release packages'
           createGithubReleases: false
@@ -57,17 +56,44 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Publish packages to npm
+        id: publish
+        if: steps.changesets.outputs.hasChangesets == 'false'
+        run: |
+          echo "Publishing packages to npm..."
+          pnpm run release
+
+          # Get list of published packages from package.json files
+          PUBLISHED='['
+          for pkg in packages/*/package.json; do
+            PKG_NAME=$(jq -r '.name' "$pkg")
+            PKG_VERSION=$(jq -r '.version' "$pkg")
+            if [ ! -z "$PUBLISHED" ] && [ "$PUBLISHED" != '[' ]; then
+              PUBLISHED="${PUBLISHED},"
+            fi
+            PUBLISHED="${PUBLISHED}{\"name\":\"${PKG_NAME}\",\"version\":\"${PKG_VERSION}\"}"
+          done
+          PUBLISHED="${PUBLISHED}]"
+
+          echo "published=true" >> $GITHUB_OUTPUT
+          echo "publishedPackages=${PUBLISHED}" >> $GITHUB_OUTPUT
+
+          echo "Published packages: ${PUBLISHED}"
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Create git tags after publish
-        if: steps.changesets.outputs.published == 'true'
+        if: steps.publish.outputs.published == 'true'
         run: pnpm run release:tag
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create unified GitHub release
-        if: steps.changesets.outputs.published == 'true'
+        if: steps.publish.outputs.published == 'true'
         run: |
           # Get published packages info
-          PUBLISHED='${{ steps.changesets.outputs.publishedPackages }}'
+          PUBLISHED='${{ steps.publish.outputs.publishedPackages }}'
 
           # Extract version (all packages share same version in monorepo)
           VERSION=$(echo "$PUBLISHED" | jq -r '.[0].version')
@@ -100,7 +126,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update README.md versions
-        if: steps.changesets.outputs.published == 'true'
+        if: steps.publish.outputs.published == 'true'
         run: |
           echo "Updating README.md with latest package versions..."
           node scripts/update-readme-versions.js
