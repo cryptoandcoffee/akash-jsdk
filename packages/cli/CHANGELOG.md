@@ -1,5 +1,12 @@
 # @cryptoandcoffee/akash-jsdk-cli
 
+## 3.6.5
+
+### Patch Changes
+
+- Updated dependencies [6b25b43]
+  - @cryptoandcoffee/akash-jsdk-core@3.7.0
+
 ## 3.6.4
 
 ### Patch Changes
