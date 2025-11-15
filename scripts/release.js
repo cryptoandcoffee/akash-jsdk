@@ -148,7 +148,7 @@ async function main() {
     log.section('STEP 3: Publish to npm')
     try {
       log.info('Publishing all 4 packages atomically...')
-      run('pnpm publish -r --access public', 'Publishing packages', {
+      run('pnpm publish -r --access public --no-git-checks', 'Publishing packages', {
         stdio: 'inherit',
         env: {
           NPM_TOKEN: process.env.NPM_TOKEN,
