@@ -1,5 +1,6 @@
- import { BaseProvider } from '../providers/base'
-import { Deployment, DeploymentID, DeploymentState, GroupSpec, Coin, MsgCreateDeployment } from '@cryptoandcoffee/akash-jsdk-protobuf'
+import { BaseProvider } from '../providers/base'
+import { Deployment, DeploymentID, DeploymentState, GroupSpec, Coin } from '@cryptoandcoffee/akash-jsdk-protobuf'
+import type { ResourceValue } from '@cryptoandcoffee/akash-jsdk-protobuf'
 import { NetworkError, ValidationError, DeploymentError } from '../errors'
 import { SigningStargateClient, GasPrice, calculateFee } from '@cosmjs/stargate'
 import { DirectSecp256k1HdWallet } from '@cosmjs/proto-signing'
@@ -10,6 +11,7 @@ export interface CreateDeploymentRequest {
   sdl: string;
   deposit?: Coin;
   depositor?: string;
+  version?: string;
 }
 
 export interface DeploymentFilters {
@@ -82,7 +84,7 @@ export class DeploymentManager {
         : new Uint8Array([1, 0, 0])
 
       // Create MsgCreateDeployment
-      const msg: MsgCreateDeployment = {
+      const msg: any = {
         id: {
           owner,
           dseq
@@ -168,13 +170,15 @@ export class DeploymentManager {
         storageView.setBigUint64(0, BigInt(storageSize), true)
 
         // FIX #3: Read price from SDL configuration instead of hardcoding
-        const placementConfig = serviceDefinition.deployment[serviceName]?.[profileName]
-        const placementProfileName = placementConfig?.profile
         const placementPricing = serviceDefinition.profiles?.placement?.[profileName]?.pricing?.[serviceName]
         const priceAmount = placementPricing?.amount || '10000'
         const priceDenom = placementPricing?.denom || 'uakt'
 
-        // FIX #2: Remove { val: ... } wrapper - use direct Uint8Array values
+        // FIX #2: Wrap Uint8Array values in ResourceValue structure with val property
+        const cpuResourceValue: ResourceValue = { val: cpuVal }
+        const memoryResourceValue: ResourceValue = { val: memoryVal }
+        const storageResourceValue: ResourceValue = { val: storageVal }
+
         const groupSpec: GroupSpec = {
           name: `${serviceName}-${profileName}`,
           requirements: {
@@ -186,15 +190,15 @@ export class DeploymentManager {
           },
           resources: [{
             resources: {
-              cpu: { units: cpuVal },           // ✅ Direct value, no wrapper
-              memory: { quantity: memoryVal },  // ✅ Direct value, no wrapper
+              cpu: { units: cpuResourceValue },
+              memory: { quantity: memoryResourceValue },
               storage: [{
                 name: 'default',
-                quantity: storageVal            // ✅ Direct value, no wrapper
+                quantity: storageResourceValue
               }],
-              endpoints: [{                     // ADD: Endpoints field
-                kind: 1,                        // ServiceExpose
-                sequence_number: 0
+              endpoints: [{
+                kind: 1,
+                sequenceNumber: 0
               }]
             },
             count: (profileConfig as any).count || 1,
