@@ -76,6 +76,11 @@ export class DeploymentManager {
       // For now, we'll use a timestamp-based approach
       const dseq = Date.now().toString()
 
+      // FIX #6: Parse version from request or use default
+      const version = request.version
+        ? this.parseVersionString(request.version)
+        : new Uint8Array([1, 0, 0])
+
       // Create MsgCreateDeployment
       const msg: MsgCreateDeployment = {
         id: {
@@ -83,7 +88,7 @@ export class DeploymentManager {
           dseq
         },
         groups,
-        version: new Uint8Array([1, 0, 0]), // Version 1.0.0
+        version,
         deposit: request.deposit || { denom: 'uakt', amount: '500000' }, // Default deposit
         depositor: request.depositor || owner
       }
@@ -139,13 +144,16 @@ export class DeploymentManager {
           throw new ValidationError(`Missing service or compute profile for ${serviceName}`)
         }
 
-        // Convert CPU units (e.g., "0.5" -> Uint8Array)
+        // FIX #5: Validate and convert CPU units (e.g., "0.5" cores -> millicores)
         const cpuUnits = parseFloat(computeProfile.resources.cpu.units)
+        if (isNaN(cpuUnits) || cpuUnits <= 0) {
+          throw new ValidationError(`Invalid CPU units: "${computeProfile.resources.cpu.units}". Must be positive number.`)
+        }
         const cpuVal = new Uint8Array(8)
         const cpuView = new DataView(cpuVal.buffer)
-        cpuView.setFloat64(0, cpuUnits * 1000, true) // Convert to millicores
+        cpuView.setFloat64(0, cpuUnits * 1000, true) // Convert cores to millicores (1 core = 1000 millicores)
 
-        // Convert memory size (e.g., "512Mi" -> Uint8Array)
+        // Convert memory size (e.g., "512Mi" -> Uint8Array bytes)
         const memorySize = this.parseMemorySize(computeProfile.resources.memory.size)
         const memoryVal = new Uint8Array(8)
         const memoryView = new DataView(memoryVal.buffer)
@@ -159,6 +167,14 @@ export class DeploymentManager {
         const storageView = new DataView(storageVal.buffer)
         storageView.setBigUint64(0, BigInt(storageSize), true)
 
+        // FIX #3: Read price from SDL configuration instead of hardcoding
+        const placementConfig = serviceDefinition.deployment[serviceName]?.[profileName]
+        const placementProfileName = placementConfig?.profile
+        const placementPricing = serviceDefinition.profiles?.placement?.[profileName]?.pricing?.[serviceName]
+        const priceAmount = placementPricing?.amount || '10000'
+        const priceDenom = placementPricing?.denom || 'uakt'
+
+        // FIX #2: Remove { val: ... } wrapper - use direct Uint8Array values
         const groupSpec: GroupSpec = {
           name: `${serviceName}-${profileName}`,
           requirements: {
@@ -170,15 +186,19 @@ export class DeploymentManager {
           },
           resources: [{
             resources: {
-              cpu: { units: { val: cpuVal } },
-              memory: { quantity: { val: memoryVal } },
+              cpu: { units: cpuVal },           // ✅ Direct value, no wrapper
+              memory: { quantity: memoryVal },  // ✅ Direct value, no wrapper
               storage: [{
                 name: 'default',
-                quantity: { val: storageVal }
+                quantity: storageVal            // ✅ Direct value, no wrapper
+              }],
+              endpoints: [{                     // ADD: Endpoints field
+                kind: 1,                        // ServiceExpose
+                sequence_number: 0
               }]
             },
             count: (profileConfig as any).count || 1,
-            price: { denom: 'uakt', amount: '1000' } // Default price
+            price: { denom: priceDenom, amount: priceAmount }
           }]
         }
 
@@ -189,11 +209,23 @@ export class DeploymentManager {
     return groups
   }
 
+  // FIX #4: parseMemorySize with proper error handling
   private parseMemorySize(size: string): number {
-    const match = size.match(/^(\d+)([KMGT]i?)$/i)
-    if (!match) return 0
+    if (!size || typeof size !== 'string') {
+      throw new ValidationError('Memory size must be a non-empty string')
+    }
 
-    const value = parseInt(match[1])
+    const trimmedSize = size.trim()
+    // Match both integer and decimal values with optional unit
+    const match = trimmedSize.match(/^(\d+(?:\.\d+)?)([KMGT]i?)$/i)
+
+    if (!match) {
+      throw new ValidationError(
+        `Invalid memory size format: "${size}". Expected format: 512Mi, 1Gi, 2.5G, etc.`
+      )
+    }
+
+    const value = parseFloat(match[1])
     const unit = match[2].toUpperCase()
 
     const multipliers: Record<string, number> = {
@@ -207,7 +239,32 @@ export class DeploymentManager {
       'TI': 1024 * 1024 * 1024 * 1024
     }
 
-    return value * (multipliers[unit] || 1)
+    const multiplier = multipliers[unit]
+    if (!multiplier) {
+      throw new ValidationError(`Unknown memory unit: "${unit}"`)
+    }
+
+    const bytes = Math.round(value * multiplier)
+
+    if (bytes <= 0) {
+      throw new ValidationError(`Memory size must be positive, got: ${trimmedSize}`)
+    }
+
+    return bytes
+  }
+
+  // FIX #6: Parse version string from request
+  private parseVersionString(versionStr: string): Uint8Array {
+    const parts = versionStr.split('.').slice(0, 3).map(p => {
+      const num = parseInt(p)
+      if (isNaN(num) || num < 0 || num > 255) {
+        throw new ValidationError(`Invalid version component: ${p}`)
+      }
+      return num
+    })
+
+    while (parts.length < 3) parts.push(0)
+    return new Uint8Array(parts)
   }
 
   async list(filters: DeploymentFilters = {}): Promise<Deployment[]> {

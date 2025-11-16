@@ -40,11 +40,11 @@ function getMessageClassForType(typeUrl: string): any {
     '/akash.deployment.v1beta3.MsgUpdateDeployment': MsgUpdateDeployment,
     '/akash.deployment.v1beta3.MsgCloseDeployment': MsgCloseDeployment,
     '/akash.deployment.v1beta3.MsgDepositDeployment': MsgDepositDeployment,
-    '/akash.market.v1beta4.MsgCreateLease': MsgCreateLease,
-    '/akash.market.v1beta4.MsgCloseLease': MsgCloseLease,
-    '/akash.market.v1beta4.MsgWithdrawLease': MsgWithdrawLease,
-    '/akash.market.v1beta4.MsgCreateBid': MsgCreateBid,
-    '/akash.market.v1beta4.MsgCloseBid': MsgCloseBid,
+    '/akash.market.v1beta3.MsgCreateLease': MsgCreateLease,
+    '/akash.market.v1beta3.MsgCloseLease': MsgCloseLease,
+    '/akash.market.v1beta3.MsgWithdrawLease': MsgWithdrawLease,
+    '/akash.market.v1beta3.MsgCreateBid': MsgCreateBid,
+    '/akash.market.v1beta3.MsgCloseBid': MsgCloseBid,
     '/akash.cert.v1beta3.MsgCreateCertificate': MsgCreateCertificate,
     '/akash.cert.v1beta3.MsgRevokeCertificate': MsgRevokeCertificate,
     '/akash.provider.v1beta3.MsgCreateProvider': MsgCreateProvider,
@@ -65,13 +65,13 @@ const akashMessageTypes: Array<[string, any]> = [
   ['/akash.deployment.v1beta3.MsgDepositDeployment', MsgDepositDeployment],
 
   // Market messages (bids)
-  ['/akash.market.v1beta4.MsgCreateBid', MsgCreateBid],
-  ['/akash.market.v1beta4.MsgCloseBid', MsgCloseBid],
+  ['/akash.market.v1beta3.MsgCreateBid', MsgCreateBid],
+  ['/akash.market.v1beta3.MsgCloseBid', MsgCloseBid],
 
   // Market messages (leases)
-  ['/akash.market.v1beta4.MsgCreateLease', MsgCreateLease],
-  ['/akash.market.v1beta4.MsgCloseLease', MsgCloseLease],
-  ['/akash.market.v1beta4.MsgWithdrawLease', MsgWithdrawLease],
+  ['/akash.market.v1beta3.MsgCreateLease', MsgCreateLease],
+  ['/akash.market.v1beta3.MsgCloseLease', MsgCloseLease],
+  ['/akash.market.v1beta3.MsgWithdrawLease', MsgWithdrawLease],
 
   // Provider messages
   ['/akash.provider.v1beta3.MsgCreateProvider', MsgCreateProvider],
