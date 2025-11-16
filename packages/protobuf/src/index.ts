@@ -1,9 +1,26 @@
 // Export our compatibility types (includes Deployment, Lease, etc.)
 export * from './official-types.js'
 
-// Message classes are exported from message-classes.ts for internal use
-// They are re-exported here with _Class suffix to avoid naming conflicts
-// with type interfaces from official-types.ts
+// Export message classes (GeneratedType implementations for CosmJS Registry)
+// Export with bare names for SDK compatibility
+export {
+  MsgCreateDeployment,
+  MsgUpdateDeployment,
+  MsgCloseDeployment,
+  MsgDepositDeployment,
+  MsgCreateLease,
+  MsgCloseLease,
+  MsgWithdrawLease,
+  MsgCreateBid,
+  MsgCloseBid,
+  MsgCreateCertificate,
+  MsgRevokeCertificate,
+  MsgCreateProvider,
+  MsgUpdateProvider,
+  MsgDeleteProvider,
+} from './message-classes.js'
+
+// Also export with _Class suffix for explicit clarity when needed
 export {
   MsgCreateDeployment as MsgCreateDeploymentClass,
   MsgUpdateDeployment as MsgUpdateDeploymentClass,
