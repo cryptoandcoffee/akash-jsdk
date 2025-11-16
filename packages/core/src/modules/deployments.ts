@@ -49,8 +49,10 @@ export class DeploymentManager {
     }
 
     try {
+      console.log('[DeploymentManager.create] Starting deployment creation')
       // Parse SDL to get service definition
       const serviceDefinition = this.sdlManager.parseSDL(request.sdl)
+      console.log('[DeploymentManager.create] SDL parsed successfully')
 
       // Convert SDL to GroupSpec array
       const groups = this.convertSDLToGroupSpecs(serviceDefinition)
@@ -146,6 +148,14 @@ export class DeploymentManager {
         dseq
       }
     } catch (error) {
+      // Log detailed error information
+      console.error('Deployment creation error details:', {
+        message: error?.message,
+        code: error?.code,
+        rawLog: error?.rawLog,
+        logs: error?.logs,
+        stack: error?.stack
+      })
       throw new DeploymentError('Failed to create deployment', { error })
     }
   }
