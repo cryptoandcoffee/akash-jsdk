@@ -1,5 +1,5 @@
 import { defineConfig } from 'vitest/config'
-import vue from '@vitejs/plugin-vue'
+import path from 'path'
 
 export default defineConfig({
   test: {
@@ -11,7 +11,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@cryptoandcoffee/akash-jsdk-protobuf': '../protobuf/src/index.ts',
+      '@cryptoandcoffee/akash-jsdk-protobuf': path.resolve(__dirname, '../protobuf/dist/index.js'),
     }
   }
 })
