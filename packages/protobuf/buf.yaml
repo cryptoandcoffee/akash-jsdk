@@ -1,12 +1,11 @@
 version: v1
-name: buf.build/cryptoandcoffee/akash-jsdk
 deps:
   - buf.build/cosmos/cosmos-sdk
   - buf.build/cosmos/ibc
   - buf.build/gogo/protobuf
-breaking:
-  use:
-    - FILE
-lint:
-  use:
-    - DEFAULT
+
+# Registry-only configuration:
+# No local proto files - all definitions come from buf.build registry dependencies
+# This eliminates local import resolution issues and ensures we use validated
+# published versions of Cosmos, IBC, and gogoproto definitions
+# Code generation happens for the dependencies only

@@ -15,19 +15,22 @@ if (!existsSync(generatedDir)) {
 }
 
 // Generate proper TypeScript message classes using bufbuild
+// Registry-only approach: generate from remote modules without local proto files
 try {
-  console.log('📦 Running buf generate to create protobuf message classes...')
-  // buf.yaml declares remote dependencies (cosmos-sdk, ibc, gogo/protobuf)
-  // buf will resolve them from buf.build registry for imports while using local protos
-  execSync('npx buf generate', {
+  console.log('📦 Running buf generate for remote modules from buf.build registry...')
+
+  // Generate from remote Cosmos SDK module
+  // This includes all message definitions from cosmos-sdk and their dependencies
+  execSync('npx buf generate buf.build/cosmos/cosmos-sdk', {
     cwd: rootDir,
     stdio: 'inherit',
     encoding: 'utf-8'
   })
+
   console.log('✅ Protobuf code generation completed successfully')
 } catch (error) {
   console.error('❌ Buf generation failed:', error.message)
-  console.warn('⚠️  Buf dependencies not fully resolved, falling back to type-only definitions...')
+  console.warn('⚠️  Falling back to type-only definitions...')
   createFallbackTypes(generatedDir)
   console.log('✅ Fallback types created successfully')
 }
