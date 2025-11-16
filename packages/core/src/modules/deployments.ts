@@ -1,3 +1,4 @@
+import { createHash } from 'crypto'
 import { BaseProvider } from '../providers/base'
 import { Deployment, DeploymentID, DeploymentState, GroupSpec, Coin } from '@cryptoandcoffee/akash-jsdk-protobuf'
 import type { ResourceValue } from '@cryptoandcoffee/akash-jsdk-protobuf'
@@ -6,6 +7,15 @@ import { SigningStargateClient, GasPrice, calculateFee } from '@cosmjs/stargate'
 import { DirectSecp256k1HdWallet } from '@cosmjs/proto-signing'
 import { SDLManager } from './sdl'
 import { createAkashRegistry } from '../utils/registry'
+// Use proper proto-generated types from source location
+// @ts-ignore - importing from src/generated for build purposes
+import { MsgCreateDeployment } from '../../protobuf/src/generated/akash/deployment/v1beta4/deploymentmsg'
+// @ts-ignore
+import { Deposit, Source } from '../../protobuf/src/generated/akash/base/deposit/v1/deposit'
+import { BinaryWriter } from '@bufbuild/protobuf/wire'
+import Long from 'long'
+// @ts-ignore
+import { Coin as ProtoCoin } from '../../protobuf/src/generated/cosmos/base/v1beta1/coin'
 
 export interface CreateDeploymentRequest {
   sdl: string;
@@ -76,23 +86,30 @@ export class DeploymentManager {
 
       // Generate deployment sequence (dseq) - in real Akash this comes from the chain
       // For now, we'll use a timestamp-based approach
-      const dseq = Date.now().toString()
+      const dseqNumber = BigInt(Date.now())
+      const dseq = Long.fromBigInt(dseqNumber)
 
-      // FIX #6: Parse version from request or use default
-      const version = request.version
-        ? this.parseVersionString(request.version)
-        : new Uint8Array([1, 0, 0])
+      // Calculate manifest hash (using SDL content as input)
+      const sdlHash = this.calculateSDLHash(request.sdl)
 
-      // Create MsgCreateDeployment
-      const msg: any = {
+      // Create Deposit object with proper sources
+      const deposit: Deposit = {
+        amount: {
+          denom: 'uakt',
+          amount: (request.deposit?.amount || '500000').toString()
+        } as ProtoCoin,
+        sources: [Source.balance]
+      }
+
+      // Create MsgCreateDeployment with proper proto structure
+      const msg: MsgCreateDeployment = {
         id: {
           owner,
           dseq
         },
         groups,
-        version,
-        deposit: request.deposit || { denom: 'uakt', amount: '500000' }, // Default deposit
-        depositor: request.depositor || owner
+        hash: sdlHash,
+        deposit
       }
 
       // Create registry with Akash-specific message types for Protobuf encoding
@@ -437,5 +454,12 @@ export class DeploymentManager {
         errors: [(error as Error).message]
       }
     }
+  }
+
+  // Calculate SHA256 hash of SDL content
+  private calculateSDLHash(sdlContent: string): Uint8Array {
+    const hash = createHash('sha256')
+    hash.update(sdlContent, 'utf8')
+    return new Uint8Array(hash.digest())
   }
 }

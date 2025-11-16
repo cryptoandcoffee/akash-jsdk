@@ -19,14 +19,22 @@ export default defineConfig({
       output: {
         exports: 'named'
       },
-       external: [
-         '@cosmjs/stargate',
-         '@cosmjs/proto-signing',
-         '@cosmjs/encoding',
-         '@cosmjs/amino',
-         '@cryptoandcoffee/akash-jsdk-protobuf',
-         'module'
-       ]
+       external: (id: string) => {
+         // Mark all protobuf src imports as external
+         if (id.includes('@cryptoandcoffee/akash-jsdk-protobuf') || id.includes('../../protobuf/src')) {
+           return true
+         }
+         return [
+           '@cosmjs/stargate',
+           '@cosmjs/proto-signing',
+           '@cosmjs/encoding',
+           '@cosmjs/amino',
+           '@bufbuild/protobuf',
+           'long',
+           'crypto',
+           'module'
+         ].includes(id)
+       }
     },
     sourcemap: true,
     minify: false
