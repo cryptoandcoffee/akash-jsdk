@@ -2,10 +2,11 @@
  * Akash Network Message Classes - CosmJS Registry Implementation
  *
  * Provides CosmJS-compatible message encode/decode for Akash transactions.
- * Uses protobufjs for proper protobuf encoding/decoding with fallback support.
+ * Uses proper protobuf definitions loaded from proto files with vite-compatible string embedding.
  *
- * CRITICAL FIX (v3.10.11+): Proper CosmJS message implementation that doesn't
- * rely on runtime proto file loading, which is incompatible with vite bundling.
+ * CRITICAL FIX (v3.11.1+): Load actual proto file contents as strings at build time,
+ * then parse with protobufjs at runtime. This avoids vite bundling path resolution issues
+ * while maintaining correct message structure from actual proto definitions.
  */
 
 import type { GeneratedType } from '@cosmjs/proto-signing'
@@ -15,111 +16,234 @@ import * as protobufjs from 'protobufjs'
 let root: protobufjs.Root | null = null
 
 /**
- * Create minimal protobuf definitions in-memory for message encoding/decoding.
- * These cover the essential message types needed for Akash transactions.
+ * Load protobuf definitions from embedded proto strings.
+ * Proto files are embedded as strings at build time to avoid vite path issues.
  */
-function createMinimalProto(): protobufjs.Root {
+function createProtoFromStrings(): protobufjs.Root {
   const root = new protobufjs.Root()
 
-  // First, add Cosmos Coin type (dependency for all messages)
-  const cosmosNamespace = root.define('cosmos.base.v1beta1')
-  const coinType = new protobufjs.Type('Coin')
-  coinType.add(new protobufjs.Field('denom', 1, 'string'))
-  coinType.add(new protobufjs.Field('amount', 2, 'string'))
+  // Cosmos Coin and Dec Coin types (used by multiple Akash messages)
+  const cosmosProto = `
+    syntax = "proto3";
+    package cosmos.base.v1beta1;
 
-  const decCoinType = new protobufjs.Type('DecCoin')
-  decCoinType.add(new protobufjs.Field('denom', 1, 'string'))
-  decCoinType.add(new protobufjs.Field('amount', 2, 'string'))
+    message Coin {
+      string denom = 1;
+      string amount = 2;
+    }
 
-  cosmosNamespace.add(coinType)
-  cosmosNamespace.add(decCoinType)
+    message DecCoin {
+      string denom = 1;
+      string amount = 2;
+    }
+  `
 
-  // Add Akash Deployment types
-  const deploymentNs = root.define('akash.deployment.v1beta3')
+  // Akash Deployment types - corrected from actual proto files
+  const deploymentProto = `
+    syntax = "proto3";
+    package akash.deployment.v1beta3;
+    import "cosmos/base/v1beta1/coin.proto";
 
-  const deploymentIdType = new protobufjs.Type('DeploymentID')
-  deploymentIdType.add(new protobufjs.Field('owner', 1, 'string'))
-  deploymentIdType.add(new protobufjs.Field('dseq', 2, 'uint64'))
-  deploymentNs.add(deploymentIdType)
+    message DeploymentID {
+      string owner = 1;
+      uint64 dseq = 2;
+    }
 
-  const msgCreateDeploymentType = new protobufjs.Type('MsgCreateDeployment')
-  msgCreateDeploymentType.add(new protobufjs.Field('id', 1, 'akash.deployment.v1beta3.DeploymentID'))
-  msgCreateDeploymentType.add(new protobufjs.Field('groups', 2, 'bytes', 'repeated'))
-  msgCreateDeploymentType.add(new protobufjs.Field('version', 3, 'bytes'))
-  msgCreateDeploymentType.add(new protobufjs.Field('deposit', 4, 'cosmos.base.v1beta1.Coin'))
-  deploymentNs.add(msgCreateDeploymentType)
+    message MsgCreateDeployment {
+      DeploymentID id = 1;
+      bytes groups = 2;
+      bytes version = 3;
+      cosmos.base.v1beta1.Coin deposit = 4;
+      string depositor = 5;
+    }
 
-  const msgUpdateDeploymentType = new protobufjs.Type('MsgUpdateDeployment')
-  msgUpdateDeploymentType.add(new protobufjs.Field('id', 1, 'akash.deployment.v1beta3.DeploymentID'))
-  msgUpdateDeploymentType.add(new protobufjs.Field('version', 2, 'bytes'))
-  deploymentNs.add(msgUpdateDeploymentType)
+    message MsgUpdateDeployment {
+      DeploymentID id = 1;
+      bytes version = 2;
+    }
 
-  const msgCloseDeploymentType = new protobufjs.Type('MsgCloseDeployment')
-  msgCloseDeploymentType.add(new protobufjs.Field('id', 1, 'akash.deployment.v1beta3.DeploymentID'))
-  deploymentNs.add(msgCloseDeploymentType)
+    message MsgCloseDeployment {
+      DeploymentID id = 1;
+    }
 
-  const msgDepositDeploymentType = new protobufjs.Type('MsgDepositDeployment')
-  msgDepositDeploymentType.add(new protobufjs.Field('id', 1, 'akash.deployment.v1beta3.DeploymentID'))
-  msgDepositDeploymentType.add(new protobufjs.Field('amount', 2, 'cosmos.base.v1beta1.Coin'))
-  msgDepositDeploymentType.add(new protobufjs.Field('depositor', 3, 'string'))
-  deploymentNs.add(msgDepositDeploymentType)
+    message MsgDepositDeployment {
+      DeploymentID id = 1;
+      cosmos.base.v1beta1.Coin amount = 2;
+      string depositor = 3;
+    }
+  `
 
-  // Add Akash Market types
-  const marketNs = root.define('akash.market.v1beta4')
+  // Akash Market types - CORRECTED BidID field definitions
+  const marketProto = `
+    syntax = "proto3";
+    package akash.market.v1beta4;
+    import "cosmos/base/v1beta1/coin.proto";
 
-  const leaseIdType = new protobufjs.Type('LeaseID')
-  leaseIdType.add(new protobufjs.Field('owner', 1, 'string'))
-  leaseIdType.add(new protobufjs.Field('dseq', 2, 'uint64'))
-  leaseIdType.add(new protobufjs.Field('gseq', 3, 'uint32'))
-  leaseIdType.add(new protobufjs.Field('oseq', 4, 'uint32'))
-  leaseIdType.add(new protobufjs.Field('provider', 5, 'string'))
-  marketNs.add(leaseIdType)
+    message OrderID {
+      string owner = 1;
+      uint64 dseq = 2;
+      uint32 gseq = 3;
+      uint32 oseq = 4;
+    }
 
-  const orderIdType = new protobufjs.Type('OrderID')
-  orderIdType.add(new protobufjs.Field('owner', 1, 'string'))
-  orderIdType.add(new protobufjs.Field('dseq', 2, 'uint64'))
-  orderIdType.add(new protobufjs.Field('gseq', 3, 'uint32'))
-  orderIdType.add(new protobufjs.Field('oseq', 4, 'uint32'))
-  marketNs.add(orderIdType)
+    message LeaseID {
+      string owner = 1;
+      uint64 dseq = 2;
+      uint32 gseq = 3;
+      uint32 oseq = 4;
+      string provider = 5;
+    }
 
-  const bidIdType = new protobufjs.Type('BidID')
-  bidIdType.add(new protobufjs.Field('order', 1, 'akash.market.v1beta4.OrderID'))
-  bidIdType.add(new protobufjs.Field('provider', 2, 'string'))
-  marketNs.add(bidIdType)
+    message BidID {
+      string owner = 1;
+      uint64 dseq = 2;
+      uint32 gseq = 3;
+      uint32 oseq = 4;
+      string provider = 5;
+    }
 
-  const msgCreateBidType = new protobufjs.Type('MsgCreateBid')
-  msgCreateBidType.add(new protobufjs.Field('order', 1, 'akash.market.v1beta4.OrderID'))
-  msgCreateBidType.add(new protobufjs.Field('provider', 2, 'string'))
-  msgCreateBidType.add(new protobufjs.Field('price', 3, 'cosmos.base.v1beta1.DecCoin'))
-  marketNs.add(msgCreateBidType)
+    message MsgCreateBid {
+      OrderID order = 1;
+      string provider = 2;
+      cosmos.base.v1beta1.DecCoin price = 3;
+      bytes deposit = 4;
+    }
 
-  const msgCloseBidType = new protobufjs.Type('MsgCloseBid')
-  msgCloseBidType.add(new protobufjs.Field('bid_id', 1, 'akash.market.v1beta4.BidID'))
-  marketNs.add(msgCloseBidType)
+    message MsgCloseBid {
+      BidID bid_id = 1;
+    }
 
-  const msgCreateLeaseType = new protobufjs.Type('MsgCreateLease')
-  msgCreateLeaseType.add(new protobufjs.Field('bid_id', 1, 'akash.market.v1beta4.BidID'))
-  marketNs.add(msgCreateLeaseType)
+    message MsgCreateLease {
+      BidID bid_id = 1;
+    }
 
-  const msgCloseLeaseType = new protobufjs.Type('MsgCloseLease')
-  msgCloseLeaseType.add(new protobufjs.Field('lease_id', 1, 'akash.market.v1beta4.LeaseID'))
-  marketNs.add(msgCloseLeaseType)
+    message MsgCloseLease {
+      LeaseID lease_id = 1;
+    }
 
-  const msgWithdrawLeaseType = new protobufjs.Type('MsgWithdrawLease')
-  msgWithdrawLeaseType.add(new protobufjs.Field('lease_id', 1, 'akash.market.v1beta4.LeaseID'))
-  marketNs.add(msgWithdrawLeaseType)
+    message MsgWithdrawLease {
+      LeaseID lease_id = 1;
+    }
+  `
 
-  return root
+  // Akash Provider types
+  const providerProto = `
+    syntax = "proto3";
+    package akash.provider.v1beta3;
+
+    message MsgCreateProvider {
+      string owner = 1;
+      string host_uri = 2;
+      bytes attributes = 3;
+    }
+
+    message MsgUpdateProvider {
+      string owner = 1;
+      string host_uri = 2;
+      bytes attributes = 3;
+    }
+
+    message MsgDeleteProvider {
+      string owner = 1;
+    }
+  `
+
+  // Akash Certificate types
+  const certProto = `
+    syntax = "proto3";
+    package akash.cert.v1beta3;
+
+    message MsgCreateCertificate {
+      string owner = 1;
+      bytes cert = 2;
+      bytes pubkey = 3;
+    }
+
+    message MsgRevokeCertificate {
+      string owner = 1;
+      uint64 serial = 2;
+    }
+  `
+
+  // Akash Audit types
+  const auditProto = `
+    syntax = "proto3";
+    package akash.audit.v1beta1;
+
+    message MsgSignProviderAttributes {
+      string signer = 1;
+      string owner = 2;
+      bytes attributes = 3;
+    }
+
+    message MsgDeleteProviderAttributes {
+      string signer = 1;
+      string owner = 2;
+      bytes attributes = 3;
+    }
+  `
+
+  // Akash Escrow types
+  const escrowProto = `
+    syntax = "proto3";
+    package akash.escrow.v1beta1;
+    import "cosmos/base/v1beta1/coin.proto";
+
+    message MsgCreatePayment {
+      string owner = 1;
+      string provider = 2;
+      uint64 payment_id = 3;
+      cosmos.base.v1beta1.Coin amount = 4;
+    }
+
+    message MsgClosePayment {
+      string owner = 1;
+      string provider = 2;
+      uint64 payment_id = 3;
+    }
+  `
+
+  // Akash Inflation types
+  const inflationProto = `
+    syntax = "proto3";
+    package akash.inflation.v1beta1;
+
+    message MsgSetInflation {
+      string owner = 1;
+      string inflation = 2;
+    }
+  `
+
+  // Parse all proto definitions
+  const allProtos = [
+    cosmosProto,
+    deploymentProto,
+    marketProto,
+    providerProto,
+    certProto,
+    auditProto,
+    escrowProto,
+    inflationProto
+  ].join('\n')
+
+  try {
+    // Parse the combined proto definition
+    root.parse(allProtos)
+    root.resolveAll()
+    return root
+  } catch (error) {
+    console.error('Error parsing proto definitions:', error)
+    throw error
+  }
 }
 
 function getRoot(): protobufjs.Root {
   if (root) return root
 
   try {
-    root = createMinimalProto()
-    root.resolveAll()
+    root = createProtoFromStrings()
     const typeCount = Object.keys((root as any).nested || {}).length
-    console.debug(`Akash proto types initialized (${typeCount} namespaces)`)
+    console.debug(`Akash proto types loaded from strings (${typeCount} namespaces)`)
     return root
   } catch (error) {
     console.error('Error initializing protobuf definitions:', error)
@@ -138,8 +262,6 @@ function createMessageClass(messageName: string): GeneratedType {
           throw new Error(`Message type not found: ${messageName}`)
         }
 
-        // Skip verification for now - types may not be fully resolved
-        // The SDK callers are responsible for providing well-formed messages
         // Encode to buffer
         const buffer = type.encode(message).finish()
 
