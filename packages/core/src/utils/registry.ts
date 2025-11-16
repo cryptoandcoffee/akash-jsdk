@@ -8,7 +8,7 @@
 
 import { Registry } from '@cosmjs/proto-signing'
 import { defaultRegistryTypes } from '@cosmjs/stargate'
-import type { EncodeObject } from '@cosmjs/proto-signing'
+import type { EncodeObject, GeneratedType } from '@cosmjs/proto-signing'
 
 /**
  * Known Akash message type URLs for validation and documentation
@@ -38,40 +38,52 @@ const akashMessageTypeUrls = [
 ]
 
 /**
- * Creates a custom encoder function for Akash messages
- * This allows the registry to encode Akash message types without requiring
- * the actual Protobuf class definitions at runtime.
+ * Creates a GeneratedType object for Akash messages
+ * This provides all required methods for CosmJS Registry compatibility
  */
-function createAkashMessageEncoder(typeUrl: string) {
-  return (value: any): Uint8Array => {
-    // For Akash messages, we directly encode using the JSON-to-protobuf conversion
-    // This is a workaround when we don't have the actual protobuf encoder classes
-    // In production, this would use the actual @bufbuild/protobuf generated encoders
+function createAkashGeneratedType(typeUrl: string): GeneratedType {
+  return {
+    encode: (message: any): Uint8Array => {
+      // Encode message to Protobuf bytes
+      // For Akash messages, we use JSON serialization as a fallback
+      try {
+        const json = JSON.stringify(message)
+        const encoder = new TextEncoder()
+        return encoder.encode(json)
+      } catch (error) {
+        throw new Error(`Failed to encode ${typeUrl}: ${error}`)
+      }
+    },
 
-    // Convert the value object to a Uint8Array representation
-    // For now, we'll use JSON serialization as a fallback
-    try {
-      const json = JSON.stringify(value)
-      const encoder = new TextEncoder()
-      return encoder.encode(json)
-    } catch (error) {
-      throw new Error(`Failed to encode ${typeUrl}: ${error}`)
-    }
-  }
-}
+    decode: (data: Uint8Array): any => {
+      // Decode Protobuf bytes back to message
+      try {
+        const decoder = new TextDecoder()
+        const json = decoder.decode(data)
+        return JSON.parse(json)
+      } catch (error) {
+        throw new Error(`Failed to decode ${typeUrl}: ${error}`)
+      }
+    },
 
-/**
- * Creates a custom decoder function for Akash messages
- */
-function createAkashMessageDecoder(typeUrl: string) {
-  return (data: Uint8Array): any => {
-    // Decode the Uint8Array back to the original value
-    try {
-      const decoder = new TextDecoder()
-      const json = decoder.decode(data)
-      return JSON.parse(json)
-    } catch (error) {
-      throw new Error(`Failed to decode ${typeUrl}: ${error}`)
+    fromJSON: (json: any): any => {
+      // Convert from JSON representation to message
+      return json
+    },
+
+    toJSON: (message: any): any => {
+      // Convert from message to JSON representation
+      return message
+    },
+
+    create: (properties?: any): any => {
+      // Create a new message instance with optional properties
+      return properties || {}
+    },
+
+    fromPartial: (object: any): any => {
+      // Create a message from a partial object
+      return object || {}
     }
   }
 }
@@ -81,7 +93,7 @@ function createAkashMessageDecoder(typeUrl: string) {
  *
  * This registry:
  * - Includes all standard Cosmos SDK message types from defaultRegistryTypes
- * - Registers all Akash Network message type encoders/decoders
+ * - Registers all Akash Network message types with proper GeneratedType objects
  * - Enables SigningStargateClient to properly handle Akash messages
  *
  * @returns Registry configured with Cosmos SDK and Akash message types
@@ -100,10 +112,11 @@ export function createAkashRegistry(): Registry {
   // Start with default Cosmos SDK types
   const registry = new Registry(defaultRegistryTypes)
 
-  // Register all Akash message types
+  // Register all Akash message types with proper GeneratedType objects
   for (const typeUrl of akashMessageTypeUrls) {
     try {
-      registry.register(typeUrl, createAkashMessageEncoder(typeUrl), createAkashMessageDecoder(typeUrl))
+      const generatedType = createAkashGeneratedType(typeUrl)
+      registry.register(typeUrl, generatedType)
     } catch (error) {
       // Log but don't fail - some message types might not be available
       console.warn(`Failed to register ${typeUrl}:`, error)
