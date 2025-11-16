@@ -23,7 +23,8 @@
     "proto"
   ],
   "scripts": {
-    "build": "npm run proto:generate && vite build",
+    "build": "npm run proto:generate && vite build && npm run copy:generated",
+    "copy:generated": "mkdir -p dist/generated && cp -r src/generated/* dist/generated/ 2>/dev/null; cp -r generated/* dist/generated/ 2>/dev/null; true",
     "proto:download": "node scripts/download-protos.js",
     "proto:generate": "node scripts/generate-proto.js",
     "test": "vitest run",
