@@ -9,9 +9,13 @@ import chalk from 'chalk'
 vi.mock('fs', () => ({
   existsSync: vi.fn()
 }))
-vi.mock('path', () => ({
-  join: vi.fn((...args) => args.join('/'))
-}))
+vi.mock('path', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('path')>()
+  return {
+    ...actual,
+    join: vi.fn((...args) => args.join('/'))
+  }
+})
 
 describe('Final Coverage Tests - 100% Target', () => {
   beforeEach(() => {

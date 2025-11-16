@@ -19,7 +19,7 @@ export default defineConfig({
       formats: ['es', 'cjs']
     },
     rollupOptions: {
-      external: ['@bufbuild/protobuf'],
+      external: ['@bufbuild/protobuf', 'fs', 'path', 'url'],
       output: {
         preserveModules: true,
         preserveModulesRoot: 'src'
