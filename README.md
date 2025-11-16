@@ -19,9 +19,9 @@ A modern, fully-featured JavaScript SDK for Akash Network built from scratch wit
 - **Comprehensive Testing**: Enterprise-grade testing with 1,280 tests passing across all packages
 - **Performance First**: ES2022 target, ESM modules, incremental builds
 
-## What's New in v3.10.9
+## What's New in v3.10.10
 
-Version 3.10.9 brings comprehensive Protobuf message type registration and production-ready blockchain integration:
+Version 3.10.10 brings comprehensive Protobuf message type registration and production-ready blockchain integration:
 
 ### Protobuf Message Type Registration (v3.7.0)
 - **New `createAkashRegistry()` Utility**: Centralized registry creation with all 14 Akash message types pre-registered
@@ -66,10 +66,10 @@ Full support for Akash Network Mainnet 14 features:
 
 | Package | Description | Version |
 |---------|-------------|---------|
-| `@cryptoandcoffee/akash-jsdk-core` | Core SDK with deployment, market, provider, and wallet management | 3.10.9 |
-| `@cryptoandcoffee/akash-jsdk-react` | React hooks and context provider for seamless integration | 3.10.9 |
-| `@cryptoandcoffee/akash-jsdk-cli` | Command-line tools for project initialization and deployment | 3.10.9 |
-| `@cryptoandcoffee/akash-jsdk-protobuf` | Custom protobuf definitions with TypeScript support | 3.10.9 |
+| `@cryptoandcoffee/akash-jsdk-core` | Core SDK with deployment, market, provider, and wallet management | 3.10.10 |
+| `@cryptoandcoffee/akash-jsdk-react` | React hooks and context provider for seamless integration | 3.10.10 |
+| `@cryptoandcoffee/akash-jsdk-cli` | Command-line tools for project initialization and deployment | 3.10.10 |
+| `@cryptoandcoffee/akash-jsdk-protobuf` | Custom protobuf definitions with TypeScript support | 3.10.10 |
 
 ## 🔧 Installation
 
