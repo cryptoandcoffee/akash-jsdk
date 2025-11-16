@@ -151,9 +151,11 @@ export class DeploymentManager {
         if (isNaN(cpuUnits) || cpuUnits <= 0) {
           throw new ValidationError(`Invalid CPU units: "${computeProfile.resources.cpu.units}". Must be positive number.`)
         }
+        // CPU in millicores (1 core = 1000 millicores), stored as unsigned 64-bit integer
+        const cpuMillicores = Math.round(cpuUnits * 1000)
         const cpuVal = new Uint8Array(8)
         const cpuView = new DataView(cpuVal.buffer)
-        cpuView.setFloat64(0, cpuUnits * 1000, true) // Convert cores to millicores (1 core = 1000 millicores)
+        cpuView.setBigUint64(0, BigInt(cpuMillicores), true)
 
         // Convert memory size (e.g., "512Mi" -> Uint8Array bytes)
         const memorySize = this.parseMemorySize(computeProfile.resources.memory.size)
