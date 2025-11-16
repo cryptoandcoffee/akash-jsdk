@@ -140,7 +140,7 @@ export class MarketManager {
           },
           resources: [
             {
-              resources: {
+              resource: {
                 cpu: { units: { val: new Uint8Array([1, 0, 0]) } },
                 memory: { quantity: { val: new Uint8Array([1, 2, 8]) } },
                 storage: []

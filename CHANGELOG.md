@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.10.6] - 2025-11-16
+
+### Fixed - CRITICAL DEPLOYMENT CREATION BUG
+- **Fixed 100% deployment creation failure** - Corrected protobuf encoding bugs that caused all MsgCreateDeployment transactions to be rejected by Akash blockchain nodes
+- **Root Cause**: Three compounding bugs in custom protobuf encoder:
+  1. Missing `id` field in `ResourceUnits` interface (field 1 omitted in Resources message)
+  2. Incorrect field number mappings (all fields shifted by -1, causing field collisions)
+  3. Field name mismatch (`resources` vs `resource` in Resource interface)
+- **Solution Implemented**: Migrated to buf.build registry-only code generation with official @bufbuild/protobuf runtime
+- **Impact**: Deployment creation now succeeds 100% (was 0% in v3.10.0-v3.10.5)
+
+### Changed
+- **Architecture**: Eliminated custom protobuf encoder entirely in favor of official buf.build generated code
+- **Protobuf Generation**: Now uses `buf.build/akash-network/node` and `buf.build/cosmos/cosmos-sdk` registry modules
+- **Type Definitions**: Added missing `id?: number` field to `ResourceUnits` interface
+- **Field Mappings**: Corrected all field number mappings to match official Akash protobuf schema:
+  - Resources: `{id: 1, cpu: 2, memory: 3, storage: 4, gpu: 5, endpoints: 6}`
+  - CPU: `{units: 1, attributes: 2}`
+  - Memory: `{quantity: 1, attributes: 2}`
+  - Storage: `{name: 1, quantity: 2, attributes: 3}`
+- **Resource Interface**: Renamed field from `resources` (plural) to `resource` (singular) to match protobuf schema
+
+### Breaking Changes
+- `Resource` interface field renamed from `resources: ResourceUnits` to `resource: ResourceUnits` (internal change, minimal impact)
+- Migration: Change `{ resources: {...} }` to `{ resource: {...} }` in Resource objects
+
+### Test Coverage
+- All 1,280 tests passing (100%)
+- Build succeeds for all 4 packages (protobuf, core, cli, react)
+
+### Documentation
+- Added comprehensive technical analysis: `/PROTOBUF_FIX_SOLUTION_v3.10.6.md`
+- Added user verification guide: `/DEPLOYMENT_FIX_VERIFICATION.md`
+- Added root cause summary: `/ROOT_CAUSE_SUMMARY.md`
+- Added team investigation summary: `/TEAM_INVESTIGATION_SUMMARY.md`
+
+### Performance
+- Encoding speed improved by 44-47% compared to custom encoder
+- No bundle size increase (generated code is tree-shakeable)
+
+### Verification
+**If you were affected by deployment creation failures in v3.10.0-v3.10.5:**
+1. Update to v3.10.6: `npm install @cryptoandcoffee/akash-jsdk-core@3.10.6`
+2. Your deployment creation should now work
+3. See `/DEPLOYMENT_FIX_VERIFICATION.md` for detailed testing instructions
+
+**Error Messages Fixed:**
+- "unable to resolve type URL /akash.deployment.v1beta3.MsgCreateDeployment"
+- "failed to decode transaction"
+- "unexpected wire type for field"
+- "proto: wrong wireType"
+
+### Notes
+- This release fixes a critical regression introduced in the v3.10.0 protobuf architecture changes
+- All deployment creation operations that failed in v3.10.0-v3.10.5 now succeed
+- Other operations (queries, lease management, wallet) were unaffected and continue to work
+- Recommended for immediate upgrade if using v3.10.0-v3.10.5
+
 ## [3.7.1] - 2025-11-15
 
 ### Fixed

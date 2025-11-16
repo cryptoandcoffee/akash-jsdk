@@ -191,7 +191,7 @@ export class DeploymentManager {
             attributes: []
           },
           resources: [{
-            resources: {
+            resource: {
               cpu: { units: cpuResourceValue },
               memory: { quantity: memoryResourceValue },
               storage: [{

@@ -67,12 +67,13 @@ export interface Attribute {
 }
 
 export interface Resource {
-  resources: ResourceUnits
+  resource: ResourceUnits
   count: number
   price: DecCoin
 }
 
 export interface ResourceUnits {
+  id?: number
   cpu: CPU
   memory: Memory
   storage: Storage[]

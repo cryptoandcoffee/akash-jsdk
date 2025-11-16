@@ -419,7 +419,7 @@ deployment:
                 attributes: []
               },
               resources: [{
-                resources: {
+                resource: {
                   cpu: { units: { val: new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]) } },
                   memory: { quantity: { val: new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]) } },
                   storage: [{
@@ -449,7 +449,7 @@ deployment:
         },
         resources: expect.arrayContaining([
           expect.objectContaining({
-            resources: expect.objectContaining({
+            resource: expect.objectContaining({
               cpu: { units: { val: expect.any(Uint8Array) } },
               memory: { quantity: { val: expect.any(Uint8Array) } },
               storage: expect.arrayContaining([

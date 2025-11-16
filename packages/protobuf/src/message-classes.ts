@@ -14,7 +14,7 @@ import type { GeneratedType } from '@cosmjs/proto-signing'
  * Uses per-message-type field mappings to avoid collisions across different
  * message types where the same field name may have different field numbers.
  */
-function createMessageClass(name: string, typeUrl: string, messageClass?: any): GeneratedType {
+function createMessageClass(_name: string, typeUrl: string, messageClass?: any): GeneratedType {
   // If a message class is provided, delegate to its methods
   if (messageClass && typeof messageClass.encode === 'function') {
     return {
@@ -485,19 +485,47 @@ function getFieldMapForNestedType(fieldName?: string, parentFieldName?: string):
     }
   }
 
-  // Resource/CPU/Memory/Storage (nested in resources or standalone)
-  if (fieldName === 'resource' || fieldName === 'cpu' || fieldName === 'memory' || fieldName === 'storage' || fieldName === 'gpu') {
+  // Resources message (the "resource" field inside ResourceUnit)
+  if (fieldName === 'resource' && parentFieldName === 'resources') {
     return {
-      cpu: 1,
-      memory: 2,
-      storage: 3,
-      endpoints: 4,
-      gpu: 5,
       id: 1,
+      cpu: 2,
+      memory: 3,
+      storage: 4,
+      gpu: 5,
+      endpoints: 6,
+    }
+  }
+
+  // CPU message
+  if (fieldName === 'cpu') {
+    return {
       units: 1,
-      quantity: 1,
-      name: 1,
       attributes: 2,
+    }
+  }
+
+  // Memory message
+  if (fieldName === 'memory') {
+    return {
+      quantity: 1,
+      attributes: 2,
+    }
+  }
+
+  // Storage message
+  if (fieldName === 'storage') {
+    return {
+      name: 1,
+      quantity: 2,
+      attributes: 3,
+    }
+  }
+
+  // ResourceValue message (used in units/quantity)
+  if (fieldName === 'units' || fieldName === 'quantity') {
+    return {
+      val: 1,
     }
   }
 
@@ -554,8 +582,8 @@ function getFieldMapForNestedType(fieldName?: string, parentFieldName?: string):
     }
   }
 
-  // Fallback to global field map if type cannot be inferred
-  return getFieldNumber.fieldMap || {}
+  // Fallback to empty field map if type cannot be inferred
+  return {}
 }
 
 /**
