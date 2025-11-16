@@ -56,6 +56,7 @@ export class DeploymentManager {
 
       // Convert SDL to GroupSpec array
       const groups = this.convertSDLToGroupSpecs(serviceDefinition)
+      console.log('[DeploymentManager.create] GroupSpecs created:', groups.length)
 
       // Get the underlying wallet - if it's a WalletManager, get the connected wallet
       let hdWallet: any = wallet
@@ -84,7 +85,7 @@ export class DeploymentManager {
         throw new ValidationError(`Failed to get wallet address: ${owner}`)
       }
 
-
+      console.log('[DeploymentManager.create] Owner address:', owner)
 
       // Generate deployment sequence (dseq) - in real Akash this comes from the chain
       // For now, we'll use a timestamp-based approach
@@ -93,6 +94,7 @@ export class DeploymentManager {
 
       // Calculate manifest hash (using SDL content as input)
       const sdlHash = this.calculateSDLHash(request.sdl)
+      console.log('[DeploymentManager.create] SDL hash calculated')
 
       // Create Deposit object with proper sources
       const deposit: Deposit = {
@@ -114,6 +116,8 @@ export class DeploymentManager {
         deposit
       }
 
+      console.log('[DeploymentManager.create] Message created, connecting to blockchain...')
+
       // Create registry with Akash-specific message types for Protobuf encoding
       const registry = createAkashRegistry()
 
@@ -123,21 +127,29 @@ export class DeploymentManager {
         { registry }
       )
 
+      console.log('[DeploymentManager.create] Client connected, simulating gas...')
+
       // Estimate gas and calculate proper fee
       const gasEstimate = await client.simulate(owner, [{
         typeUrl: '/akash.deployment.v1beta4.MsgCreateDeployment',
         value: msg
       }], "")
 
+      console.log('[DeploymentManager.create] Gas estimated:', gasEstimate)
+
       const adjustedGas = Math.ceil(gasEstimate * 1.5).toString()
       const gasPrice = GasPrice.fromString("0.025uakt")
       const fee = calculateFee(parseInt(adjustedGas), gasPrice)
+
+      console.log('[DeploymentManager.create] Broadcasting transaction...')
 
       // Use signAndBroadcast with calculated fee
       const result = await client.signAndBroadcast(owner, [{
         typeUrl: '/akash.deployment.v1beta4.MsgCreateDeployment',
         value: msg
       }], fee)
+
+      console.log('[DeploymentManager.create] Transaction result:', result.code)
 
       if (result.code !== 0) {
         throw new DeploymentError(`Transaction failed: ${result.rawLog}`)
