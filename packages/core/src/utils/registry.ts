@@ -36,10 +36,15 @@ import {
  */
 function getMessageClassForType(typeUrl: string): any {
   const typeMap: { [key: string]: any } = {
+    // Support both v1beta3 and v1beta4 (mainnet uses v1beta4)
     '/akash.deployment.v1beta3.MsgCreateDeployment': MsgCreateDeployment,
+    '/akash.deployment.v1beta4.MsgCreateDeployment': MsgCreateDeployment,
     '/akash.deployment.v1beta3.MsgUpdateDeployment': MsgUpdateDeployment,
+    '/akash.deployment.v1beta4.MsgUpdateDeployment': MsgUpdateDeployment,
     '/akash.deployment.v1beta3.MsgCloseDeployment': MsgCloseDeployment,
+    '/akash.deployment.v1beta4.MsgCloseDeployment': MsgCloseDeployment,
     '/akash.deployment.v1beta3.MsgDepositDeployment': MsgDepositDeployment,
+    '/akash.deployment.v1beta4.MsgDepositDeployment': MsgDepositDeployment,
     '/akash.market.v1beta4.MsgCreateLease': MsgCreateLease,
     '/akash.market.v1beta4.MsgCloseLease': MsgCloseLease,
     '/akash.market.v1beta4.MsgWithdrawLease': MsgWithdrawLease,
@@ -56,13 +61,14 @@ function getMessageClassForType(typeUrl: string): any {
 
 /**
  * Known Akash message type URLs with their corresponding message classes
+ * Note: Mainnet uses v1beta4 for deployment messages
  */
 const akashMessageTypes: Array<[string, any]> = [
-  // Deployment messages
-  ['/akash.deployment.v1beta3.MsgCreateDeployment', MsgCreateDeployment],
-  ['/akash.deployment.v1beta3.MsgUpdateDeployment', MsgUpdateDeployment],
-  ['/akash.deployment.v1beta3.MsgCloseDeployment', MsgCloseDeployment],
-  ['/akash.deployment.v1beta3.MsgDepositDeployment', MsgDepositDeployment],
+  // Deployment messages (mainnet uses v1beta4)
+  ['/akash.deployment.v1beta4.MsgCreateDeployment', MsgCreateDeployment],
+  ['/akash.deployment.v1beta4.MsgUpdateDeployment', MsgUpdateDeployment],
+  ['/akash.deployment.v1beta4.MsgCloseDeployment', MsgCloseDeployment],
+  ['/akash.deployment.v1beta4.MsgDepositDeployment', MsgDepositDeployment],
 
   // Market messages (bids)
   ['/akash.market.v1beta4.MsgCreateBid', MsgCreateBid],

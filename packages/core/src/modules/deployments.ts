@@ -106,7 +106,7 @@ export class DeploymentManager {
 
       // Estimate gas and calculate proper fee
       const gasEstimate = await client.simulate(owner, [{
-        typeUrl: '/akash.deployment.v1beta3.MsgCreateDeployment',
+        typeUrl: '/akash.deployment.v1beta4.MsgCreateDeployment',
         value: msg
       }], "")
 
@@ -116,7 +116,7 @@ export class DeploymentManager {
 
       // Use signAndBroadcast with calculated fee
       const result = await client.signAndBroadcast(owner, [{
-        typeUrl: '/akash.deployment.v1beta3.MsgCreateDeployment',
+        typeUrl: '/akash.deployment.v1beta4.MsgCreateDeployment',
         value: msg
       }], fee)
 

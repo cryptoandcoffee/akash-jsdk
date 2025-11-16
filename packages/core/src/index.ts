@@ -46,6 +46,14 @@ export {
   createDefaultLogger
 } from './utils'
 
+// Export registry utilities for Cosmos SDK compatibility
+export {
+  createAkashRegistry,
+  getAkashMessageTypes,
+  isAkashMessageType,
+  createAkashMessage
+} from './utils/registry'
+
 // Export specific modules to avoid conflicts
 export {
   DeploymentManager,

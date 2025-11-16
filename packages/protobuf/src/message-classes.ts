@@ -1,421 +1,721 @@
 /**
- * Akash Network Message Classes - CosmJS Registry Implementation
+ * Akash Network Message Classes - Custom Wire Format Encoding
  *
  * Provides CosmJS-compatible message encode/decode for Akash transactions.
- * Uses proper protobuf definitions loaded from proto files with vite-compatible string embedding.
+ * Uses custom protobuf wire format encoding that matches Cosmos SDK requirements exactly.
  *
- * CRITICAL FIX (v3.11.1+): Load actual proto file contents as strings at build time,
- * then parse with protobufjs at runtime. This avoids vite bundling path resolution issues
- * while maintaining correct message structure from actual proto definitions.
+ * CRITICAL: We use custom wire format encoding instead of protobufjs auto-encoding
+ * because protobufjs generates slightly different encoding than what the blockchain expects.
  */
 
 import type { GeneratedType } from '@cosmjs/proto-signing'
-import * as protobufjs from 'protobufjs'
-
-// Lazy-loaded root to handle both browser and Node.js environments
-let root: protobufjs.Root | null = null
 
 /**
- * Load protobuf definitions from embedded proto strings.
- * Proto files are embedded as strings at build time to avoid vite path issues.
+ * Custom protobuf wire format encoder
+ * Implements proper varint encoding and field tag handling
  */
-function createProtoFromStrings(): protobufjs.Root {
-  const root = new protobufjs.Root()
+class Writer {
+  private buffer: number[] = []
 
-  // Define Cosmos types programmatically without parsing proto strings
-  const cosmosBasePkg = root.define('cosmos.base.v1beta1')
-  cosmosBasePkg.add(
-    new protobufjs.Type('Coin')
-      .add(new protobufjs.Field('denom', 1, 'string'))
-      .add(new protobufjs.Field('amount', 2, 'string'))
-  )
-  cosmosBasePkg.add(
-    new protobufjs.Type('DecCoin')
-      .add(new protobufjs.Field('denom', 1, 'string'))
-      .add(new protobufjs.Field('amount', 2, 'string'))
-  )
+  writeVarint(value: number): this {
+    while ((value & 0xFFFFFF80) !== 0) {
+      this.buffer.push((value & 0x7F) | 0x80)
+      value >>>= 7
+    }
+    this.buffer.push(value & 0x7F)
+    return this
+  }
 
-  // Akash Deployment types
-  const deploymentPkg = root.define('akash.deployment.v1beta3')
+  writeUint32(value: number): this {
+    this.writeVarint(value)
+    return this
+  }
 
-  // GroupSpec and related types
-  const groupSpecType = new protobufjs.Type('GroupSpec')
-    .add(new protobufjs.Field('name', 1, 'string'))
-    .add(new protobufjs.Field('requirements', 2, 'akash.deployment.v1beta3.PlacementRequirements'))
-    .add(new protobufjs.Field('resources', 3, 'akash.deployment.v1beta3.GroupResource', 'repeated'))
+  writeString(value: string): this {
+    const bytes = new TextEncoder().encode(value)
+    this.writeVarint(bytes.length)
+    for (const byte of bytes) {
+      this.buffer.push(byte)
+    }
+    return this
+  }
 
-  const placementReqType = new protobufjs.Type('PlacementRequirements')
-    .add(new protobufjs.Field('signedBy', 1, 'akash.deployment.v1beta3.SignedBy'))
-    .add(new protobufjs.Field('attributes', 2, 'akash.deployment.v1beta3.Attribute', 'repeated'))
+  writeBytes(value: Uint8Array): this {
+    this.writeVarint(value.length)
+    for (const byte of value) {
+      this.buffer.push(byte)
+    }
+    return this
+  }
 
-  const signedByType = new protobufjs.Type('SignedBy')
-    .add(new protobufjs.Field('allOf', 1, 'string', 'repeated'))
-    .add(new protobufjs.Field('anyOf', 2, 'string', 'repeated'))
+  writeMessage(fieldNumber: number, message: Uint8Array): this {
+    // Field tag: (fieldNumber << 3) | 2 (wire type 2 = length-delimited)
+    this.writeUint32((fieldNumber << 3) | 2)
+    this.writeBytes(message)
+    return this
+  }
 
-  const attributeType = new protobufjs.Type('Attribute')
-    .add(new protobufjs.Field('key', 1, 'string'))
-    .add(new protobufjs.Field('value', 2, 'string'))
+  finish(): Uint8Array {
+    return new Uint8Array(this.buffer)
+  }
 
-  const groupResourceType = new protobufjs.Type('GroupResource')
-    .add(new protobufjs.Field('resource', 1, 'akash.deployment.v1beta3.ResourceUnits'))
-    .add(new protobufjs.Field('count', 2, 'uint32'))
-    .add(new protobufjs.Field('price', 3, 'cosmos.base.v1beta1.DecCoin'))
-
-  const resourceUnitsType = new protobufjs.Type('ResourceUnits')
-    .add(new protobufjs.Field('cpu', 1, 'akash.deployment.v1beta3.CPU'))
-    .add(new protobufjs.Field('memory', 2, 'akash.deployment.v1beta3.Memory'))
-    .add(new protobufjs.Field('storage', 3, 'akash.deployment.v1beta3.Storage', 'repeated'))
-    .add(new protobufjs.Field('endpoints', 4, 'akash.deployment.v1beta3.Endpoint', 'repeated'))
-
-  const cpuType = new protobufjs.Type('CPU')
-    .add(new protobufjs.Field('units', 1, 'akash.deployment.v1beta3.ResourceValue'))
-
-  const memoryType = new protobufjs.Type('Memory')
-    .add(new protobufjs.Field('quantity', 1, 'akash.deployment.v1beta3.ResourceValue'))
-
-  const storageType = new protobufjs.Type('Storage')
-    .add(new protobufjs.Field('name', 1, 'string'))
-    .add(new protobufjs.Field('quantity', 2, 'akash.deployment.v1beta3.ResourceValue'))
-
-  const resourceValueType = new protobufjs.Type('ResourceValue')
-    .add(new protobufjs.Field('val', 1, 'bytes'))
-
-  const endpointType = new protobufjs.Type('Endpoint')
-    .add(new protobufjs.Field('kind', 1, 'uint32'))
-    .add(new protobufjs.Field('sequence_number', 2, 'uint32'))
-
-  // Add all types to deployment package
-  deploymentPkg.add(groupSpecType)
-  deploymentPkg.add(placementReqType)
-  deploymentPkg.add(signedByType)
-  deploymentPkg.add(attributeType)
-  deploymentPkg.add(groupResourceType)
-  deploymentPkg.add(resourceUnitsType)
-  deploymentPkg.add(cpuType)
-  deploymentPkg.add(memoryType)
-  deploymentPkg.add(storageType)
-  deploymentPkg.add(resourceValueType)
-  deploymentPkg.add(endpointType)
-
-  deploymentPkg.add(
-    new protobufjs.Type('DeploymentID')
-      .add(new protobufjs.Field('owner', 1, 'string'))
-      .add(new protobufjs.Field('dseq', 2, 'uint64'))
-  )
-  deploymentPkg.add(
-    new protobufjs.Type('MsgCreateDeployment')
-      .add(new protobufjs.Field('id', 1, 'akash.deployment.v1beta3.DeploymentID'))
-      .add(new protobufjs.Field('groups', 2, 'akash.deployment.v1beta3.GroupSpec', 'repeated'))
-      .add(new protobufjs.Field('version', 3, 'bytes'))
-      .add(new protobufjs.Field('deposit', 4, 'cosmos.base.v1beta1.Coin'))
-      .add(new protobufjs.Field('depositor', 5, 'string'))
-  )
-  deploymentPkg.add(
-    new protobufjs.Type('MsgUpdateDeployment')
-      .add(new protobufjs.Field('id', 1, 'akash.deployment.v1beta3.DeploymentID'))
-      .add(new protobufjs.Field('version', 2, 'bytes'))
-  )
-  deploymentPkg.add(
-    new protobufjs.Type('MsgCloseDeployment')
-      .add(new protobufjs.Field('id', 1, 'akash.deployment.v1beta3.DeploymentID'))
-  )
-  deploymentPkg.add(
-    new protobufjs.Type('MsgDepositDeployment')
-      .add(new protobufjs.Field('id', 1, 'akash.deployment.v1beta3.DeploymentID'))
-      .add(new protobufjs.Field('amount', 2, 'cosmos.base.v1beta1.Coin'))
-      .add(new protobufjs.Field('depositor', 3, 'string'))
-  )
-
-  // Akash Market types
-  const marketPkg = root.define('akash.market.v1beta4')
-  marketPkg.add(
-    new protobufjs.Type('OrderID')
-      .add(new protobufjs.Field('owner', 1, 'string'))
-      .add(new protobufjs.Field('dseq', 2, 'uint64'))
-      .add(new protobufjs.Field('gseq', 3, 'uint32'))
-      .add(new protobufjs.Field('oseq', 4, 'uint32'))
-  )
-  marketPkg.add(
-    new protobufjs.Type('LeaseID')
-      .add(new protobufjs.Field('owner', 1, 'string'))
-      .add(new protobufjs.Field('dseq', 2, 'uint64'))
-      .add(new protobufjs.Field('gseq', 3, 'uint32'))
-      .add(new protobufjs.Field('oseq', 4, 'uint32'))
-      .add(new protobufjs.Field('provider', 5, 'string'))
-  )
-  marketPkg.add(
-    new protobufjs.Type('BidID')
-      .add(new protobufjs.Field('owner', 1, 'string'))
-      .add(new protobufjs.Field('dseq', 2, 'uint64'))
-      .add(new protobufjs.Field('gseq', 3, 'uint32'))
-      .add(new protobufjs.Field('oseq', 4, 'uint32'))
-      .add(new protobufjs.Field('provider', 5, 'string'))
-  )
-  marketPkg.add(
-    new protobufjs.Type('MsgCreateBid')
-      .add(new protobufjs.Field('order', 1, 'akash.market.v1beta4.OrderID'))
-      .add(new protobufjs.Field('provider', 2, 'string'))
-      .add(new protobufjs.Field('price', 3, 'cosmos.base.v1beta1.DecCoin'))
-      .add(new protobufjs.Field('deposit', 4, 'bytes'))
-  )
-  marketPkg.add(
-    new protobufjs.Type('MsgCloseBid')
-      .add(new protobufjs.Field('bid_id', 1, 'akash.market.v1beta4.BidID'))
-  )
-  marketPkg.add(
-    new protobufjs.Type('MsgCreateLease')
-      .add(new protobufjs.Field('bid_id', 1, 'akash.market.v1beta4.BidID'))
-  )
-  marketPkg.add(
-    new protobufjs.Type('MsgCloseLease')
-      .add(new protobufjs.Field('lease_id', 1, 'akash.market.v1beta4.LeaseID'))
-  )
-  marketPkg.add(
-    new protobufjs.Type('MsgWithdrawLease')
-      .add(new protobufjs.Field('lease_id', 1, 'akash.market.v1beta4.LeaseID'))
-  )
-
-  // Akash Provider types
-  const providerPkg = root.define('akash.provider.v1beta3')
-  providerPkg.add(
-    new protobufjs.Type('MsgCreateProvider')
-      .add(new protobufjs.Field('owner', 1, 'string'))
-      .add(new protobufjs.Field('host_uri', 2, 'string'))
-      .add(new protobufjs.Field('attributes', 3, 'bytes'))
-  )
-  providerPkg.add(
-    new protobufjs.Type('MsgUpdateProvider')
-      .add(new protobufjs.Field('owner', 1, 'string'))
-      .add(new protobufjs.Field('host_uri', 2, 'string'))
-      .add(new protobufjs.Field('attributes', 3, 'bytes'))
-  )
-  providerPkg.add(
-    new protobufjs.Type('MsgDeleteProvider')
-      .add(new protobufjs.Field('owner', 1, 'string'))
-  )
-
-  // Akash Certificate types
-  const certPkg = root.define('akash.cert.v1beta3')
-  certPkg.add(
-    new protobufjs.Type('MsgCreateCertificate')
-      .add(new protobufjs.Field('owner', 1, 'string'))
-      .add(new protobufjs.Field('cert', 2, 'bytes'))
-      .add(new protobufjs.Field('pubkey', 3, 'bytes'))
-  )
-  certPkg.add(
-    new protobufjs.Type('MsgRevokeCertificate')
-      .add(new protobufjs.Field('owner', 1, 'string'))
-      .add(new protobufjs.Field('serial', 2, 'uint64'))
-  )
-
-  // Akash Audit types
-  const auditPkg = root.define('akash.audit.v1beta1')
-  auditPkg.add(
-    new protobufjs.Type('MsgSignProviderAttributes')
-      .add(new protobufjs.Field('signer', 1, 'string'))
-      .add(new protobufjs.Field('owner', 2, 'string'))
-      .add(new protobufjs.Field('attributes', 3, 'bytes'))
-  )
-  auditPkg.add(
-    new protobufjs.Type('MsgDeleteProviderAttributes')
-      .add(new protobufjs.Field('signer', 1, 'string'))
-      .add(new protobufjs.Field('owner', 2, 'string'))
-      .add(new protobufjs.Field('attributes', 3, 'bytes'))
-  )
-
-  // Akash Escrow types
-  const escrowPkg = root.define('akash.escrow.v1beta1')
-  escrowPkg.add(
-    new protobufjs.Type('MsgCreatePayment')
-      .add(new protobufjs.Field('owner', 1, 'string'))
-      .add(new protobufjs.Field('provider', 2, 'string'))
-      .add(new protobufjs.Field('payment_id', 3, 'uint64'))
-      .add(new protobufjs.Field('amount', 4, 'cosmos.base.v1beta1.Coin'))
-  )
-  escrowPkg.add(
-    new protobufjs.Type('MsgClosePayment')
-      .add(new protobufjs.Field('owner', 1, 'string'))
-      .add(new protobufjs.Field('provider', 2, 'string'))
-      .add(new protobufjs.Field('payment_id', 3, 'uint64'))
-  )
-
-  // Akash Inflation types
-  const inflationPkg = root.define('akash.inflation.v1beta1')
-  inflationPkg.add(
-    new protobufjs.Type('MsgSetInflation')
-      .add(new protobufjs.Field('owner', 1, 'string'))
-      .add(new protobufjs.Field('inflation', 2, 'string'))
-  )
-
-  try {
-    root.resolveAll()
-    return root
-  } catch (error) {
-    console.error('Error initializing proto definitions:', error)
-    throw error
+  static create(): Writer {
+    return new Writer()
   }
 }
 
-function getRoot(): protobufjs.Root {
-  if (root) return root
-
-  try {
-    root = createProtoFromStrings()
-    const typeCount = Object.keys((root as any).nested || {}).length
-    console.debug(`Akash proto types loaded from strings (${typeCount} namespaces)`)
-    return root
-  } catch (error) {
-    console.error('Error initializing protobuf definitions:', error)
-    throw error
-  }
-}
-
-function createMessageClass(messageName: string): GeneratedType {
+/**
+ * Create CosmJS GeneratedType for a message with custom wire format encoding
+ * Must return a Writer-compatible object with encode, decode, create, fromPartial
+ */
+function createMessageType(messageName: string): GeneratedType {
   return {
-    encode(message: any): any {
-      try {
-        const root = getRoot()
-        const type = root.lookupType(messageName)
-
-        if (!type) {
-          throw new Error(`Message type not found: ${messageName}`)
-        }
-
-        // Encode to buffer
-        const buffer = type.encode(message).finish()
-
-        // Return Writer-like object for CosmJS
-        return {
-          finish(): Uint8Array {
-            return buffer
-          }
-        }
-      } catch (error) {
-        console.error(`Error encoding ${messageName}:`, error)
-        throw error
-      }
+    encode(message: any, writer?: any): any {
+      // Use provided writer or create new one
+      const w = writer || Writer.create()
+      encodeMessage(messageName, message, w)
+      return w
     },
 
     decode(data: Uint8Array | any): any {
-      try {
-        const root = getRoot()
-        const type = root.lookupType(messageName)
-
-        if (!type) {
-          throw new Error(`Message type not found: ${messageName}`)
-        }
-
-        // Handle Reader-like objects from CosmJS
-        const buffer = data instanceof Uint8Array ? data : (data.buf || new Uint8Array())
-
-        return type.decode(buffer)
-      } catch (error) {
-        console.error(`Error decoding ${messageName}:`, error)
-        return {}
-      }
+      return data
     },
 
     create(properties?: any): any {
-      try {
-        const root = getRoot()
-        const type = root.lookupType(messageName)
-
-        if (!type) {
-          return properties || {}
-        }
-
-        return type.create(properties)
-      } catch (error) {
-        return properties || {}
-      }
+      return properties || {}
     },
 
     fromPartial(object: any): any {
-      try {
-        const root = getRoot()
-        const type = root.lookupType(messageName)
-
-        if (!type) {
-          return object || {}
-        }
-
-        return type.fromObject(object)
-      } catch (error) {
-        return object || {}
-      }
+      return object || {}
     }
   }
 }
 
-// Deployment Messages
-export const MsgCreateDeployment: GeneratedType = createMessageClass(
-  'akash.deployment.v1beta3.MsgCreateDeployment'
+/**
+ * Route messages to their specific encoders
+ */
+function encodeMessage(messageName: string, message: any, writer: Writer): void {
+  switch (messageName) {
+    // Support both v1beta3 and v1beta4 (same message structure)
+    case 'akash.deployment.v1beta3.MsgCreateDeployment':
+    case 'akash.deployment.v1beta4.MsgCreateDeployment':
+      encodeMsgCreateDeployment(message, writer)
+      break
+    case 'akash.deployment.v1beta3.MsgUpdateDeployment':
+    case 'akash.deployment.v1beta4.MsgUpdateDeployment':
+      encodeMsgUpdateDeployment(message, writer)
+      break
+    case 'akash.deployment.v1beta3.MsgCloseDeployment':
+    case 'akash.deployment.v1beta4.MsgCloseDeployment':
+      encodeMsgCloseDeployment(message, writer)
+      break
+    case 'akash.deployment.v1beta3.MsgDepositDeployment':
+    case 'akash.deployment.v1beta4.MsgDepositDeployment':
+      encodeMsgDepositDeployment(message, writer)
+      break
+    case 'akash.market.v1beta4.MsgCreateBid':
+      encodeMsgCreateBid(message, writer)
+      break
+    case 'akash.market.v1beta4.MsgCloseBid':
+      encodeMsgCloseBid(message, writer)
+      break
+    case 'akash.market.v1beta4.MsgCreateLease':
+      encodeMsgCreateLease(message, writer)
+      break
+    case 'akash.market.v1beta4.MsgCloseLease':
+      encodeMsgCloseLease(message, writer)
+      break
+    case 'akash.market.v1beta4.MsgWithdrawLease':
+      encodeMsgWithdrawLease(message, writer)
+      break
+    case 'akash.provider.v1beta3.MsgCreateProvider':
+      encodeMsgCreateProvider(message, writer)
+      break
+    case 'akash.provider.v1beta3.MsgUpdateProvider':
+      encodeMsgUpdateProvider(message, writer)
+      break
+    case 'akash.provider.v1beta3.MsgDeleteProvider':
+      encodeMsgDeleteProvider(message, writer)
+      break
+    case 'akash.cert.v1beta3.MsgCreateCertificate':
+      encodeMsgCreateCertificate(message, writer)
+      break
+    case 'akash.cert.v1beta3.MsgRevokeCertificate':
+      encodeMsgRevokeCertificate(message, writer)
+      break
+  }
+}
+
+// ============================================================================
+// Message Encoders - Deployment Module
+// ============================================================================
+
+function encodeMsgCreateDeployment(msg: any, writer: Writer): void {
+  // Field 1: DeploymentID id
+  if (msg.id) {
+    const idWriter = Writer.create()
+    encodeDeploymentID(msg.id, idWriter)
+    writer.writeMessage(1, idWriter.finish())
+  }
+
+  // Field 2: GroupSpec[] groups - repeated
+  if (msg.groups && Array.isArray(msg.groups)) {
+    for (const group of msg.groups) {
+      const groupWriter = Writer.create()
+      encodeGroupSpec(group, groupWriter)
+      writer.writeMessage(2, groupWriter.finish())
+    }
+  }
+
+  // Field 3: bytes version
+  if (msg.version && msg.version.length > 0) {
+    writer.writeUint32((3 << 3) | 2)
+    writer.writeBytes(msg.version)
+  }
+
+  // Field 4: Coin deposit
+  if (msg.deposit) {
+    const depositWriter = Writer.create()
+    encodeCoin(msg.deposit, depositWriter)
+    writer.writeMessage(4, depositWriter.finish())
+  }
+
+  // Field 5: string depositor
+  if (msg.depositor) {
+    writer.writeUint32((5 << 3) | 2)
+    writer.writeString(msg.depositor)
+  }
+}
+
+function encodeMsgUpdateDeployment(msg: any, writer: Writer): void {
+  if (msg.id) {
+    const idWriter = Writer.create()
+    encodeDeploymentID(msg.id, idWriter)
+    writer.writeMessage(1, idWriter.finish())
+  }
+
+  if (msg.version && msg.version.length > 0) {
+    writer.writeUint32((2 << 3) | 2)
+    writer.writeBytes(msg.version)
+  }
+}
+
+function encodeMsgCloseDeployment(msg: any, writer: Writer): void {
+  if (msg.id) {
+    const idWriter = Writer.create()
+    encodeDeploymentID(msg.id, idWriter)
+    writer.writeMessage(1, idWriter.finish())
+  }
+}
+
+function encodeMsgDepositDeployment(msg: any, writer: Writer): void {
+  if (msg.id) {
+    const idWriter = Writer.create()
+    encodeDeploymentID(msg.id, idWriter)
+    writer.writeMessage(1, idWriter.finish())
+  }
+
+  if (msg.amount) {
+    const amountWriter = Writer.create()
+    encodeCoin(msg.amount, amountWriter)
+    writer.writeMessage(2, amountWriter.finish())
+  }
+
+  if (msg.depositor) {
+    writer.writeUint32((3 << 3) | 2)
+    writer.writeString(msg.depositor)
+  }
+}
+
+// ============================================================================
+// Message Encoders - Market Module
+// ============================================================================
+
+function encodeMsgCreateBid(msg: any, writer: Writer): void {
+  if (msg.order) {
+    const orderWriter = Writer.create()
+    encodeOrderID(msg.order, orderWriter)
+    writer.writeMessage(1, orderWriter.finish())
+  }
+
+  if (msg.provider) {
+    writer.writeUint32((2 << 3) | 2)
+    writer.writeString(msg.provider)
+  }
+
+  if (msg.price) {
+    const priceWriter = Writer.create()
+    encodeDecCoin(msg.price, priceWriter)
+    writer.writeMessage(3, priceWriter.finish())
+  }
+
+  if (msg.deposit && msg.deposit.length > 0) {
+    writer.writeUint32((4 << 3) | 2)
+    writer.writeBytes(msg.deposit)
+  }
+}
+
+function encodeMsgCloseBid(msg: any, writer: Writer): void {
+  if (msg.bid_id) {
+    const bidWriter = Writer.create()
+    encodeBidID(msg.bid_id, bidWriter)
+    writer.writeMessage(1, bidWriter.finish())
+  }
+}
+
+function encodeMsgCreateLease(msg: any, writer: Writer): void {
+  if (msg.bid_id) {
+    const bidWriter = Writer.create()
+    encodeBidID(msg.bid_id, bidWriter)
+    writer.writeMessage(1, bidWriter.finish())
+  }
+}
+
+function encodeMsgCloseLease(msg: any, writer: Writer): void {
+  if (msg.lease_id) {
+    const leaseWriter = Writer.create()
+    encodeLeaseID(msg.lease_id, leaseWriter)
+    writer.writeMessage(1, leaseWriter.finish())
+  }
+}
+
+function encodeMsgWithdrawLease(msg: any, writer: Writer): void {
+  if (msg.lease_id) {
+    const leaseWriter = Writer.create()
+    encodeLeaseID(msg.lease_id, leaseWriter)
+    writer.writeMessage(1, leaseWriter.finish())
+  }
+}
+
+// ============================================================================
+// Message Encoders - Provider Module
+// ============================================================================
+
+function encodeMsgCreateProvider(msg: any, writer: Writer): void {
+  if (msg.owner) {
+    writer.writeUint32((1 << 3) | 2)
+    writer.writeString(msg.owner)
+  }
+
+  if (msg.host_uri) {
+    writer.writeUint32((2 << 3) | 2)
+    writer.writeString(msg.host_uri)
+  }
+
+  if (msg.attributes && msg.attributes.length > 0) {
+    writer.writeUint32((3 << 3) | 2)
+    writer.writeBytes(msg.attributes)
+  }
+}
+
+function encodeMsgUpdateProvider(msg: any, writer: Writer): void {
+  if (msg.owner) {
+    writer.writeUint32((1 << 3) | 2)
+    writer.writeString(msg.owner)
+  }
+
+  if (msg.host_uri) {
+    writer.writeUint32((2 << 3) | 2)
+    writer.writeString(msg.host_uri)
+  }
+
+  if (msg.attributes && msg.attributes.length > 0) {
+    writer.writeUint32((3 << 3) | 2)
+    writer.writeBytes(msg.attributes)
+  }
+}
+
+function encodeMsgDeleteProvider(msg: any, writer: Writer): void {
+  if (msg.owner) {
+    writer.writeUint32((1 << 3) | 2)
+    writer.writeString(msg.owner)
+  }
+}
+
+// ============================================================================
+// Message Encoders - Certificate Module
+// ============================================================================
+
+function encodeMsgCreateCertificate(msg: any, writer: Writer): void {
+  if (msg.owner) {
+    writer.writeUint32((1 << 3) | 2)
+    writer.writeString(msg.owner)
+  }
+
+  if (msg.cert && msg.cert.length > 0) {
+    writer.writeUint32((2 << 3) | 2)
+    writer.writeBytes(msg.cert)
+  }
+
+  if (msg.pubkey && msg.pubkey.length > 0) {
+    writer.writeUint32((3 << 3) | 2)
+    writer.writeBytes(msg.pubkey)
+  }
+}
+
+function encodeMsgRevokeCertificate(msg: any, writer: Writer): void {
+  if (msg.owner) {
+    writer.writeUint32((1 << 3) | 2)
+    writer.writeString(msg.owner)
+  }
+
+  if (msg.serial) {
+    writer.writeUint32((2 << 3) | 0)
+    writer.writeUint32(msg.serial)
+  }
+}
+
+// ============================================================================
+// Helper Encoders for Nested Types
+// ============================================================================
+
+function encodeDeploymentID(id: any, writer: Writer): void {
+  if (id.owner) {
+    writer.writeUint32((1 << 3) | 2)
+    writer.writeString(id.owner)
+  }
+
+  if (id.dseq) {
+    writer.writeUint32((2 << 3) | 0)
+    writer.writeUint32(id.dseq)
+  }
+}
+
+function encodeOrderID(id: any, writer: Writer): void {
+  if (id.owner) {
+    writer.writeUint32((1 << 3) | 2)
+    writer.writeString(id.owner)
+  }
+
+  if (id.dseq) {
+    writer.writeUint32((2 << 3) | 0)
+    writer.writeUint32(id.dseq)
+  }
+
+  if (id.gseq) {
+    writer.writeUint32((3 << 3) | 0)
+    writer.writeUint32(id.gseq)
+  }
+
+  if (id.oseq) {
+    writer.writeUint32((4 << 3) | 0)
+    writer.writeUint32(id.oseq)
+  }
+}
+
+function encodeLeaseID(id: any, writer: Writer): void {
+  if (id.owner) {
+    writer.writeUint32((1 << 3) | 2)
+    writer.writeString(id.owner)
+  }
+
+  if (id.dseq) {
+    writer.writeUint32((2 << 3) | 0)
+    writer.writeUint32(id.dseq)
+  }
+
+  if (id.gseq) {
+    writer.writeUint32((3 << 3) | 0)
+    writer.writeUint32(id.gseq)
+  }
+
+  if (id.oseq) {
+    writer.writeUint32((4 << 3) | 0)
+    writer.writeUint32(id.oseq)
+  }
+
+  if (id.provider) {
+    writer.writeUint32((5 << 3) | 2)
+    writer.writeString(id.provider)
+  }
+}
+
+function encodeBidID(id: any, writer: Writer): void {
+  if (id.owner) {
+    writer.writeUint32((1 << 3) | 2)
+    writer.writeString(id.owner)
+  }
+
+  if (id.dseq) {
+    writer.writeUint32((2 << 3) | 0)
+    writer.writeUint32(id.dseq)
+  }
+
+  if (id.gseq) {
+    writer.writeUint32((3 << 3) | 0)
+    writer.writeUint32(id.gseq)
+  }
+
+  if (id.oseq) {
+    writer.writeUint32((4 << 3) | 0)
+    writer.writeUint32(id.oseq)
+  }
+
+  if (id.provider) {
+    writer.writeUint32((5 << 3) | 2)
+    writer.writeString(id.provider)
+  }
+}
+
+function encodeCoin(coin: any, writer: Writer): void {
+  if (coin.denom) {
+    writer.writeUint32((1 << 3) | 2)
+    writer.writeString(coin.denom)
+  }
+
+  if (coin.amount) {
+    writer.writeUint32((2 << 3) | 2)
+    writer.writeString(coin.amount)
+  }
+}
+
+function encodeDecCoin(coin: any, writer: Writer): void {
+  if (coin.denom) {
+    writer.writeUint32((1 << 3) | 2)
+    writer.writeString(coin.denom)
+  }
+
+  if (coin.amount) {
+    writer.writeUint32((2 << 3) | 2)
+    writer.writeString(coin.amount)
+  }
+}
+
+function encodeGroupSpec(spec: any, writer: Writer): void {
+  // Field 1: name (string)
+  if (spec.name) {
+    writer.writeUint32((1 << 3) | 2)
+    writer.writeString(spec.name)
+  }
+
+  // Field 2: requirements (Requirement message)
+  if (spec.requirements) {
+    const reqWriter = Writer.create()
+    encodeRequirements(spec.requirements, reqWriter)
+    writer.writeMessage(2, reqWriter.finish())
+  }
+
+  // Field 3: resources (repeated Resource)
+  if (spec.resources && Array.isArray(spec.resources)) {
+    for (const resource of spec.resources) {
+      const resourceWriter = Writer.create()
+      encodeResource(resource, resourceWriter)
+      writer.writeMessage(3, resourceWriter.finish())
+    }
+  }
+}
+
+function encodeRequirements(req: any, writer: Writer): void {
+  // Field 1: signedBy (SignedBy message)
+  if (req.signedBy) {
+    const signedByWriter = Writer.create()
+    encodeSignedBy(req.signedBy, signedByWriter)
+    writer.writeMessage(1, signedByWriter.finish())
+  }
+
+  // Field 2: attributes (repeated Attribute)
+  if (req.attributes && Array.isArray(req.attributes)) {
+    for (const attr of req.attributes) {
+      const attrWriter = Writer.create()
+      encodeAttribute(attr, attrWriter)
+      writer.writeMessage(2, attrWriter.finish())
+    }
+  }
+}
+
+function encodeSignedBy(signedBy: any, writer: Writer): void {
+  // Field 1: allOf (repeated string)
+  if (signedBy.allOf && Array.isArray(signedBy.allOf)) {
+    for (const val of signedBy.allOf) {
+      writer.writeUint32((1 << 3) | 2)
+      writer.writeString(val)
+    }
+  }
+
+  // Field 2: anyOf (repeated string)
+  if (signedBy.anyOf && Array.isArray(signedBy.anyOf)) {
+    for (const val of signedBy.anyOf) {
+      writer.writeUint32((2 << 3) | 2)
+      writer.writeString(val)
+    }
+  }
+}
+
+function encodeAttribute(attr: any, writer: Writer): void {
+  // Field 1: key (string)
+  if (attr.key) {
+    writer.writeUint32((1 << 3) | 2)
+    writer.writeString(attr.key)
+  }
+
+  // Field 2: value (string)
+  if (attr.value) {
+    writer.writeUint32((2 << 3) | 2)
+    writer.writeString(attr.value)
+  }
+}
+
+function encodeResource(resource: any, writer: Writer): void {
+  // Field 1: resource (ResourceSpec message)
+  if (resource.resource) {
+    const resSpecWriter = Writer.create()
+    encodeResourceSpec(resource.resource, resSpecWriter)
+    writer.writeMessage(1, resSpecWriter.finish())
+  }
+
+  // Field 2: count (uint32)
+  if (resource.count !== undefined) {
+    writer.writeUint32((2 << 3) | 0)
+    writer.writeVarint(resource.count)
+  }
+
+  // Field 3: price (Coin message)
+  if (resource.price) {
+    const priceWriter = Writer.create()
+    encodeCoin(resource.price, priceWriter)
+    writer.writeMessage(3, priceWriter.finish())
+  }
+}
+
+function encodeResourceSpec(spec: any, writer: Writer): void {
+  // Field 1: cpu (CPU message)
+  if (spec.cpu) {
+    const cpuWriter = Writer.create()
+    encodeCPU(spec.cpu, cpuWriter)
+    writer.writeMessage(1, cpuWriter.finish())
+  }
+
+  // Field 2: memory (Memory message)
+  if (spec.memory) {
+    const memWriter = Writer.create()
+    encodeMemory(spec.memory, memWriter)
+    writer.writeMessage(2, memWriter.finish())
+  }
+
+  // Field 3: storage (repeated Storage)
+  if (spec.storage && Array.isArray(spec.storage)) {
+    for (const storage of spec.storage) {
+      const storageWriter = Writer.create()
+      encodeStorage(storage, storageWriter)
+      writer.writeMessage(3, storageWriter.finish())
+    }
+  }
+
+  // Field 4: endpoints (repeated Endpoint)
+  if (spec.endpoints && Array.isArray(spec.endpoints)) {
+    for (const endpoint of spec.endpoints) {
+      const epWriter = Writer.create()
+      encodeEndpoint(endpoint, epWriter)
+      writer.writeMessage(4, epWriter.finish())
+    }
+  }
+}
+
+function encodeCPU(cpu: any, writer: Writer): void {
+  // Field 1: units (ResourceValue message)
+  if (cpu.units) {
+    const unitsWriter = Writer.create()
+    encodeResourceValue(cpu.units, unitsWriter)
+    writer.writeMessage(1, unitsWriter.finish())
+  }
+}
+
+function encodeMemory(mem: any, writer: Writer): void {
+  // Field 1: quantity (ResourceValue message)
+  if (mem.quantity) {
+    const qWriter = Writer.create()
+    encodeResourceValue(mem.quantity, qWriter)
+    writer.writeMessage(1, qWriter.finish())
+  }
+}
+
+function encodeStorage(storage: any, writer: Writer): void {
+  // Field 1: name (string)
+  if (storage.name) {
+    writer.writeUint32((1 << 3) | 2)
+    writer.writeString(storage.name)
+  }
+
+  // Field 2: quantity (ResourceValue message)
+  if (storage.quantity) {
+    const qWriter = Writer.create()
+    encodeResourceValue(storage.quantity, qWriter)
+    writer.writeMessage(2, qWriter.finish())
+  }
+}
+
+function encodeEndpoint(endpoint: any, writer: Writer): void {
+  // Field 1: kind (uint32)
+  if (endpoint.kind !== undefined) {
+    writer.writeUint32((1 << 3) | 0)
+    writer.writeVarint(endpoint.kind)
+  }
+
+  // Field 2: sequenceNumber (uint32)
+  if (endpoint.sequenceNumber !== undefined) {
+    writer.writeUint32((2 << 3) | 0)
+    writer.writeVarint(endpoint.sequenceNumber)
+  }
+}
+
+function encodeResourceValue(val: any, writer: Writer): void {
+  // Field 1: val (bytes)
+  if (val && val.val) {
+    writer.writeUint32((1 << 3) | 2)
+    writer.writeBytes(val.val)
+  } else if (val instanceof Uint8Array) {
+    writer.writeUint32((1 << 3) | 2)
+    writer.writeBytes(val)
+  }
+}
+
+// ============================================================================
+// Export message types
+// ============================================================================
+
+// Deployment messages (mainnet uses v1beta4)
+export const MsgCreateDeployment: GeneratedType = createMessageType(
+  'akash.deployment.v1beta4.MsgCreateDeployment'
 )
-export const MsgUpdateDeployment: GeneratedType = createMessageClass(
-  'akash.deployment.v1beta3.MsgUpdateDeployment'
+export const MsgUpdateDeployment: GeneratedType = createMessageType(
+  'akash.deployment.v1beta4.MsgUpdateDeployment'
 )
-export const MsgCloseDeployment: GeneratedType = createMessageClass(
-  'akash.deployment.v1beta3.MsgCloseDeployment'
+export const MsgCloseDeployment: GeneratedType = createMessageType(
+  'akash.deployment.v1beta4.MsgCloseDeployment'
 )
-export const MsgDepositDeployment: GeneratedType = createMessageClass(
-  'akash.deployment.v1beta3.MsgDepositDeployment'
+export const MsgDepositDeployment: GeneratedType = createMessageType(
+  'akash.deployment.v1beta4.MsgDepositDeployment'
 )
 
-// Market Messages (Bids)
-export const MsgCreateBid: GeneratedType = createMessageClass(
+export const MsgCreateBid: GeneratedType = createMessageType(
   'akash.market.v1beta4.MsgCreateBid'
 )
-export const MsgCloseBid: GeneratedType = createMessageClass(
+export const MsgCloseBid: GeneratedType = createMessageType(
   'akash.market.v1beta4.MsgCloseBid'
 )
-
-// Market Messages (Leases)
-export const MsgCreateLease: GeneratedType = createMessageClass(
+export const MsgCreateLease: GeneratedType = createMessageType(
   'akash.market.v1beta4.MsgCreateLease'
 )
-export const MsgCloseLease: GeneratedType = createMessageClass(
+export const MsgCloseLease: GeneratedType = createMessageType(
   'akash.market.v1beta4.MsgCloseLease'
 )
-export const MsgWithdrawLease: GeneratedType = createMessageClass(
+export const MsgWithdrawLease: GeneratedType = createMessageType(
   'akash.market.v1beta4.MsgWithdrawLease'
 )
 
-// Provider Messages
-export const MsgCreateProvider: GeneratedType = createMessageClass(
+export const MsgCreateProvider: GeneratedType = createMessageType(
   'akash.provider.v1beta3.MsgCreateProvider'
 )
-export const MsgUpdateProvider: GeneratedType = createMessageClass(
+export const MsgUpdateProvider: GeneratedType = createMessageType(
   'akash.provider.v1beta3.MsgUpdateProvider'
 )
-export const MsgDeleteProvider: GeneratedType = createMessageClass(
+export const MsgDeleteProvider: GeneratedType = createMessageType(
   'akash.provider.v1beta3.MsgDeleteProvider'
 )
 
-// Certificate Messages
-export const MsgCreateCertificate: GeneratedType = createMessageClass(
+export const MsgCreateCertificate: GeneratedType = createMessageType(
   'akash.cert.v1beta3.MsgCreateCertificate'
 )
-export const MsgRevokeCertificate: GeneratedType = createMessageClass(
+export const MsgRevokeCertificate: GeneratedType = createMessageType(
   'akash.cert.v1beta3.MsgRevokeCertificate'
-)
-
-// Audit Messages
-export const MsgSignProviderAttributes: GeneratedType = createMessageClass(
-  'akash.audit.v1beta1.MsgSignProviderAttributes'
-)
-export const MsgDeleteProviderAttributes: GeneratedType = createMessageClass(
-  'akash.audit.v1beta1.MsgDeleteProviderAttributes'
-)
-
-// Escrow Messages
-export const MsgCreatePayment: GeneratedType = createMessageClass(
-  'akash.escrow.v1beta1.MsgCreatePayment'
-)
-export const MsgClosePayment: GeneratedType = createMessageClass(
-  'akash.escrow.v1beta1.MsgClosePayment'
-)
-
-// Inflation Messages
-export const MsgSetInflation: GeneratedType = createMessageClass(
-  'akash.inflation.v1beta1.MsgSetInflation'
 )
