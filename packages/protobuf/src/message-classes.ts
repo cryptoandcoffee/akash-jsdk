@@ -22,217 +22,236 @@ let root: protobufjs.Root | null = null
 function createProtoFromStrings(): protobufjs.Root {
   const root = new protobufjs.Root()
 
-  // Cosmos Coin and Dec Coin types (used by multiple Akash messages)
-  const cosmosProto = `
-    syntax = "proto3";
-    package cosmos.base.v1beta1;
+  // Define Cosmos types programmatically without parsing proto strings
+  const cosmosBasePkg = root.define('cosmos.base.v1beta1')
+  cosmosBasePkg.add(
+    new protobufjs.Type('Coin')
+      .add(new protobufjs.Field('denom', 1, 'string'))
+      .add(new protobufjs.Field('amount', 2, 'string'))
+  )
+  cosmosBasePkg.add(
+    new protobufjs.Type('DecCoin')
+      .add(new protobufjs.Field('denom', 1, 'string'))
+      .add(new protobufjs.Field('amount', 2, 'string'))
+  )
 
-    message Coin {
-      string denom = 1;
-      string amount = 2;
-    }
+  // Akash Deployment types
+  const deploymentPkg = root.define('akash.deployment.v1beta3')
 
-    message DecCoin {
-      string denom = 1;
-      string amount = 2;
-    }
-  `
+  // GroupSpec and related types
+  const groupSpecType = new protobufjs.Type('GroupSpec')
+    .add(new protobufjs.Field('name', 1, 'string'))
+    .add(new protobufjs.Field('requirements', 2, 'akash.deployment.v1beta3.PlacementRequirements'))
+    .add(new protobufjs.Field('resources', 3, 'akash.deployment.v1beta3.GroupResource', 'repeated'))
 
-  // Akash Deployment types - corrected from actual proto files
-  const deploymentProto = `
-    syntax = "proto3";
-    package akash.deployment.v1beta3;
-    import "cosmos/base/v1beta1/coin.proto";
+  const placementReqType = new protobufjs.Type('PlacementRequirements')
+    .add(new protobufjs.Field('signedBy', 1, 'akash.deployment.v1beta3.SignedBy'))
+    .add(new protobufjs.Field('attributes', 2, 'akash.deployment.v1beta3.Attribute', 'repeated'))
 
-    message DeploymentID {
-      string owner = 1;
-      uint64 dseq = 2;
-    }
+  const signedByType = new protobufjs.Type('SignedBy')
+    .add(new protobufjs.Field('allOf', 1, 'string', 'repeated'))
+    .add(new protobufjs.Field('anyOf', 2, 'string', 'repeated'))
 
-    message MsgCreateDeployment {
-      DeploymentID id = 1;
-      bytes groups = 2;
-      bytes version = 3;
-      cosmos.base.v1beta1.Coin deposit = 4;
-      string depositor = 5;
-    }
+  const attributeType = new protobufjs.Type('Attribute')
+    .add(new protobufjs.Field('key', 1, 'string'))
+    .add(new protobufjs.Field('value', 2, 'string'))
 
-    message MsgUpdateDeployment {
-      DeploymentID id = 1;
-      bytes version = 2;
-    }
+  const groupResourceType = new protobufjs.Type('GroupResource')
+    .add(new protobufjs.Field('resource', 1, 'akash.deployment.v1beta3.ResourceUnits'))
+    .add(new protobufjs.Field('count', 2, 'uint32'))
+    .add(new protobufjs.Field('price', 3, 'cosmos.base.v1beta1.DecCoin'))
 
-    message MsgCloseDeployment {
-      DeploymentID id = 1;
-    }
+  const resourceUnitsType = new protobufjs.Type('ResourceUnits')
+    .add(new protobufjs.Field('cpu', 1, 'akash.deployment.v1beta3.CPU'))
+    .add(new protobufjs.Field('memory', 2, 'akash.deployment.v1beta3.Memory'))
+    .add(new protobufjs.Field('storage', 3, 'akash.deployment.v1beta3.Storage', 'repeated'))
+    .add(new protobufjs.Field('endpoints', 4, 'akash.deployment.v1beta3.Endpoint', 'repeated'))
 
-    message MsgDepositDeployment {
-      DeploymentID id = 1;
-      cosmos.base.v1beta1.Coin amount = 2;
-      string depositor = 3;
-    }
-  `
+  const cpuType = new protobufjs.Type('CPU')
+    .add(new protobufjs.Field('units', 1, 'akash.deployment.v1beta3.ResourceValue'))
 
-  // Akash Market types - CORRECTED BidID field definitions
-  const marketProto = `
-    syntax = "proto3";
-    package akash.market.v1beta4;
-    import "cosmos/base/v1beta1/coin.proto";
+  const memoryType = new protobufjs.Type('Memory')
+    .add(new protobufjs.Field('quantity', 1, 'akash.deployment.v1beta3.ResourceValue'))
 
-    message OrderID {
-      string owner = 1;
-      uint64 dseq = 2;
-      uint32 gseq = 3;
-      uint32 oseq = 4;
-    }
+  const storageType = new protobufjs.Type('Storage')
+    .add(new protobufjs.Field('name', 1, 'string'))
+    .add(new protobufjs.Field('quantity', 2, 'akash.deployment.v1beta3.ResourceValue'))
 
-    message LeaseID {
-      string owner = 1;
-      uint64 dseq = 2;
-      uint32 gseq = 3;
-      uint32 oseq = 4;
-      string provider = 5;
-    }
+  const resourceValueType = new protobufjs.Type('ResourceValue')
+    .add(new protobufjs.Field('val', 1, 'bytes'))
 
-    message BidID {
-      string owner = 1;
-      uint64 dseq = 2;
-      uint32 gseq = 3;
-      uint32 oseq = 4;
-      string provider = 5;
-    }
+  const endpointType = new protobufjs.Type('Endpoint')
+    .add(new protobufjs.Field('kind', 1, 'uint32'))
+    .add(new protobufjs.Field('sequence_number', 2, 'uint32'))
 
-    message MsgCreateBid {
-      OrderID order = 1;
-      string provider = 2;
-      cosmos.base.v1beta1.DecCoin price = 3;
-      bytes deposit = 4;
-    }
+  // Add all types to deployment package
+  deploymentPkg.add(groupSpecType)
+  deploymentPkg.add(placementReqType)
+  deploymentPkg.add(signedByType)
+  deploymentPkg.add(attributeType)
+  deploymentPkg.add(groupResourceType)
+  deploymentPkg.add(resourceUnitsType)
+  deploymentPkg.add(cpuType)
+  deploymentPkg.add(memoryType)
+  deploymentPkg.add(storageType)
+  deploymentPkg.add(resourceValueType)
+  deploymentPkg.add(endpointType)
 
-    message MsgCloseBid {
-      BidID bid_id = 1;
-    }
+  deploymentPkg.add(
+    new protobufjs.Type('DeploymentID')
+      .add(new protobufjs.Field('owner', 1, 'string'))
+      .add(new protobufjs.Field('dseq', 2, 'uint64'))
+  )
+  deploymentPkg.add(
+    new protobufjs.Type('MsgCreateDeployment')
+      .add(new protobufjs.Field('id', 1, 'akash.deployment.v1beta3.DeploymentID'))
+      .add(new protobufjs.Field('groups', 2, 'akash.deployment.v1beta3.GroupSpec', 'repeated'))
+      .add(new protobufjs.Field('version', 3, 'bytes'))
+      .add(new protobufjs.Field('deposit', 4, 'cosmos.base.v1beta1.Coin'))
+      .add(new protobufjs.Field('depositor', 5, 'string'))
+  )
+  deploymentPkg.add(
+    new protobufjs.Type('MsgUpdateDeployment')
+      .add(new protobufjs.Field('id', 1, 'akash.deployment.v1beta3.DeploymentID'))
+      .add(new protobufjs.Field('version', 2, 'bytes'))
+  )
+  deploymentPkg.add(
+    new protobufjs.Type('MsgCloseDeployment')
+      .add(new protobufjs.Field('id', 1, 'akash.deployment.v1beta3.DeploymentID'))
+  )
+  deploymentPkg.add(
+    new protobufjs.Type('MsgDepositDeployment')
+      .add(new protobufjs.Field('id', 1, 'akash.deployment.v1beta3.DeploymentID'))
+      .add(new protobufjs.Field('amount', 2, 'cosmos.base.v1beta1.Coin'))
+      .add(new protobufjs.Field('depositor', 3, 'string'))
+  )
 
-    message MsgCreateLease {
-      BidID bid_id = 1;
-    }
-
-    message MsgCloseLease {
-      LeaseID lease_id = 1;
-    }
-
-    message MsgWithdrawLease {
-      LeaseID lease_id = 1;
-    }
-  `
+  // Akash Market types
+  const marketPkg = root.define('akash.market.v1beta4')
+  marketPkg.add(
+    new protobufjs.Type('OrderID')
+      .add(new protobufjs.Field('owner', 1, 'string'))
+      .add(new protobufjs.Field('dseq', 2, 'uint64'))
+      .add(new protobufjs.Field('gseq', 3, 'uint32'))
+      .add(new protobufjs.Field('oseq', 4, 'uint32'))
+  )
+  marketPkg.add(
+    new protobufjs.Type('LeaseID')
+      .add(new protobufjs.Field('owner', 1, 'string'))
+      .add(new protobufjs.Field('dseq', 2, 'uint64'))
+      .add(new protobufjs.Field('gseq', 3, 'uint32'))
+      .add(new protobufjs.Field('oseq', 4, 'uint32'))
+      .add(new protobufjs.Field('provider', 5, 'string'))
+  )
+  marketPkg.add(
+    new protobufjs.Type('BidID')
+      .add(new protobufjs.Field('owner', 1, 'string'))
+      .add(new protobufjs.Field('dseq', 2, 'uint64'))
+      .add(new protobufjs.Field('gseq', 3, 'uint32'))
+      .add(new protobufjs.Field('oseq', 4, 'uint32'))
+      .add(new protobufjs.Field('provider', 5, 'string'))
+  )
+  marketPkg.add(
+    new protobufjs.Type('MsgCreateBid')
+      .add(new protobufjs.Field('order', 1, 'akash.market.v1beta4.OrderID'))
+      .add(new protobufjs.Field('provider', 2, 'string'))
+      .add(new protobufjs.Field('price', 3, 'cosmos.base.v1beta1.DecCoin'))
+      .add(new protobufjs.Field('deposit', 4, 'bytes'))
+  )
+  marketPkg.add(
+    new protobufjs.Type('MsgCloseBid')
+      .add(new protobufjs.Field('bid_id', 1, 'akash.market.v1beta4.BidID'))
+  )
+  marketPkg.add(
+    new protobufjs.Type('MsgCreateLease')
+      .add(new protobufjs.Field('bid_id', 1, 'akash.market.v1beta4.BidID'))
+  )
+  marketPkg.add(
+    new protobufjs.Type('MsgCloseLease')
+      .add(new protobufjs.Field('lease_id', 1, 'akash.market.v1beta4.LeaseID'))
+  )
+  marketPkg.add(
+    new protobufjs.Type('MsgWithdrawLease')
+      .add(new protobufjs.Field('lease_id', 1, 'akash.market.v1beta4.LeaseID'))
+  )
 
   // Akash Provider types
-  const providerProto = `
-    syntax = "proto3";
-    package akash.provider.v1beta3;
-
-    message MsgCreateProvider {
-      string owner = 1;
-      string host_uri = 2;
-      bytes attributes = 3;
-    }
-
-    message MsgUpdateProvider {
-      string owner = 1;
-      string host_uri = 2;
-      bytes attributes = 3;
-    }
-
-    message MsgDeleteProvider {
-      string owner = 1;
-    }
-  `
+  const providerPkg = root.define('akash.provider.v1beta3')
+  providerPkg.add(
+    new protobufjs.Type('MsgCreateProvider')
+      .add(new protobufjs.Field('owner', 1, 'string'))
+      .add(new protobufjs.Field('host_uri', 2, 'string'))
+      .add(new protobufjs.Field('attributes', 3, 'bytes'))
+  )
+  providerPkg.add(
+    new protobufjs.Type('MsgUpdateProvider')
+      .add(new protobufjs.Field('owner', 1, 'string'))
+      .add(new protobufjs.Field('host_uri', 2, 'string'))
+      .add(new protobufjs.Field('attributes', 3, 'bytes'))
+  )
+  providerPkg.add(
+    new protobufjs.Type('MsgDeleteProvider')
+      .add(new protobufjs.Field('owner', 1, 'string'))
+  )
 
   // Akash Certificate types
-  const certProto = `
-    syntax = "proto3";
-    package akash.cert.v1beta3;
-
-    message MsgCreateCertificate {
-      string owner = 1;
-      bytes cert = 2;
-      bytes pubkey = 3;
-    }
-
-    message MsgRevokeCertificate {
-      string owner = 1;
-      uint64 serial = 2;
-    }
-  `
+  const certPkg = root.define('akash.cert.v1beta3')
+  certPkg.add(
+    new protobufjs.Type('MsgCreateCertificate')
+      .add(new protobufjs.Field('owner', 1, 'string'))
+      .add(new protobufjs.Field('cert', 2, 'bytes'))
+      .add(new protobufjs.Field('pubkey', 3, 'bytes'))
+  )
+  certPkg.add(
+    new protobufjs.Type('MsgRevokeCertificate')
+      .add(new protobufjs.Field('owner', 1, 'string'))
+      .add(new protobufjs.Field('serial', 2, 'uint64'))
+  )
 
   // Akash Audit types
-  const auditProto = `
-    syntax = "proto3";
-    package akash.audit.v1beta1;
-
-    message MsgSignProviderAttributes {
-      string signer = 1;
-      string owner = 2;
-      bytes attributes = 3;
-    }
-
-    message MsgDeleteProviderAttributes {
-      string signer = 1;
-      string owner = 2;
-      bytes attributes = 3;
-    }
-  `
+  const auditPkg = root.define('akash.audit.v1beta1')
+  auditPkg.add(
+    new protobufjs.Type('MsgSignProviderAttributes')
+      .add(new protobufjs.Field('signer', 1, 'string'))
+      .add(new protobufjs.Field('owner', 2, 'string'))
+      .add(new protobufjs.Field('attributes', 3, 'bytes'))
+  )
+  auditPkg.add(
+    new protobufjs.Type('MsgDeleteProviderAttributes')
+      .add(new protobufjs.Field('signer', 1, 'string'))
+      .add(new protobufjs.Field('owner', 2, 'string'))
+      .add(new protobufjs.Field('attributes', 3, 'bytes'))
+  )
 
   // Akash Escrow types
-  const escrowProto = `
-    syntax = "proto3";
-    package akash.escrow.v1beta1;
-    import "cosmos/base/v1beta1/coin.proto";
-
-    message MsgCreatePayment {
-      string owner = 1;
-      string provider = 2;
-      uint64 payment_id = 3;
-      cosmos.base.v1beta1.Coin amount = 4;
-    }
-
-    message MsgClosePayment {
-      string owner = 1;
-      string provider = 2;
-      uint64 payment_id = 3;
-    }
-  `
+  const escrowPkg = root.define('akash.escrow.v1beta1')
+  escrowPkg.add(
+    new protobufjs.Type('MsgCreatePayment')
+      .add(new protobufjs.Field('owner', 1, 'string'))
+      .add(new protobufjs.Field('provider', 2, 'string'))
+      .add(new protobufjs.Field('payment_id', 3, 'uint64'))
+      .add(new protobufjs.Field('amount', 4, 'cosmos.base.v1beta1.Coin'))
+  )
+  escrowPkg.add(
+    new protobufjs.Type('MsgClosePayment')
+      .add(new protobufjs.Field('owner', 1, 'string'))
+      .add(new protobufjs.Field('provider', 2, 'string'))
+      .add(new protobufjs.Field('payment_id', 3, 'uint64'))
+  )
 
   // Akash Inflation types
-  const inflationProto = `
-    syntax = "proto3";
-    package akash.inflation.v1beta1;
-
-    message MsgSetInflation {
-      string owner = 1;
-      string inflation = 2;
-    }
-  `
-
-  // Parse all proto definitions
-  const allProtos = [
-    cosmosProto,
-    deploymentProto,
-    marketProto,
-    providerProto,
-    certProto,
-    auditProto,
-    escrowProto,
-    inflationProto
-  ].join('\n')
+  const inflationPkg = root.define('akash.inflation.v1beta1')
+  inflationPkg.add(
+    new protobufjs.Type('MsgSetInflation')
+      .add(new protobufjs.Field('owner', 1, 'string'))
+      .add(new protobufjs.Field('inflation', 2, 'string'))
+  )
 
   try {
-    // Parse the combined proto definition
-    root.parse(allProtos)
     root.resolveAll()
     return root
   } catch (error) {
-    console.error('Error parsing proto definitions:', error)
+    console.error('Error initializing proto definitions:', error)
     throw error
   }
 }
