@@ -1,9 +1,25 @@
 // Export our compatibility types (includes Deployment, Lease, etc.)
 export * from './official-types.js'
 
-// Message classes are exported from message-classes.ts but not re-exported here
-// to avoid naming conflicts with the type interfaces from official-types.ts
-// Instead, they are imported directly where needed (e.g., in registry.ts)
+// Message classes are exported from message-classes.ts for internal use
+// They are re-exported here with _Class suffix to avoid naming conflicts
+// with type interfaces from official-types.ts
+export {
+  MsgCreateDeployment as MsgCreateDeploymentClass,
+  MsgUpdateDeployment as MsgUpdateDeploymentClass,
+  MsgCloseDeployment as MsgCloseDeploymentClass,
+  MsgDepositDeployment as MsgDepositDeploymentClass,
+  MsgCreateLease as MsgCreateLeaseClass,
+  MsgCloseLease as MsgCloseLeaseClass,
+  MsgWithdrawLease as MsgWithdrawLeaseClass,
+  MsgCreateBid as MsgCreateBidClass,
+  MsgCloseBid as MsgCloseBidClass,
+  MsgCreateCertificate as MsgCreateCertificateClass,
+  MsgRevokeCertificate as MsgRevokeCertificateClass,
+  MsgCreateProvider as MsgCreateProviderClass,
+  MsgUpdateProvider as MsgUpdateProviderClass,
+  MsgDeleteProvider as MsgDeleteProviderClass,
+} from './message-classes.js'
 
 // Generated types can be imported via the /generated subpath export
 // but are not re-exported here to avoid conflicts with official-types
