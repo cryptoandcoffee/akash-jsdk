@@ -307,38 +307,92 @@ function encodeField(fieldNumber: number, value: any): Uint8Array {
 
 /**
  * Maps field names to protobuf field numbers
+ * Based on Akash protocol v1beta3/v1beta4 protobuf definitions
  */
 function getFieldNumber(fieldName: string): number {
   const fieldMap: { [key: string]: number } = {
-    // Common fields
-    owner: 1,
-    dseq: 2,
+    // MsgCreateDeployment fields
     id: 1,
     groups: 2,
-    deposits: 3,
-    version: 4,
+    version: 3,
     deposit: 4,
     depositor: 5,
-    deploymentId: 1,
-    bidId: 1,
-    leaseId: 1,
-    price: 2,
-    state: 3,
-    createdAt: 4,
-    closedOn: 5,
-    address: 1,
-    attributes: 2,
-    hostUri: 3,
-    commissionRate: 4,
-    cert: 1,
-    pubkey: 2,
-    key: 1,
-    value: 2,
-    amount: 2,
-    denom: 1,
+
+    // DeploymentID / Market IDs
+    owner: 1,
+    dseq: 2,
     gseq: 3,
     oseq: 4,
     provider: 5,
+
+    // GroupSpec fields
+    name: 1,
+    requirements: 2,
+    resources: 3,
+
+    // PlacementRequirements fields
+    signedBy: 1,
+    attributes: 2,
+
+    // SignedBy fields
+    allOf: 1,
+    anyOf: 2,
+
+    // Attribute fields
+    key: 1,
+    value: 2,
+
+    // Resource fields
+    cpu: 1,
+    memory: 2,
+    storage: 3,
+    endpoints: 4,
+    count: 5,
+    price: 6,
+
+    // CPU fields
+    units: 1,
+
+    // Memory fields
+    quantity: 1,
+
+    // Storage fields
+
+    // ResourceValue fields
+    val: 1,
+
+    // Endpoint fields
+    kind: 1,
+    sequenceNumber: 2,
+
+    // DecCoin / Coin fields
+    denom: 1,
+    amount: 2,
+
+    // Deployment types
+    deploymentId: 1,
+    state: 2,
+    createdAt: 3,
+
+    // Bid types (bidId handled above)
+    // price handled above
+
+    // Lease types (leaseId handled above)
+    closedOn: 5,
+
+    // Provider fields
+    address: 1,
+    hostUri: 2,
+    commissionRate: 3,
+
+    // Order/Lease fields
+    orderId: 1,
+    spec: 2,
+
+    // Legacy fields (backward compat)
+    deposits: 3,
+    cert: 1,
+    pubkey: 2,
   }
   return fieldMap[fieldName] || 0
 }
