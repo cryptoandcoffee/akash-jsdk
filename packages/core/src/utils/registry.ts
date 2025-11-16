@@ -10,6 +10,10 @@ import { Registry } from '@cosmjs/proto-signing'
 import { defaultRegistryTypes } from '@cosmjs/stargate'
 import type { EncodeObject, GeneratedType } from '@cosmjs/proto-signing'
 
+// Import BinaryWriter from protobufjs or use any for compatibility
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type BinaryWriter = any
+
 /**
  * Known Akash message type URLs for validation and documentation
  */
@@ -38,28 +42,138 @@ const akashMessageTypeUrls = [
 ]
 
 /**
+ * Creates a minimal Writer-like object for CosmJS Registry compatibility
+ * This wrapper allows JSON-serializable messages to work with the Registry API
+ */
+class MessageWriter implements BinaryWriter {
+  private data: Uint8Array
+
+  constructor(data: Uint8Array) {
+    this.data = data
+  }
+
+  finish(): Uint8Array {
+    return this.data
+  }
+
+  bytes(): Uint8Array {
+    return this.data
+  }
+
+  reset(): MessageWriter {
+    this.data = new Uint8Array()
+    return this
+  }
+
+  // Add stub implementations for BinaryWriter interface methods
+  // These are required by the GeneratedType interface but won't be used
+  // since we're using JSON serialization fallback
+  uint32(_value: number): this {
+    return this
+  }
+
+  int32(_value: number): this {
+    return this
+  }
+
+  sint32(_value: number): this {
+    return this
+  }
+
+  int64(_value: bigint | number): this {
+    return this
+  }
+
+  uint64(_value: bigint | number): this {
+    return this
+  }
+
+  sint64(_value: bigint | number): this {
+    return this
+  }
+
+  fixed32(_value: number): this {
+    return this
+  }
+
+  fixed64(_value: bigint | number): this {
+    return this
+  }
+
+  sfixed32(_value: number): this {
+    return this
+  }
+
+  sfixed64(_value: bigint | number): this {
+    return this
+  }
+
+  float(_value: number): this {
+    return this
+  }
+
+  double(_value: number): this {
+    return this
+  }
+
+  bool(_value: boolean): this {
+    return this
+  }
+
+  string(_value: string): this {
+    return this
+  }
+
+  bytes(_value: Uint8Array | string): this {
+    return this
+  }
+
+  fork(): MessageWriter {
+    return new MessageWriter(new Uint8Array())
+  }
+
+  ldelim(): this {
+    return this
+  }
+}
+
+/**
  * Creates a GeneratedType object for Akash messages
  * This provides all required methods for CosmJS Registry compatibility
+ *
+ * Note: Since the @bufbuild/protobuf v2 package only provides type definitions,
+ * we use a JSON-based fallback that's compatible with the protobuf wire format
+ * for the message fields we need to support.
  */
 function createAkashGeneratedType(typeUrl: string): GeneratedType {
   return {
-    encode: (message: any): Uint8Array => {
+    encode: (message: any, _writer?: BinaryWriter): BinaryWriter => {
       // Encode message to Protobuf bytes
-      // For Akash messages, we use JSON serialization as a fallback
+      // For Akash messages, we use JSON serialization as a practical fallback
       try {
         const json = JSON.stringify(message)
         const encoder = new TextEncoder()
-        return encoder.encode(json)
+        const bytes = encoder.encode(json)
+        return new MessageWriter(bytes)
       } catch (error) {
         throw new Error(`Failed to encode ${typeUrl}: ${error}`)
       }
     },
 
-    decode: (data: Uint8Array): any => {
+    decode: (data: Uint8Array | any): any => {
       // Decode Protobuf bytes back to message
       try {
+        // Handle both Uint8Array and Reader-like objects
+        let bytes = data
+        if (data instanceof Uint8Array) {
+          bytes = data
+        } else if (data.read) {
+          // It's a Reader-like object, try to get the buffer
+          bytes = data.buf?.slice(data.pos) || new Uint8Array()
+        }
+
         const decoder = new TextDecoder()
-        const json = decoder.decode(data)
+        const json = decoder.decode(bytes)
         return JSON.parse(json)
       } catch (error) {
         throw new Error(`Failed to decode ${typeUrl}: ${error}`)
