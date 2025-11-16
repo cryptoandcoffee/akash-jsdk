@@ -48,6 +48,7 @@ export default defineConfig({
     lib: {
       entry: 'src/index.ts',
       name: 'AkashProtobuf',
+      fileName: (format) => format === 'es' ? 'index.js' : 'index.cjs',
       formats: ['es', 'cjs']
     },
     rollupOptions: {
