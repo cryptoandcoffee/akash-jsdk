@@ -1,6 +1,6 @@
 {
   "name": "akash-jsdk",
-  "version": "3.10.7",
+  "version": "3.10.8",
   "description": "Modern JavaScript SDK for Akash Network",
   "type": "module",
   "private": true,
