@@ -170,8 +170,9 @@ function concatBytes(...arrays: Uint8Array[]): Uint8Array {
  * Encodes a message to protobuf binary format
  * @param message The message object to encode
  * @param fieldMap Optional field map for this message type (prevents collisions)
+ * @param parentFieldName Optional parent field name for type inference
  */
-function encodeMessageToProtobuf(message: any, fieldMap?: Record<string, number>): Uint8Array {
+function encodeMessageToProtobuf(message: any, fieldMap?: Record<string, number>, parentFieldName?: string): Uint8Array {
   if (!message || typeof message !== 'object') {
     return new Uint8Array()
   }
@@ -184,7 +185,7 @@ function encodeMessageToProtobuf(message: any, fieldMap?: Record<string, number>
     const fieldNumber = fieldMap ? (fieldMap[key] || 0) : getFieldNumber(key)
     if (fieldNumber === 0) continue
 
-    const encoded = encodeField(fieldNumber, value)
+    const encoded = encodeField(fieldNumber, value, key, parentFieldName)
     if (encoded.length > 0) {
       parts.push(encoded)
     }
@@ -245,8 +246,12 @@ function decodeMessageFromProtobuf(bytes: Uint8Array, fieldMap?: Record<string, 
 
 /**
  * Encodes a field value to protobuf format
+ * @param fieldNumber The protobuf field number
+ * @param value The value to encode
+ * @param fieldName The field name (for type inference in nested messages)
+ * @param parentFieldName Parent field name for context
  */
-function encodeField(fieldNumber: number, value: any): Uint8Array {
+function encodeField(fieldNumber: number, value: any, fieldName?: string, parentFieldName?: string): Uint8Array {
   if (typeof value === 'string') {
     const encoded = new TextEncoder().encode(value)
     const header = encodeFieldHeader(fieldNumber, 2) // WIRE_TYPE_LENGTH_DELIMITED
@@ -278,7 +283,7 @@ function encodeField(fieldNumber: number, value: any): Uint8Array {
   if (Array.isArray(value)) {
     const parts: Uint8Array[] = []
     for (const item of value) {
-      const encoded = encodeField(fieldNumber, item)
+      const encoded = encodeField(fieldNumber, item, fieldName, parentFieldName)
       if (encoded.length > 0) {
         parts.push(encoded)
       }
@@ -287,7 +292,9 @@ function encodeField(fieldNumber: number, value: any): Uint8Array {
   }
 
   if (typeof value === 'object') {
-    const encoded = encodeMessageToProtobuf(value)
+    // Determine the field map for this nested object based on field name
+    const nestedFieldMap = getFieldMapForNestedType(fieldName, parentFieldName)
+    const encoded = encodeMessageToProtobuf(value, nestedFieldMap, fieldName)
     const header = encodeFieldHeader(fieldNumber, 2) // WIRE_TYPE_LENGTH_DELIMITED
     const length = encodeVarint(encoded.length)
     return concatBytes(header, length, encoded)
@@ -415,6 +422,140 @@ function getFieldNumber(fieldName: string): number {
     finalTallyResult: 11,
   }
   return fieldMap[fieldName] || 0
+}
+
+/**
+ * Get field map for nested message types based on field names
+ * Determines the correct field mapping for nested objects during encoding
+ * @param fieldName The current field name (e.g., 'id', 'groups', 'requirements')
+ * @param parentFieldName The parent field name for additional context
+ * @returns Field number mapping for the nested type
+ */
+function getFieldMapForNestedType(fieldName?: string, parentFieldName?: string): Record<string, number> {
+  // ID types (DeploymentID, BidID, OrderID, LeaseID, GroupID)
+  if (fieldName === 'id' || fieldName === 'bidId' || fieldName === 'orderId' || fieldName === 'leaseId') {
+    return {
+      owner: 1,
+      dseq: 2,
+      gseq: 3,
+      oseq: 4,
+      provider: 5,
+    }
+  }
+
+  // GroupSpec (groups are repeated GroupSpec)
+  if (fieldName === 'groups') {
+    return {
+      name: 1,
+      requirements: 2,
+      resources: 3,
+    }
+  }
+
+  // PlacementRequirements (nested in requirements)
+  if (fieldName === 'requirements') {
+    return {
+      signedBy: 1,
+      attributes: 2,
+    }
+  }
+
+  // SignedBy (nested in requirements)
+  if (fieldName === 'signedBy') {
+    return {
+      allOf: 1,
+      anyOf: 2,
+    }
+  }
+
+  // Attribute (repeated in requirements or resource)
+  if (fieldName === 'attributes') {
+    return {
+      key: 1,
+      value: 2,
+    }
+  }
+
+  // Resources (repeated in GroupSpec)
+  if (fieldName === 'resources' && parentFieldName === 'groups') {
+    return {
+      resource: 1,
+      count: 2,
+      price: 3,
+    }
+  }
+
+  // Resource/CPU/Memory/Storage (nested in resources or standalone)
+  if (fieldName === 'resource' || fieldName === 'cpu' || fieldName === 'memory' || fieldName === 'storage' || fieldName === 'gpu') {
+    return {
+      cpu: 1,
+      memory: 2,
+      storage: 3,
+      endpoints: 4,
+      gpu: 5,
+      id: 1,
+      units: 1,
+      quantity: 1,
+      name: 1,
+      attributes: 2,
+    }
+  }
+
+  // ResourceUnit (complex resource specification)
+  if (fieldName === 'resourceUnit') {
+    return {
+      cpu: 1,
+      memory: 2,
+      storage: 3,
+      endpoints: 4,
+      count: 5,
+      price: 6,
+    }
+  }
+
+  // ResourceValue (bytes field in resource specs)
+  if (fieldName === 'units' || fieldName === 'quantity' || fieldName === 'val') {
+    return {
+      val: 1,
+    }
+  }
+
+  // Endpoint (repeated in resource)
+  if (fieldName === 'endpoints') {
+    return {
+      kind: 1,
+      sequenceNumber: 2,
+    }
+  }
+
+  // Coin/DecCoin types (price, deposit, etc.)
+  if (fieldName === 'price' || fieldName === 'deposit' || fieldName === 'denom' || fieldName === 'amount') {
+    return {
+      denom: 1,
+      amount: 2,
+    }
+  }
+
+  // Deployment/Bid/Lease containers
+  if (fieldName === 'deployment' || fieldName === 'bid' || fieldName === 'lease') {
+    return {
+      deploymentId: 1,
+      state: 2,
+      createdAt: 3,
+      closedOn: 5,
+    }
+  }
+
+  // Provider info
+  if (fieldName === 'info') {
+    return {
+      email: 1,
+      website: 2,
+    }
+  }
+
+  // Fallback to global field map if type cannot be inferred
+  return getFieldNumber.fieldMap || {}
 }
 
 /**
