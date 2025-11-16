@@ -9,8 +9,99 @@ import type { GeneratedType } from '@cosmjs/proto-signing'
 
 /**
  * Helper to create a protobuf message class for CosmJS Registry
+ * Delegates to actual message class methods for proper encode/decode
  */
-function createMessageClass(name: string, typeUrl: string): GeneratedType {
+function createMessageClass(_name: string, _typeUrl: string, messageClass?: any): GeneratedType {
+  // If a message class is provided, delegate to its methods
+  if (messageClass && typeof messageClass.encode === 'function') {
+    return {
+      encode: (message: any, writer?: any): any => {
+        // Use actual message class encoder
+        try {
+          // Call the message class encode method
+          const encoded = messageClass.encode(message, writer)
+          // If it returns a Writer-like object with finish(), use it directly
+          if (encoded && typeof encoded.finish === 'function') {
+            return encoded
+          }
+          // Otherwise wrap the result
+          return {
+            finish(): Uint8Array {
+              return encoded instanceof Uint8Array ? encoded : new Uint8Array()
+            }
+          }
+        } catch {
+          // Fallback to generic encoding
+          const encoded = encodeMessageToProtobuf(message)
+          return {
+            finish(): Uint8Array {
+              return encoded
+            }
+          }
+        }
+      },
+
+      decode: (data: Uint8Array | any): any => {
+        // Use protobuf Reader with actual message class decoder
+        try {
+          // Handle Reader-like objects from CosmJS
+          if (data && data.buf && typeof data.buf === 'object') {
+            // Create Reader from position
+            const reader = data
+            return messageClass.decode(reader)
+          }
+          // Handle Uint8Array directly - create a simple reader wrapper
+          if (data instanceof Uint8Array) {
+            const reader = {
+              buf: data,
+              pos: 0,
+              readBytes(): Uint8Array {
+                return data.slice(this.pos)
+              }
+            }
+            return messageClass.decode(reader)
+          }
+          return {}
+        } catch {
+          // Fallback to generic decoding
+          if (data instanceof Uint8Array) {
+            return decodeMessageFromProtobuf(data)
+          }
+          if (data.buf && typeof data.buf === 'object') {
+            return decodeMessageFromProtobuf(data.buf.slice(data.pos))
+          }
+          return {}
+        }
+      },
+
+
+      create: (properties?: any): any => {
+        // Use actual message class create method
+        if (typeof messageClass.create === 'function') {
+          try {
+            return messageClass.create(properties)
+          } catch {
+            return properties || {}
+          }
+        }
+        return properties || {}
+      },
+
+      fromPartial: (object: any): any => {
+        // Use actual message class fromPartial method
+        if (typeof messageClass.fromPartial === 'function') {
+          try {
+            return messageClass.fromPartial(object)
+          } catch {
+            return object || {}
+          }
+        }
+        return object || {}
+      }
+    }
+  }
+
+  // Fallback: create generic message class
   return {
     encode: (message: any, _writer?: any): any => {
       // Encode message to protobuf binary
@@ -35,13 +126,6 @@ function createMessageClass(name: string, typeUrl: string): GeneratedType {
       return {}
     },
 
-    fromJSON: (json: any): any => {
-      return json
-    },
-
-    toJSON: (message: any): any => {
-      return message
-    },
 
     create: (properties?: any): any => {
       return properties || {}

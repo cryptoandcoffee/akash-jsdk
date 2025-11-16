@@ -87,6 +87,7 @@ deployment:
       }
 
       // Mock SigningStargateClient.connectWithSigner
+      const mockSimulate = vi.fn().mockResolvedValue(100000)
       const mockSignAndBroadcast = vi.fn().mockResolvedValue({
         code: 0,
         transactionHash: 'deployment-tx-hash',
@@ -94,6 +95,7 @@ deployment:
       })
 
       const mockSigningClient = {
+        simulate: mockSimulate,
         signAndBroadcast: mockSignAndBroadcast
       }
 

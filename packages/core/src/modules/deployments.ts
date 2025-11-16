@@ -1,7 +1,7 @@
  import { BaseProvider } from '../providers/base'
 import { Deployment, DeploymentID, DeploymentState, GroupSpec, Coin, MsgCreateDeployment } from '@cryptoandcoffee/akash-jsdk-protobuf'
 import { NetworkError, ValidationError, DeploymentError } from '../errors'
-import { SigningStargateClient } from '@cosmjs/stargate'
+import { SigningStargateClient, GasPrice, calculateFee } from '@cosmjs/stargate'
 import { DirectSecp256k1HdWallet } from '@cosmjs/proto-signing'
 import { SDLManager } from './sdl'
 import { createAkashRegistry } from '../utils/registry'
@@ -97,14 +97,21 @@ export class DeploymentManager {
         { registry }
       )
 
-      // Use signAndBroadcast with typeUrl/value format (should use AminoTypes)
+      // Estimate gas and calculate proper fee
+      const gasEstimate = await client.simulate(owner, [{
+        typeUrl: '/akash.deployment.v1beta3.MsgCreateDeployment',
+        value: msg
+      }], "")
+
+      const adjustedGas = Math.ceil(gasEstimate * 1.5).toString()
+      const gasPrice = GasPrice.fromString("0.025uakt")
+      const fee = calculateFee(parseInt(adjustedGas), gasPrice)
+
+      // Use signAndBroadcast with calculated fee
       const result = await client.signAndBroadcast(owner, [{
         typeUrl: '/akash.deployment.v1beta3.MsgCreateDeployment',
         value: msg
-      }], {
-        amount: [{ denom: 'uakt', amount: '5000' }],
-        gas: 'auto'
-      })
+      }], fee)
 
       if (result.code !== 0) {
         throw new DeploymentError(`Transaction failed: ${result.rawLog}`)
