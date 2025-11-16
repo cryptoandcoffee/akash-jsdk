@@ -1,6 +1,9 @@
 // Export our compatibility types (includes Deployment, Lease, etc.)
 export * from './official-types.js'
 
+// Export message classes for CosmJS Registry
+export * from './message-classes.js'
+
 // Generated types can be imported via the /generated subpath export
 // but are not re-exported here to avoid conflicts with official-types
 
