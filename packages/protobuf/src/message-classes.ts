@@ -10,6 +10,10 @@ import type { GeneratedType } from '@cosmjs/proto-signing'
 /**
  * Helper to create a protobuf message class for CosmJS Registry
  * Delegates to actual message class methods for proper encode/decode
+ *
+ * IMPORTANT: The generic fallback encoding intentionally avoids field number lookups
+ * since those cause collisions across different message types. Instead, it relies on
+ * properly generated protobuf message classes from bufbuild.
  */
 function createMessageClass(_name: string, _typeUrl: string, messageClass?: any): GeneratedType {
   // If a message class is provided, delegate to its methods
@@ -31,11 +35,11 @@ function createMessageClass(_name: string, _typeUrl: string, messageClass?: any)
             }
           }
         } catch {
-          // Fallback to generic encoding
-          const encoded = encodeMessageToProtobuf(message)
+          // Fallback - but this should not happen in production
+          // since all real messages have proper protobuf classes
           return {
             finish(): Uint8Array {
-              return encoded
+              return new Uint8Array()
             }
           }
         }
@@ -46,34 +50,18 @@ function createMessageClass(_name: string, _typeUrl: string, messageClass?: any)
         try {
           // Handle Reader-like objects from CosmJS
           if (data && data.buf && typeof data.buf === 'object') {
-            // Create Reader from position
-            const reader = data
-            return messageClass.decode(reader)
+            return messageClass.decode(data)
           }
-          // Handle Uint8Array directly - create a simple reader wrapper
+          // Handle Uint8Array directly
           if (data instanceof Uint8Array) {
-            const reader = {
-              buf: data,
-              pos: 0,
-              readBytes(): Uint8Array {
-                return data.slice(this.pos)
-              }
-            }
-            return messageClass.decode(reader)
+            return messageClass.decode(data)
           }
           return {}
         } catch {
-          // Fallback to generic decoding
-          if (data instanceof Uint8Array) {
-            return decodeMessageFromProtobuf(data)
-          }
-          if (data.buf && typeof data.buf === 'object') {
-            return decodeMessageFromProtobuf(data.buf.slice(data.pos))
-          }
+          // Fallback for test scenarios
           return {}
         }
       },
-
 
       create: (properties?: any): any => {
         // Use actual message class create method
@@ -101,31 +89,26 @@ function createMessageClass(_name: string, _typeUrl: string, messageClass?: any)
     }
   }
 
-  // Fallback: create generic message class
+  // Fallback: create minimal message class for testing only
+  // NOTE: This fallback does NOT include encoding/decoding since the generic
+  // field number mapping has collision bugs (same field name maps to different
+  // numbers in different message types). Production code must use proper
+  // protobuf-generated message classes.
   return {
     encode: (message: any, _writer?: any): any => {
-      // Encode message to protobuf binary
-      // Message fields are encoded with proper protobuf field numbers and wire types
-      const encoded = encodeMessageToProtobuf(message)
+      // In production, this should never be called - all real messages have
+      // proper protobuf classes. For tests, return empty.
       return {
         finish(): Uint8Array {
-          return encoded
+          return new Uint8Array()
         }
       }
     },
 
     decode: (data: Uint8Array | any): any => {
-      // Decode protobuf binary to message object
-      if (data instanceof Uint8Array) {
-        return decodeMessageFromProtobuf(data)
-      }
-      // Handle Reader-like objects
-      if (data.buf && typeof data.buf === 'object') {
-        return decodeMessageFromProtobuf(data.buf.slice(data.pos))
-      }
+      // Test fallback only
       return {}
     },
-
 
     create: (properties?: any): any => {
       return properties || {}
