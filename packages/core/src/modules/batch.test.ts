@@ -309,7 +309,7 @@ describe('BatchManager', () => {
           value: {}
         },
         {
-          typeUrl: '/akash.market.v1beta3.MsgCreateLease',
+          typeUrl: '/akash.market.v1beta4.MsgCreateLease',
           value: {}
         }
       ]
