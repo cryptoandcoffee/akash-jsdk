@@ -212,7 +212,7 @@ describe('BatchManager', () => {
           value: { id: { owner: 'akash1test', dseq: '123' } }
         },
         {
-          typeUrl: '/akash.market.v1beta3.MsgCreateLease',
+          typeUrl: '/akash.market.v1beta4.MsgCreateLease',
           value: { bidId: { owner: 'akash1test', dseq: '123' } }
         },
         {
@@ -512,7 +512,7 @@ describe('BatchBuilder', () => {
       expect(result).toBe(batchBuilder)
       expect(batchBuilder.getOperationCount()).toBe(1)
       const ops = batchBuilder.getOperations()
-      expect(ops[0].typeUrl).toBe('/akash.market.v1beta3.MsgCreateLease')
+      expect(ops[0].typeUrl).toBe('/akash.market.v1beta4.MsgCreateLease')
     })
 
     it('should throw error for empty dseq', () => {
@@ -684,7 +684,7 @@ describe('BatchBuilder', () => {
       expect(batchBuilder.getOperationCount()).toBe(5)
       const ops = batchBuilder.getOperations()
       expect(ops[0].typeUrl).toBe('/akash.deployment.v1beta3.MsgCreateDeployment')
-      expect(ops[2].typeUrl).toBe('/akash.market.v1beta3.MsgCreateLease')
+      expect(ops[2].typeUrl).toBe('/akash.market.v1beta4.MsgCreateLease')
       expect(ops[4].typeUrl).toBe('/akash.cert.v1beta3.MsgCreateCertificate')
     })
   })

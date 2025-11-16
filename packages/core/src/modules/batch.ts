@@ -83,7 +83,7 @@ export class BatchBuilder {
 
     // In a real implementation, this would create a MsgCreateLease
     const msg: EncodeObject = {
-      typeUrl: '/akash.market.v1beta3.MsgCreateLease',
+      typeUrl: '/akash.market.v1beta4.MsgCreateLease',
       value: {
         bidId: {
           owner: this.manager['wallet']?.address || '',
