@@ -394,6 +394,32 @@ pnpm run lint
 
 ---
 
+## Critical Fixes & Milestones
+
+### v3.10.11 - Critical Protobuf Fix
+
+**Issue**: "Error: no such type: akash.deployment.v1beta3.MsgCreateDeployment"
+
+**Status**: ✅ RESOLVED
+
+**What was fixed**:
+- Replaced runtime proto file loading (broken by vite bundling) with in-memory protobuf definitions
+- Uses `root.define()` to create proper namespace structures programmatically
+- Works reliably in Node.js and browsers
+- Immune to path resolution issues
+
+**Changed files**:
+- `packages/protobuf/src/message-classes.ts` - New `createMinimalProto()` function
+
+**Testing**:
+- `MsgCreateDeployment.encode()` verified working
+- Message encoding/decoding tested successfully
+- All 4 packages built and tested
+
+**Impact**: Fixes deployment creation failures for all users upgrading from v3.10.0-v3.10.10
+
+---
+
 ## Emergency Procedures
 
 ### If Something Is Partially Published
