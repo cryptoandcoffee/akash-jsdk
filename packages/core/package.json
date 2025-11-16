@@ -25,13 +25,15 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@bufbuild/protobuf": "^2.10.1",
     "@cosmjs/amino": "^0.37.0",
     "@cosmjs/encoding": "^0.37.0",
     "@cosmjs/proto-signing": "^0.37.0",
     "@cosmjs/stargate": "^0.37.0",
     "@cryptoandcoffee/akash-jsdk-protobuf": "file:../protobuf",
     "elliptic": "^6.5.4",
-    "isomorphic-ws": "^5.0.0"
+    "isomorphic-ws": "^5.0.0",
+    "long": "^5.2.3"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",

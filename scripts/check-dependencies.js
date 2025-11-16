@@ -22,7 +22,7 @@ function getAllFiles(dir, fileList = []) {
 
     if (stat.isDirectory() && !file.startsWith('.') && file !== 'node_modules' && file !== 'dist') {
       getAllFiles(filePath, fileList)
-    } else if (file.endsWith('.ts') && !file.endsWith('.test.ts') && !file.endsWith('.d.ts')) {
+    } else if (file.endsWith('.ts') && !file.endsWith('.test.ts') && !file.endsWith('.spec.ts') && !file.endsWith('.d.ts')) {
       fileList.push(filePath)
     }
   })
