@@ -30,7 +30,7 @@
     "@cosmjs/encoding": "^0.37.0",
     "@cosmjs/proto-signing": "^0.37.0",
     "@cosmjs/stargate": "^0.37.0",
-    "@cryptoandcoffee/akash-jsdk-protobuf": "file:../protobuf",
+    "@cryptoandcoffee/akash-jsdk-protobuf": "workspace:*",
     "elliptic": "^6.5.4",
     "isomorphic-ws": "^5.0.0",
     "long": "^5.2.3"
