@@ -14,10 +14,23 @@ if (!existsSync(generatedDir)) {
   mkdirSync(generatedDir, { recursive: true })
 }
 
-// Skip buf generate due to import issues, use fallback types
-console.log('📋 Using fallback generated types...')
-createFallbackTypes(generatedDir)
-console.log('✅ Fallback types created successfully')
+// Generate proper TypeScript message classes using bufbuild
+try {
+  console.log('📦 Running buf generate to create protobuf message classes...')
+  // buf.yaml declares remote dependencies (cosmos-sdk, ibc, gogo/protobuf)
+  // buf will resolve them from buf.build registry for imports while using local protos
+  execSync('npx buf generate', {
+    cwd: rootDir,
+    stdio: 'inherit',
+    encoding: 'utf-8'
+  })
+  console.log('✅ Protobuf code generation completed successfully')
+} catch (error) {
+  console.error('❌ Buf generation failed:', error.message)
+  console.warn('⚠️  Buf dependencies not fully resolved, falling back to type-only definitions...')
+  createFallbackTypes(generatedDir)
+  console.log('✅ Fallback types created successfully')
+}
 
 function generateIndexFile(generatedDir) {
   const exports = []

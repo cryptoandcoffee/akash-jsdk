@@ -3,6 +3,7 @@ name: buf.build/cryptoandcoffee/akash-jsdk
 deps:
   - buf.build/cosmos/cosmos-sdk
   - buf.build/cosmos/ibc
+  - buf.build/gogo/protobuf
 breaking:
   use:
     - FILE
