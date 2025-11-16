@@ -29,10 +29,22 @@ function getRoot(): protobufjs.Root {
     // Try to load from proto files if in Node.js environment
     if (typeof window === 'undefined') {
       try {
-        const protoDir = join(__dirname, '../proto')
+        // Try multiple possible locations for proto files
+        // When built from source: ../proto (from dist folder)
+        // When published to npm: ../../proto (from node_modules/package/dist)
+        let protoDir = join(__dirname, '../proto')
+
+        if (!fs.existsSync(protoDir)) {
+          // Try parent directory (for npm-installed packages)
+          protoDir = join(__dirname, '../../proto')
+        }
 
         if (fs.existsSync(protoDir)) {
           const protoFiles = getAllProtoFilesSync(protoDir)
+
+          if (protoFiles.length === 0) {
+            console.error(`No proto files found in ${protoDir}`)
+          }
 
           for (const file of protoFiles) {
             try {
@@ -50,6 +62,8 @@ function getRoot(): protobufjs.Root {
           }
 
           root.resolveAll()
+        } else {
+          console.error(`Proto directory not found. Checked: ${join(__dirname, '../proto')} and ${join(__dirname, '../../proto')}`)
         }
       } catch (error) {
         console.warn('Could not load proto files from disk:', error)
