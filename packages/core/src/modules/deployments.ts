@@ -7,15 +7,12 @@ import { SigningStargateClient, GasPrice, calculateFee } from '@cosmjs/stargate'
 import { DirectSecp256k1HdWallet } from '@cosmjs/proto-signing'
 import { SDLManager } from './sdl'
 import { createAkashRegistry } from '../utils/registry'
-// Use proper proto-generated types from source location
-// @ts-ignore - importing from src/generated for build purposes
-import { MsgCreateDeployment } from '../../protobuf/src/generated/akash/deployment/v1beta4/deploymentmsg'
-// @ts-ignore
-import { Deposit, Source } from '../../protobuf/src/generated/akash/base/deposit/v1/deposit'
+// Use proper proto-generated types from protobuf package exports
+import { MsgCreateDeployment } from '@cryptoandcoffee/akash-jsdk-protobuf/generated/akash/deployment/v1beta4/deploymentmsg.ts'
+import { Deposit, Source } from '@cryptoandcoffee/akash-jsdk-protobuf/generated/akash/base/deposit/v1/deposit.ts'
 import { BinaryWriter } from '@bufbuild/protobuf/wire'
 import Long from 'long'
-// @ts-ignore
-import { Coin as ProtoCoin } from '../../protobuf/src/generated/cosmos/base/v1beta1/coin'
+import { Coin as ProtoCoin } from '@cryptoandcoffee/akash-jsdk-protobuf/generated/cosmos/base/v1beta1/coin.ts'
 
 export interface CreateDeploymentRequest {
   sdl: string;
@@ -159,15 +156,7 @@ export class DeploymentManager {
         owner,
         dseq
       }
-    } catch (error) {
-      // Log detailed error information
-      console.error('Deployment creation error details:', {
-        message: error?.message,
-        code: error?.code,
-        rawLog: error?.rawLog,
-        logs: error?.logs,
-        stack: error?.stack
-      })
+    } catch (error: any) {
       throw new DeploymentError('Failed to create deployment', { error })
     }
   }
@@ -296,20 +285,6 @@ export class DeploymentManager {
     }
 
     return bytes
-  }
-
-  // FIX #6: Parse version string from request
-  private parseVersionString(versionStr: string): Uint8Array {
-    const parts = versionStr.split('.').slice(0, 3).map(p => {
-      const num = parseInt(p)
-      if (isNaN(num) || num < 0 || num > 255) {
-        throw new ValidationError(`Invalid version component: ${p}`)
-      }
-      return num
-    })
-
-    while (parts.length < 3) parts.push(0)
-    return new Uint8Array(parts)
   }
 
   async list(filters: DeploymentFilters = {}): Promise<Deployment[]> {

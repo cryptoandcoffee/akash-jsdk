@@ -10,13 +10,12 @@ import { Registry } from '@cosmjs/proto-signing'
 import { defaultRegistryTypes } from '@cosmjs/stargate'
 import type { EncodeObject } from '@cosmjs/proto-signing'
 // Import proto-generated message types with proper encode/decode
-// Import from the source location to avoid dist build issues
-// @ts-ignore - importing from src/generated for build purposes
-import { MsgCreateDeployment } from '../../protobuf/src/generated/akash/deployment/v1beta4/deploymentmsg'
-// @ts-ignore
-import { MsgUpdateDeployment } from '../../protobuf/src/generated/akash/deployment/v1beta4/deploymentmsg'
-// @ts-ignore
-import { MsgCloseDeployment } from '../../protobuf/src/generated/akash/deployment/v1beta4/deploymentmsg'
+// @ts-ignore - Import from generated proto files (will be available after build/publish)
+import { MsgCreateDeployment } from '@cryptoandcoffee/akash-jsdk-protobuf/generated/akash/deployment/v1beta4/deploymentmsg'
+// @ts-ignore - Import from generated proto files (will be available after build/publish)
+import { MsgUpdateDeployment } from '@cryptoandcoffee/akash-jsdk-protobuf/generated/akash/deployment/v1beta4/deploymentmsg'
+// @ts-ignore - Import from generated proto files (will be available after build/publish)
+import { MsgCloseDeployment } from '@cryptoandcoffee/akash-jsdk-protobuf/generated/akash/deployment/v1beta4/deploymentmsg'
 
 /**
  * Maps message type URLs to their corresponding proto-generated message classes
