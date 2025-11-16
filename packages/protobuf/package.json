@@ -24,7 +24,7 @@
   ],
   "scripts": {
     "build": "npm run proto:generate && vite build && npm run copy:generated",
-    "copy:generated": "mkdir -p dist/generated && cp -r src/generated/* dist/generated/ 2>/dev/null; cp -r generated/* dist/generated/ 2>/dev/null; true",
+    "copy:generated": "mkdir -p dist/generated/akash && cp -r src/generated/deployment dist/generated/akash/ 2>/dev/null; cp -r src/generated/escrow dist/generated/akash/ 2>/dev/null; cp -r src/generated/cert dist/generated/akash/ 2>/dev/null; cp -r src/generated/audit dist/generated/akash/ 2>/dev/null; cp -r generated/akash/* dist/generated/akash/ 2>/dev/null; cp -r generated/cosmos dist/generated/ 2>/dev/null; cp -r generated/cometbft dist/generated/ 2>/dev/null; cp -r generated/google dist/generated/ 2>/dev/null; cp -r generated/tendermint dist/generated/ 2>/dev/null; cp -r generated/amino dist/generated/ 2>/dev/null; true",
     "proto:download": "node scripts/download-protos.js",
     "proto:generate": "node scripts/generate-proto.js",
     "test": "vitest run",
